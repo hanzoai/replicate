@@ -1,0 +1,64 @@
+name: Beeper Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: read
+  id-token: write
+
+jobs:
+  build-amd64:
+    name: Build Binary (amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build binary
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags "-s -w -extldflags '-static' -X 'main.Version=${{ github.ref_name }}'" \
+            -tags osusergo,netgo,sqlite_omit_load_extension \
+            -o dist/litestream ./cmd/litestream
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: litestream-linux-amd64
+          path: dist/litestream
+
+  create-release:
+    name: Create tagged release
+    runs-on: ubuntu-latest
+    needs: [build-amd64]
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: litestream-linux-amd64
+          path: ./dist/artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: ./dist/artifacts/litestream
