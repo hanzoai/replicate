@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"filippo.io/age"
 	"github.com/dustin/go-humanize"
 	"github.com/superfly/ltx"
 	_ "golang.org/x/crypto/x509roots/fallback"
@@ -1206,15 +1207,6 @@ func NewReplicaFromConfig(c *ReplicaConfig, db *litestream.DB) (_ *litestream.Re
 		return nil, fmt.Errorf("replica path cannot be a url, please use the 'url' field instead: %s", c.Path)
 	}
 
-	// Reject age encryption configuration as it's currently non-functional.
-	// Age encryption support was removed during the LTX storage layer refactor
-	// and has not been reimplemented. Accepting this config would silently
-	// write plaintext data to remote storage instead of encrypted data.
-	// See: https://github.com/benbjohnson/litestream/issues/790
-	if len(c.Age.Identities) > 0 || len(c.Age.Recipients) > 0 {
-		return nil, fmt.Errorf("age encryption is not currently supported, if you need encryption please revert back to Litestream v0.3.x")
-	}
-
 	// Build replica.
 	r := litestream.NewReplica(db)
 	if v := c.SyncInterval; v != nil {
@@ -1222,6 +1214,22 @@ func NewReplicaFromConfig(c *ReplicaConfig, db *litestream.DB) (_ *litestream.Re
 	}
 	if v := c.AutoRecover; v != nil {
 		r.AutoRecoverEnabled = *v
+	}
+
+	// Parse age encryption identities and recipients.
+	for _, s := range c.Age.Identities {
+		ids, err := age.ParseIdentities(strings.NewReader(s))
+		if err != nil {
+			return nil, fmt.Errorf("parse age identity: %w", err)
+		}
+		r.AgeIdentities = append(r.AgeIdentities, ids...)
+	}
+	for _, s := range c.Age.Recipients {
+		rcs, err := age.ParseRecipients(strings.NewReader(s))
+		if err != nil {
+			return nil, fmt.Errorf("parse age recipient: %w", err)
+		}
+		r.AgeRecipients = append(r.AgeRecipients, rcs...)
 	}
 
 	// Build and set client on replica.

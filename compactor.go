@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"filippo.io/age"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/superfly/ltx"
 )
@@ -49,6 +50,11 @@ type Compactor struct {
 	// CacheSetter optionally stores MaxLTXFileInfo for a level.
 	// If nil, max file info is not cached.
 	CacheSetter func(level int, info *ltx.FileInfo)
+
+	// Age encryption for compaction. When set, reads are decrypted and
+	// writes are encrypted so compacted files remain encrypted at rest.
+	AgeIdentities []age.Identity
+	AgeRecipients []age.Recipient
 }
 
 // NewCompactor creates a new Compactor with the given client and logger.
@@ -147,7 +153,16 @@ func (c *Compactor) Compact(ctx context.Context, dstLevel int) (*ltx.FileInfo, e
 		if err != nil {
 			return nil, fmt.Errorf("open ltx file: %w", err)
 		}
-		rdrs = append(rdrs, f)
+		if len(c.AgeIdentities) > 0 {
+			dr, err := age.Decrypt(f, c.AgeIdentities...)
+			if err != nil {
+				f.Close()
+				return nil, fmt.Errorf("age decrypt ltx file: %w", err)
+			}
+			rdrs = append(rdrs, &decryptReadCloser{Reader: dr, closer: f})
+		} else {
+			rdrs = append(rdrs, f)
+		}
 	}
 	if len(rdrs) == 0 {
 		return nil, ErrNoCompaction
@@ -155,13 +170,35 @@ func (c *Compactor) Compact(ctx context.Context, dstLevel int) (*ltx.FileInfo, e
 
 	pr, pw := io.Pipe()
 	go func() {
-		comp, err := ltx.NewCompactor(pw, rdrs)
+		var w io.WriteCloser = pw
+		if len(c.AgeRecipients) > 0 {
+			ew, err := age.Encrypt(pw, c.AgeRecipients...)
+			if err != nil {
+				pw.CloseWithError(fmt.Errorf("age encrypt: %w", err))
+				return
+			}
+			w = ew
+		}
+
+		comp, err := ltx.NewCompactor(w, rdrs)
 		if err != nil {
+			w.Close()
 			pw.CloseWithError(fmt.Errorf("new ltx compactor: %w", err))
 			return
 		}
 		comp.HeaderFlags = ltx.HeaderFlagNoChecksum
-		_ = pw.CloseWithError(comp.Compact(ctx))
+		if err := comp.Compact(ctx); err != nil {
+			w.Close()
+			pw.CloseWithError(err)
+			return
+		}
+		if w != pw {
+			if err := w.Close(); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
+		}
+		pw.Close()
 	}()
 
 	info, err := c.client.WriteLTXFile(ctx, dstLevel, minTXID, maxTXID, pr)

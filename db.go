@@ -588,6 +588,8 @@ func (db *DB) Open() (err error) {
 	db.compactor.VerifyCompaction = db.VerifyCompaction
 	db.compactor.RetentionEnabled = db.RetentionEnabled
 	db.compactor.client = db.Replica.Client
+	db.compactor.AgeIdentities = db.Replica.AgeIdentities
+	db.compactor.AgeRecipients = db.Replica.AgeRecipients
 
 	// Start monitoring SQLite database in a separate goroutine.
 	if db.MonitorInterval > 0 {
@@ -1255,9 +1257,9 @@ func (db *DB) checkDatabaseBehindReplica(ctx context.Context) error {
 		return fmt.Errorf("recreate L0 directory: %w", err)
 	}
 
-	// Fetch latest L0 LTX file from replica
+	// Fetch latest L0 LTX file from replica (decrypts if age is configured).
 	minTXID, maxTXID := replicaInfo.MinTXID, replicaInfo.MaxTXID
-	reader, err := db.Replica.Client.OpenLTXFile(ctx, 0, minTXID, maxTXID, 0, 0)
+	reader, err := db.Replica.OpenLTXFile(ctx, 0, minTXID, maxTXID, 0, 0)
 	if err != nil {
 		return fmt.Errorf("open remote L0 file: %w", err)
 	}

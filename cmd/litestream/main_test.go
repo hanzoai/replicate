@@ -341,62 +341,85 @@ func TestNewSFTPReplicaFromConfig(t *testing.T) {
 	}
 }
 
-// TestNewReplicaFromConfig_AgeEncryption verifies that age encryption configuration is rejected.
-// Age encryption is currently non-functional and would silently write plaintext data.
-// See: https://github.com/benbjohnson/litestream/issues/790
+// TestNewReplicaFromConfig_AgeEncryption verifies that valid age keys are parsed
+// and invalid keys produce errors.
 func TestNewReplicaFromConfig_AgeEncryption(t *testing.T) {
-	t.Run("RejectIdentities", func(t *testing.T) {
+	const testIdentity = "AGE-SECRET-KEY-1R4WV6PMZ9XDV48U7JJQ4GRF57JGGLPYT6VP5DU7MMXTJ5PGN3TUQZLX43Y"
+	const testRecipient = "age147c3cclg44lsse7nht5jghmlhm9jprf452hkpyepz0jykm0vpa5sm6zlkg"
+
+	t.Run("ParseValidIdentity", func(t *testing.T) {
 		config := &main.ReplicaConfig{
 			URL: "s3://foo/bar",
 		}
-		config.Age.Identities = []string{"AGE-SECRET-KEY-1EXAMPLE"}
+		config.Age.Identities = []string{testIdentity}
 
-		_, err := main.NewReplicaFromConfig(config, nil)
-		if err == nil {
-			t.Fatal("expected error when age identities are configured")
+		r, err := main.NewReplicaFromConfig(config, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		if !strings.Contains(err.Error(), "age encryption is not currently supported") {
-			t.Errorf("expected age encryption error, got: %v", err)
-		}
-		if !strings.Contains(err.Error(), "revert back to Litestream v0.3.x") {
-			t.Errorf("expected error to reference v0.3.x, got: %v", err)
+		if !r.DecryptionEnabled() {
+			t.Fatal("expected decryption to be enabled")
 		}
 	})
 
-	t.Run("RejectRecipients", func(t *testing.T) {
+	t.Run("ParseValidRecipient", func(t *testing.T) {
 		config := &main.ReplicaConfig{
 			URL: "s3://foo/bar",
 		}
-		config.Age.Recipients = []string{"age1example"}
+		config.Age.Recipients = []string{testRecipient}
 
-		_, err := main.NewReplicaFromConfig(config, nil)
-		if err == nil {
-			t.Fatal("expected error when age recipients are configured")
+		r, err := main.NewReplicaFromConfig(config, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		if !strings.Contains(err.Error(), "age encryption is not currently supported") {
-			t.Errorf("expected age encryption error, got: %v", err)
-		}
-		if !strings.Contains(err.Error(), "revert back to Litestream v0.3.x") {
-			t.Errorf("expected error to reference v0.3.x, got: %v", err)
+		if !r.EncryptionEnabled() {
+			t.Fatal("expected encryption to be enabled")
 		}
 	})
 
-	t.Run("RejectBoth", func(t *testing.T) {
+	t.Run("ParseBoth", func(t *testing.T) {
 		config := &main.ReplicaConfig{
 			URL: "s3://foo/bar",
 		}
-		config.Age.Identities = []string{"AGE-SECRET-KEY-1EXAMPLE"}
-		config.Age.Recipients = []string{"age1example"}
+		config.Age.Identities = []string{testIdentity}
+		config.Age.Recipients = []string{testRecipient}
+
+		r, err := main.NewReplicaFromConfig(config, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !r.EncryptionEnabled() || !r.DecryptionEnabled() {
+			t.Fatal("expected both encryption and decryption to be enabled")
+		}
+	})
+
+	t.Run("RejectInvalidIdentity", func(t *testing.T) {
+		config := &main.ReplicaConfig{
+			URL: "s3://foo/bar",
+		}
+		config.Age.Identities = []string{"not-a-valid-key"}
 
 		_, err := main.NewReplicaFromConfig(config, nil)
 		if err == nil {
-			t.Fatal("expected error when both age identities and recipients are configured")
+			t.Fatal("expected error for invalid age identity")
 		}
-		if !strings.Contains(err.Error(), "age encryption is not currently supported") {
-			t.Errorf("expected age encryption error, got: %v", err)
+		if !strings.Contains(err.Error(), "parse age identity") {
+			t.Errorf("expected parse error, got: %v", err)
 		}
-		if !strings.Contains(err.Error(), "revert back to Litestream v0.3.x") {
-			t.Errorf("expected error to reference v0.3.x, got: %v", err)
+	})
+
+	t.Run("RejectInvalidRecipient", func(t *testing.T) {
+		config := &main.ReplicaConfig{
+			URL: "s3://foo/bar",
+		}
+		config.Age.Recipients = []string{"not-a-valid-key"}
+
+		_, err := main.NewReplicaFromConfig(config, nil)
+		if err == nil {
+			t.Fatal("expected error for invalid age recipient")
+		}
+		if !strings.Contains(err.Error(), "parse age recipient") {
+			t.Errorf("expected parse error, got: %v", err)
 		}
 	})
 
