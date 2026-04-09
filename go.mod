@@ -1,4 +1,4 @@
-module github.com/benbjohnson/litestream
+module github.com/hanzoai/replicate
 
 go 1.25.0
 

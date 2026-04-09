@@ -10,8 +10,8 @@ import (
 
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
 )
 
 func TestCompactor_Compact(t *testing.T) {

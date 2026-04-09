@@ -25,7 +25,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/superfly/ltx"
 
-	litestream "github.com/benbjohnson/litestream"
+	litestream "github.com/hanzoai/replicate"
 )
 
 // mockAPIError implements smithy.APIError for testing

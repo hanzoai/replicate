@@ -12,7 +12,7 @@ import (
 	"github.com/superfly/ltx"
 	_ "modernc.org/sqlite"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 func TestChecksum(t *testing.T) {

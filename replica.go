@@ -17,7 +17,7 @@ import (
 	"github.com/luxfi/age"
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate/internal"
 )
 
 // Default replica settings.
