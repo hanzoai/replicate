@@ -25,7 +25,7 @@ type SocketConfig struct {
 func DefaultSocketConfig() SocketConfig {
 	return SocketConfig{
 		Enabled:     false,
-		Path:        "/var/run/litestream.sock",
+		Path:        "/var/run/replicate.sock",
 		Permissions: 0600,
 	}
 }

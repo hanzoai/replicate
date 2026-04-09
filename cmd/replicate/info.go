@@ -13,13 +13,13 @@ import (
 	"github.com/benbjohnson/litestream"
 )
 
-// ListCommand represents the command to list all managed databases.
-type ListCommand struct{}
+// InfoCommand represents the command to show daemon information.
+type InfoCommand struct{}
 
-// Run executes the list command.
-func (c *ListCommand) Run(_ context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-list", flag.ContinueOnError)
-	socketPath := fs.String("socket", "/var/run/litestream.sock", "control socket path")
+// Run executes the info command.
+func (c *InfoCommand) Run(_ context.Context, args []string) error {
+	fs := flag.NewFlagSet("replicate-info", flag.ContinueOnError)
+	socketPath := fs.String("socket", "/var/run/replicate.sock", "control socket path")
 	timeout := fs.Int("timeout", 10, "timeout in seconds")
 	jsonOutput := fs.Bool("json", false, "output raw JSON")
 	fs.Usage = c.Usage
@@ -45,7 +45,7 @@ func (c *ListCommand) Run(_ context.Context, args []string) error {
 		},
 	}
 
-	resp, err := client.Get("http://localhost/list")
+	resp, err := client.Get("http://localhost/info")
 	if err != nil {
 		return fmt.Errorf("failed to connect to control socket: %w", err)
 	}
@@ -59,12 +59,12 @@ func (c *ListCommand) Run(_ context.Context, args []string) error {
 	if resp.StatusCode != http.StatusOK {
 		var errResp litestream.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
-			return fmt.Errorf("list failed: %s", errResp.Error)
+			return fmt.Errorf("info failed: %s", errResp.Error)
 		}
-		return fmt.Errorf("list failed: %s", string(body))
+		return fmt.Errorf("info failed: %s", string(body))
 	}
 
-	var result litestream.ListResponse
+	var result litestream.InfoResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -76,35 +76,30 @@ func (c *ListCommand) Run(_ context.Context, args []string) error {
 		}
 		fmt.Println(string(output))
 	} else {
-		if len(result.Databases) == 0 {
-			fmt.Println("No databases configured")
-		} else {
-			for _, db := range result.Databases {
-				syncInfo := "never"
-				if db.LastSyncAt != nil {
-					syncInfo = db.LastSyncAt.Format(time.RFC3339)
-				}
-				fmt.Printf("%s [%s] (last sync: %s)\n", db.Path, db.Status, syncInfo)
-			}
-		}
+		uptime := time.Duration(result.UptimeSeconds) * time.Second
+		fmt.Printf("Litestream %s\n", result.Version)
+		fmt.Printf("  PID:        %d\n", result.PID)
+		fmt.Printf("  Uptime:     %s\n", uptime)
+		fmt.Printf("  Started at: %s\n", result.StartedAt.Format(time.RFC3339))
+		fmt.Printf("  Databases:  %d\n", result.DatabaseCount)
 	}
 
 	return nil
 }
 
-// Usage prints the help text for the list command.
-func (c *ListCommand) Usage() {
+// Usage prints the help text for the info command.
+func (c *InfoCommand) Usage() {
 	fmt.Println(`
-usage: litestream list [OPTIONS]
+usage: litestream info [OPTIONS]
 
-List all managed databases from a running daemon.
+Show daemon information from a running Litestream instance.
 
 Options:
   -json
       Output raw JSON instead of human-readable text.
 
   -socket PATH
-      Path to control socket (default: /var/run/litestream.sock).
+      Path to control socket (default: /var/run/replicate.sock).
 
   -timeout SECONDS
       Maximum time to wait in seconds (default: 10).

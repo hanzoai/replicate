@@ -21,7 +21,7 @@ type RestoreCommand struct{}
 func (c *RestoreCommand) Run(ctx context.Context, args []string) (err error) {
 	opt := litestream.NewRestoreOptions()
 
-	fs := flag.NewFlagSet("litestream-restore", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-restore", flag.ContinueOnError)
 	configPath, noExpandEnv := registerConfigFlag(fs)
 	fs.StringVar(&opt.OutputPath, "o", "", "output path")
 	fs.Var((*txidVar)(&opt.TXID), "txid", "transaction ID")
@@ -179,9 +179,9 @@ The restore command recovers a database from a previous snapshot and WAL.
 
 Usage:
 
-	litestream restore [arguments] DB_PATH
+	replicate restore [arguments] DB_PATH
 
-	litestream restore [arguments] REPLICA_URL
+	replicate restore [arguments] REPLICA_URL
 
 Arguments:
 

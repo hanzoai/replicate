@@ -13,7 +13,7 @@ type DatabasesCommand struct{}
 
 // Run executes the command.
 func (c *DatabasesCommand) Run(_ context.Context, args []string) (err error) {
-	fs := flag.NewFlagSet("litestream-databases", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-databases", flag.ContinueOnError)
 	configPath, noExpandEnv := registerConfigFlag(fs)
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
@@ -57,7 +57,7 @@ The databases command lists all databases in the configuration file.
 
 Usage:
 
-	litestream databases [arguments]
+	replicate databases [arguments]
 
 Arguments:
 

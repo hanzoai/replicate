@@ -17,7 +17,7 @@ type StatusCommand struct{}
 
 // Run executes the command.
 func (c *StatusCommand) Run(ctx context.Context, args []string) (err error) {
-	fs := flag.NewFlagSet("litestream-status", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-status", flag.ContinueOnError)
 	configPath, noExpandEnv := registerConfigFlag(fs)
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
@@ -119,7 +119,7 @@ The status command displays the replication status of databases.
 
 Usage:
 
-	litestream status [arguments] [database path]
+	replicate status [arguments] [database path]
 
 Arguments:
 

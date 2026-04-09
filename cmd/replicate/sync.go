@@ -19,9 +19,9 @@ type SyncCommand struct{}
 
 // Run executes the sync command.
 func (c *SyncCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-sync", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-sync", flag.ContinueOnError)
 	timeout := fs.Int("timeout", 30, "timeout in seconds")
-	socketPath := fs.String("socket", "/var/run/litestream.sock", "control socket path")
+	socketPath := fs.String("socket", "/var/run/replicate.sock", "control socket path")
 	wait := fs.Bool("wait", false, "block until sync completes")
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
@@ -108,6 +108,6 @@ Options:
       Maximum time to wait in seconds, best-effort (default: 30).
 
   -socket PATH
-      Path to control socket (default: /var/run/litestream.sock).
+      Path to control socket (default: /var/run/replicate.sock).
 `[1:])
 }

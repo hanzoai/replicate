@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/benbjohnson/litestream"
-	main "github.com/benbjohnson/litestream/cmd/litestream"
+	main "github.com/benbjohnson/litestream/cmd/replicate"
 	"github.com/benbjohnson/litestream/internal/testingutil"
 )
 

@@ -64,7 +64,7 @@ func NewReplicateCommand() *ReplicateCommand {
 
 // ParseFlags parses the CLI flags and loads the configuration file.
 func (c *ReplicateCommand) ParseFlags(_ context.Context, args []string) (err error) {
-	fs := flag.NewFlagSet("litestream-replicate", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-replicate", flag.ContinueOnError)
 	execFlag := fs.String("exec", "", "execute subcommand")
 	logLevelFlag := fs.String("log-level", "", "log level (trace, debug, info, warn, error)")
 	restoreIfDBNotExists := fs.Bool("restore-if-db-not-exists", false, "restore from replica if database doesn't exist")
@@ -525,9 +525,9 @@ command line arguments.
 
 Usage:
 
-	litestream replicate [arguments]
+	replicate replicate [arguments]
 
-	litestream replicate [arguments] DB_PATH REPLICA_URL [REPLICA_URL...]
+	replicate replicate [arguments] DB_PATH REPLICA_URL [REPLICA_URL...]
 
 Arguments:
 
@@ -536,7 +536,7 @@ Arguments:
 	    Defaults to %s
 
 	-exec CMD
-	    Executes a subcommand. Litestream will exit when the child
+	    Executes a subcommand. Replicate will exit when the child
 	    process exits. Useful for simple process management.
 
 	-once

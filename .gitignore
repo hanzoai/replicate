@@ -27,5 +27,5 @@ CLAUDE.local.md
 packages/python/dist/
 packages/python/build/
 packages/python/*.egg-info/
-litestream
-replicate
+/litestream
+/replicate
