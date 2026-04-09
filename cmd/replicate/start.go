@@ -20,9 +20,9 @@ type StartCommand struct{}
 
 // Run executes the start command.
 func (c *StartCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-start", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-start", flag.ContinueOnError)
 	timeout := fs.Int("timeout", 30, "timeout in seconds")
-	socketPath := fs.String("socket", "/var/run/litestream.sock", "control socket path")
+	socketPath := fs.String("socket", "/var/run/replicate.sock", "control socket path")
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -107,6 +107,6 @@ Options:
       Maximum time to wait in seconds (default: 30).
 
   -socket PATH
-      Path to control socket (default: /var/run/litestream.sock).
+      Path to control socket (default: /var/run/replicate.sock).
 `[1:])
 }

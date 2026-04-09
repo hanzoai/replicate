@@ -15,7 +15,7 @@ type ResetCommand struct{}
 
 // Run executes the command.
 func (c *ResetCommand) Run(ctx context.Context, args []string) (err error) {
-	fs := flag.NewFlagSet("litestream-reset", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-reset", flag.ContinueOnError)
 	configPath, noExpandEnv := registerConfigFlag(fs)
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
@@ -109,7 +109,7 @@ modified.
 
 Usage:
 
-	litestream reset [arguments] <path>
+	replicate reset [arguments] <path>
 
 Arguments:
 
@@ -123,10 +123,10 @@ Arguments:
 Examples:
 
 	# Reset local state for a specific database
-	litestream reset /path/to/database.db
+	replicate reset /path/to/database.db
 
 	# Reset using a specific configuration file
-	litestream reset -config /etc/litestream.yml /path/to/database.db
+	replicate reset -config /etc/litestream.yml /path/to/database.db
 
 `[1:],
 		DefaultConfigPath(),

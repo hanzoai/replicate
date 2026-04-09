@@ -72,8 +72,8 @@ jobs:
           go-version-file: "go.mod"
 
       - run: |
-          go build ./cmd/litestream/
-          file ./litestream.exe
+          go build ./cmd/replicate/
+          file ./replicate.exe
         env:
           CGO_ENABLED: "1"
           GOOS: windows
@@ -94,7 +94,7 @@ jobs:
           target: default
           push: false
           load: true
-          tags: litestream:default
+          tags: replicate:default
 
       - name: Build hardened image
         uses: docker/build-push-action@v6
@@ -103,23 +103,23 @@ jobs:
           target: hardened
           push: false
           load: true
-          tags: litestream:hardened
+          tags: replicate:hardened
 
       - name: "Default: verify version command"
-        run: docker run --rm litestream:default version
+        run: docker run --rm replicate:default version
 
       - name: "Hardened: verify version command"
-        run: docker run --rm litestream:hardened version
+        run: docker run --rm replicate:hardened version
 
       - name: "Hardened: verify non-root user (UID 65532)"
         run: |
-          user=$(docker inspect --format='{{.Config.User}}' litestream:hardened)
+          user=$(docker inspect --format='{{.Config.User}}' replicate:hardened)
           echo "Container user: $user"
           if [ "$user" != "nonroot:nonroot" ]; then
             echo "FAIL: Expected user 'nonroot:nonroot', got '$user'"
             exit 1
           fi
-          docker create --name uid-check litestream:hardened version
+          docker create --name uid-check replicate:hardened version
           uid=$(docker export uid-check | tar -xf - --to-stdout etc/passwd | grep '^nonroot:' | cut -d: -f3)
           docker rm uid-check
           echo "nonroot UID: $uid"
@@ -130,7 +130,7 @@ jobs:
 
       - name: "Hardened: verify no shell exists"
         run: |
-          if docker run --rm --entrypoint /bin/sh litestream:hardened -c "echo hello" 2>/dev/null; then
+          if docker run --rm --entrypoint /bin/sh replicate:hardened -c "echo hello" 2>/dev/null; then
             echo "FAIL: Shell should not exist in scratch image"
             exit 1
           fi
@@ -138,7 +138,7 @@ jobs:
 
       - name: "Hardened: verify CA certificates present"
         run: |
-          docker create --name cert-check litestream:hardened version
+          docker create --name cert-check replicate:hardened version
           docker export cert-check | tar -tf - | grep -q "etc/ssl/certs/ca-certificates.crt"
           echo "PASS: CA certificates found"
           docker rm cert-check
@@ -155,7 +155,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go build -o /dev/null ./_examples/library/basic
       - run: go build -o /dev/null ./_examples/library/s3
@@ -169,7 +169,7 @@ jobs:
       - run: go test -v ./nats
       - run: go test -v ./s3
       - run: go test -v ./sftp
-      - run: go test -v ./cmd/litestream
+      - run: go test -v ./cmd/replicate
 
 
   ltx-behavioral-gate:
@@ -186,7 +186,7 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
+          go build -o bin/replicate ./cmd/replicate
           go build -o bin/litestream-test ./cmd/litestream-test
 
       - name: Run LTX behavioral tests (short mode)
@@ -217,7 +217,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: ./etc/s3_mock.py go test -v ./replica_client_test.go -integration s3
 
@@ -256,7 +256,7 @@ jobs:
           # Create test bucket
           docker exec minio-test mc mb local/testbucket
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - name: Test Query Parameter Support
         run: |
@@ -268,7 +268,7 @@ jobs:
           export AWS_SECRET_ACCESS_KEY=minioadmin
 
           # Run replication for 5 seconds
-          timeout 5 litestream replicate /tmp/test.db \
+          timeout 5 replicate replicate /tmp/test.db \
             "s3://testbucket/test.db?endpoint=localhost:9000&forcePathStyle=true" || true
 
           # Verify files were uploaded
@@ -276,7 +276,7 @@ jobs:
 
           # Test restore with query parameters
           rm -f /tmp/restored.db
-          litestream restore -o /tmp/restored.db \
+          replicate restore -o /tmp/restored.db \
             "s3://testbucket/test.db?endpoint=localhost:9000&forcePathStyle=true"
 
           # Verify restored data
@@ -346,7 +346,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration nats
         env:
@@ -375,7 +375,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration s3
         env:
@@ -406,7 +406,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration gs
         env:
@@ -429,7 +429,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration abs
         env:
@@ -453,7 +453,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration -replica-clients=r2
         env:
@@ -498,7 +498,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration sftp
         env:
@@ -528,7 +528,7 @@ jobs:
           SQL
 
           # Run replication briefly
-          timeout 5 ./bin/litestream replicate -config /tmp/sftp-concurrent.yml || true
+          timeout 5 ./bin/replicate replicate -config /tmp/sftp-concurrent.yml || true
 
           # Check files were created
           ssh -i /test/id_ed25519 -o StrictHostKeyChecking=accept-new -p 2222 root@localhost "ls -la /test/data/concurrent/" || true
@@ -554,7 +554,7 @@ jobs:
           SQL
 
           # Run replication briefly
-          timeout 5 ./bin/litestream replicate -config /tmp/sftp-sequential.yml || true
+          timeout 5 ./bin/replicate replicate -config /tmp/sftp-sequential.yml || true
 
           # Check files were created
           ssh -i /test/id_ed25519 -o StrictHostKeyChecking=accept-new -p 2222 root@localhost "ls -la /test/data/sequential/" || true
@@ -594,7 +594,7 @@ jobs:
 
       - run: go env
 
-      - run: go install ./cmd/litestream
+      - run: go install ./cmd/replicate
 
       - run: go test -v ./replica_client_test.go -integration webdav
         env:

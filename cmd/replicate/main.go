@@ -106,7 +106,7 @@ func (m *Main) Run(ctx context.Context, args []string) (err error) {
 		return runWindowsService(ctx)
 	}
 
-	// Copy "LITESTEAM" environment credentials.
+	// Copy "LITESTREAM" environment credentials.
 	applyLitestreamEnv()
 
 	// Extract command name.
@@ -141,12 +141,12 @@ func (m *Main) Run(ctx context.Context, args []string) (err error) {
 		select {
 		case err = <-c.execCh:
 			if c.cmd != nil {
-				slog.Info("subprocess exited, litestream shutting down")
+				slog.Info("subprocess exited, replicate shutting down")
 			} else {
-				slog.Info("replication complete, litestream shutting down")
+				slog.Info("replication complete, replicate shutting down")
 			}
 		case sig := <-signalCh:
-			slog.Info("signal received, litestream shutting down", "signal", sig)
+			slog.Info("signal received, replicate shutting down", "signal", sig)
 
 			if c.cmd != nil {
 				slog.Info("sending signal to exec process")
@@ -171,7 +171,7 @@ func (m *Main) Run(ctx context.Context, args []string) (err error) {
 		if e := c.Close(ctx); e != nil && err == nil {
 			err = e
 		}
-		slog.Info("litestream shut down")
+		slog.Info("replicate shut down")
 		return err
 
 	case "start":
@@ -207,18 +207,18 @@ func (m *Main) Run(ctx context.Context, args []string) (err error) {
 			m.Usage()
 			return flag.ErrHelp
 		}
-		return fmt.Errorf("litestream %s: unknown command", cmd)
+		return fmt.Errorf("replicate %s: unknown command", cmd)
 	}
 }
 
 // Usage prints the help screen to STDOUT.
 func (m *Main) Usage() {
 	fmt.Println(`
-litestream is a tool for replicating SQLite databases.
+replicate is a tool for replicating SQLite databases.
 
 Usage:
 
-	litestream <command> [arguments]
+	replicate <command> [arguments]
 
 The commands are:
 
@@ -239,7 +239,7 @@ The commands are:
 `[1:])
 }
 
-// Config represents a configuration file for the litestream daemon.
+// Config represents a configuration file for the replicate daemon.
 type Config struct {
 	// Global replica settings that serve as defaults for all replicas
 	ReplicaSettings `yaml:",inline"`
