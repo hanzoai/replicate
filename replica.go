@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"filippo.io/age"
 	"github.com/superfly/ltx"
 
 	"github.com/benbjohnson/litestream/internal"
@@ -56,6 +57,12 @@ type Replica struct {
 	// the position file and removing local LTX files, forcing a fresh sync.
 	// Disabled by default to prevent silent data loss scenarios.
 	AutoRecoverEnabled bool
+
+	// Encryption identities and recipients for age (X25519) E2E encryption.
+	// AgeRecipients: public keys used to encrypt data on write (sync, snapshot).
+	// AgeIdentities: private keys used to decrypt data on read (restore, calcPos).
+	AgeIdentities []age.Identity
+	AgeRecipients []age.Recipient
 }
 
 func NewReplica(db *DB) *Replica {
@@ -187,7 +194,7 @@ func (r *Replica) uploadLTXFile(ctx context.Context, level int, minTXID, maxTXID
 	}
 	defer func() { _ = f.Close() }()
 
-	info, err := r.Client.WriteLTXFile(ctx, level, minTXID, maxTXID, f)
+	info, err := r.WriteLTXFile(ctx, level, minTXID, maxTXID, f)
 	if err != nil {
 		return fmt.Errorf("write ltx file: %w", err)
 	}
@@ -245,6 +252,86 @@ func (r *Replica) SetPos(pos ltx.Pos) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.pos = pos
+}
+
+// EncryptionEnabled returns true if age encryption is configured for writes.
+func (r *Replica) EncryptionEnabled() bool {
+	return len(r.AgeRecipients) > 0
+}
+
+// DecryptionEnabled returns true if age decryption is configured for reads.
+func (r *Replica) DecryptionEnabled() bool {
+	return len(r.AgeIdentities) > 0
+}
+
+// OpenLTXFile opens a remote LTX file, decrypting it if age identities are set.
+// This should be used instead of Client.OpenLTXFile when the caller needs
+// plaintext data (all Replica read paths).
+func (r *Replica) OpenLTXFile(ctx context.Context, level int, minTXID, maxTXID ltx.TXID, offset, size int64) (io.ReadCloser, error) {
+	rc, err := r.Client.OpenLTXFile(ctx, level, minTXID, maxTXID, offset, size)
+	if err != nil {
+		return nil, err
+	}
+	if !r.DecryptionEnabled() {
+		return rc, nil
+	}
+	dr, err := age.Decrypt(rc, r.AgeIdentities...)
+	if err != nil {
+		rc.Close()
+		return nil, fmt.Errorf("age decrypt: %w", err)
+	}
+	return &decryptReadCloser{Reader: dr, closer: rc}, nil
+}
+
+// WriteLTXFile writes an LTX file to the replica, encrypting it if age
+// recipients are set. This should be used instead of Client.WriteLTXFile when
+// the caller provides plaintext data (all Replica write paths).
+func (r *Replica) WriteLTXFile(ctx context.Context, level int, minTXID, maxTXID ltx.TXID, rd io.Reader) (*ltx.FileInfo, error) {
+	if !r.EncryptionEnabled() {
+		return r.Client.WriteLTXFile(ctx, level, minTXID, maxTXID, rd)
+	}
+
+	pr, pw := io.Pipe()
+	var encErr error
+	go func() {
+		ew, err := age.Encrypt(pw, r.AgeRecipients...)
+		if err != nil {
+			pw.CloseWithError(fmt.Errorf("age encrypt: %w", err))
+			return
+		}
+		if _, err := io.Copy(ew, rd); err != nil {
+			encErr = err
+			pw.CloseWithError(err)
+			return
+		}
+		if err := ew.Close(); err != nil {
+			encErr = err
+			pw.CloseWithError(err)
+			return
+		}
+		pw.Close()
+	}()
+
+	info, err := r.Client.WriteLTXFile(ctx, level, minTXID, maxTXID, pr)
+	if err != nil {
+		pr.Close()
+		if encErr != nil {
+			return nil, fmt.Errorf("write ltx file: %w (encryption: %v)", err, encErr)
+		}
+		return nil, err
+	}
+	return info, nil
+}
+
+// decryptReadCloser wraps an age decrypted reader with the underlying
+// io.ReadCloser so that Close() releases the remote connection.
+type decryptReadCloser struct {
+	io.Reader
+	closer io.Closer
+}
+
+func (d *decryptReadCloser) Close() error {
+	return d.closer.Close()
 }
 
 // EnforceRetention forces a new snapshot once the retention interval has passed.
@@ -633,12 +720,18 @@ func (r *Replica) Restore(ctx context.Context, opt RestoreOptions) (err error) {
 
 		r.Logger().Debug("opening ltx file for restore", "level", info.Level, "min", info.MinTXID, "max", info.MaxTXID)
 
-		// Add file to be compacted.
-		f, err := r.Client.OpenLTXFile(ctx, info.Level, info.MinTXID, info.MaxTXID, 0, 0)
+		// Add file to be compacted. When age decryption is enabled, byte-offset
+		// resumption is incompatible with stream decryption, so we skip the
+		// ResumableReader and use a direct decrypting reader instead.
+		f, err := r.OpenLTXFile(ctx, info.Level, info.MinTXID, info.MaxTXID, 0, 0)
 		if err != nil {
 			return fmt.Errorf("open ltx file: %w", err)
 		}
-		rdrs = append(rdrs, internal.NewResumableReader(ctx, r.Client, info.Level, info.MinTXID, info.MaxTXID, info.Size, f, r.Logger()))
+		if r.DecryptionEnabled() {
+			rdrs = append(rdrs, f)
+		} else {
+			rdrs = append(rdrs, internal.NewResumableReader(ctx, r.Client, info.Level, info.MinTXID, info.MaxTXID, info.Size, f, r.Logger()))
+		}
 	}
 
 	if len(rdrs) == 0 {
@@ -870,7 +963,7 @@ func (r *Replica) applyNewLTXFiles(ctx context.Context, f *os.File, afterTXID lt
 // randomize the schema change counter (bytes 24-27) to invalidate cached
 // schemas in other connections.
 func (r *Replica) applyLTXFile(ctx context.Context, f *os.File, info *ltx.FileInfo, pageSize uint32) error {
-	rc, err := r.Client.OpenLTXFile(ctx, info.Level, info.MinTXID, info.MaxTXID, 0, 0)
+	rc, err := r.OpenLTXFile(ctx, info.Level, info.MinTXID, info.MaxTXID, 0, 0)
 	if err != nil {
 		return fmt.Errorf("open ltx file: %w", err)
 	}
@@ -1148,13 +1241,22 @@ func (r *Replica) downloadSnapshotV3(ctx context.Context, client ReplicaClientV3
 	}
 	defer func() { _ = rc.Close() }()
 
+	var rd io.Reader = rc
+	if r.DecryptionEnabled() {
+		dr, err := age.Decrypt(rc, r.AgeIdentities...)
+		if err != nil {
+			return fmt.Errorf("age decrypt snapshot: %w", err)
+		}
+		rd = dr
+	}
+
 	f, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = f.Close() }()
 
-	if _, err := io.Copy(f, rc); err != nil {
+	if _, err := io.Copy(f, rd); err != nil {
 		return err
 	}
 	return f.Sync()
@@ -1218,7 +1320,16 @@ func (r *Replica) appendWALSegmentV3(ctx context.Context, client ReplicaClientV3
 	}
 	defer func() { _ = rc.Close() }()
 
-	_, err = io.Copy(f, rc)
+	var rd io.Reader = rc
+	if r.DecryptionEnabled() {
+		dr, err := age.Decrypt(rc, r.AgeIdentities...)
+		if err != nil {
+			return fmt.Errorf("age decrypt WAL segment: %w", err)
+		}
+		rd = dr
+	}
+
+	_, err = io.Copy(f, rd)
 	return err
 }
 
