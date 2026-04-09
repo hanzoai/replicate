@@ -14,9 +14,9 @@ import (
 
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 // TestRestore_FormatConsistency tests that backups created by the current version

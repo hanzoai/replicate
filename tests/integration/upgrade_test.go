@@ -14,7 +14,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 func TestUpgrade_V3ToV5(t *testing.T) {

@@ -3,7 +3,7 @@ package litestream_test
 import (
 	"testing"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 func TestPosV3_IsZero(t *testing.T) {

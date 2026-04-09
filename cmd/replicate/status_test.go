@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	main "github.com/benbjohnson/litestream/cmd/replicate"
+	main "github.com/hanzoai/replicate/cmd/replicate"
 )
 
 func TestStatusCommand_Run(t *testing.T) {

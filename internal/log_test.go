@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate/internal"
 )
 
 func TestInitLog_PrettyHandler(t *testing.T) {
@@ -81,8 +81,8 @@ func TestReplaceAttr_NonTraceLevelUnchanged(t *testing.T) {
 
 func TestReplaceAttr_SourceCleaning(t *testing.T) {
 	src := &slog.Source{
-		Function: "github.com/benbjohnson/litestream/db.(*DB).Replicate",
-		File:     "github.com/benbjohnson/litestream/db.go",
+		Function: "github.com/hanzoai/replicate/db.(*DB).Replicate",
+		File:     "github.com/hanzoai/replicate/db.go",
 		Line:     211,
 	}
 	a := slog.Attr{Key: slog.SourceKey, Value: slog.AnyValue(src)}
@@ -101,12 +101,12 @@ func TestCleanSourcePath(t *testing.T) {
 	}{
 		{
 			name: "module prefix stripped",
-			file: "github.com/benbjohnson/litestream/db.go",
+			file: "github.com/hanzoai/replicate/db.go",
 			want: "db.go",
 		},
 		{
 			name: "nested path",
-			file: "github.com/benbjohnson/litestream/internal/internal.go",
+			file: "github.com/hanzoai/replicate/internal/internal.go",
 			want: "internal/internal.go",
 		},
 		{

@@ -12,7 +12,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 const debounceInterval = 250 * time.Millisecond
