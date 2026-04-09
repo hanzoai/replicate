@@ -370,6 +370,13 @@ func (db *DB) MaxLTX() (minTXID, maxTXID ltx.TXID, err error) {
 
 	// Find highest txn ID.
 	for _, ent := range ents {
+		fi, err := ent.Info()
+		if os.IsNotExist(err) {
+			continue // file was deleted after os.ReadDir returned
+		} else if err != nil {
+			return 0, 0, err
+		}
+		_ = fi
 		if min, max, err := ltx.ParseFilename(ent.Name()); err != nil {
 			continue // invalid LTX filename
 		} else if max > maxTXID {
