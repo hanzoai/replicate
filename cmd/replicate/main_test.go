@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/benbjohnson/litestream"
-	main "github.com/benbjohnson/litestream/cmd/litestream"
+	main "github.com/benbjohnson/litestream/cmd/replicate"
 	"github.com/benbjohnson/litestream/file"
 	"github.com/benbjohnson/litestream/gs"
 	"github.com/benbjohnson/litestream/s3"
