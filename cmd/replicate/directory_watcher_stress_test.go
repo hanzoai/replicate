@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 var dbCounts = []int{100, 250, 500, 1000, 2500}

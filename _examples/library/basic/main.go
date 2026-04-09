@@ -18,8 +18,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
 )
 
 func main() {

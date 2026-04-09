@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benbjohnson/litestream"
-	main "github.com/benbjohnson/litestream/cmd/replicate"
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/gs"
-	"github.com/benbjohnson/litestream/s3"
-	"github.com/benbjohnson/litestream/sftp"
+	"github.com/hanzoai/replicate"
+	main "github.com/hanzoai/replicate/cmd/replicate"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/gs"
+	"github.com/hanzoai/replicate/s3"
+	"github.com/hanzoai/replicate/sftp"
 )
 
 func TestOpenConfigFile(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 func TestTXIDVarParsing(t *testing.T) {

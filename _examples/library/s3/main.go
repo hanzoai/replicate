@@ -29,8 +29,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/s3"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/s3"
 )
 
 const dbPath = "./myapp.db"

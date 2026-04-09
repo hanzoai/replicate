@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 func TestVFS_RaceStressHarness(t *testing.T) {

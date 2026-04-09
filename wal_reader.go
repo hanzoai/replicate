@@ -8,7 +8,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate/internal"
 )
 
 // WALReader wraps an io.Reader and parses SQLite WAL frames.

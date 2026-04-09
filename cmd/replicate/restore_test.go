@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	litestream "github.com/benbjohnson/litestream"
+	litestream "github.com/hanzoai/replicate"
 )
 
 func TestRestoreCommand_FollowIntervalFlag(t *testing.T) {

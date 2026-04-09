@@ -19,7 +19,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 type TestDB struct {

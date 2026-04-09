@@ -14,8 +14,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 // TestVFS_LongRunningSoak exercises the VFS under sustained read/write load.

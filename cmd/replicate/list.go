@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 // ListCommand represents the command to list all managed databases.

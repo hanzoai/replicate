@@ -16,8 +16,8 @@ import (
 	"github.com/studio-b12/gowebdav"
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/internal"
 )
 
 func init() {

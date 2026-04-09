@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 // StopCommand represents the command to stop replication for a database.

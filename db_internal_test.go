@@ -20,7 +20,7 @@ import (
 	"github.com/superfly/ltx"
 	_ "modernc.org/sqlite"
 
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate/internal"
 )
 
 // testReplicaClient is a minimal mock for testing that doesn't cause import cycles.

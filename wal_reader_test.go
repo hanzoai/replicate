@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 func TestWALReader(t *testing.T) {

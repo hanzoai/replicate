@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 // InfoCommand represents the command to show daemon information.

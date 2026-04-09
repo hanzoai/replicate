@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 // StartCommand represents the command to start replication for a database.

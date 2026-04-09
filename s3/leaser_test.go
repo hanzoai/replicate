@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 func TestLeaser_AcquireLease_NewLease(t *testing.T) {

@@ -16,9 +16,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 // TestHydration_E2E_SQLiteCLI tests hydration environment variables via the SQLite CLI.

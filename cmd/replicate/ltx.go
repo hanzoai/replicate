@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/internal"
 )
 
 // LTXCommand represents a command to list LTX files for a database.

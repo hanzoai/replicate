@@ -9,7 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 )
 
 // StatusCommand is a command for displaying replication status.
