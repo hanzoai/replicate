@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"filippo.io/age"
+	"github.com/luxfi/age"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/superfly/ltx"
 )

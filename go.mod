@@ -58,7 +58,7 @@ require (
 )
 
 require (
-	filippo.io/age v1.3.1
+	github.com/luxfi/age v1.3.1
 	github.com/lmittmann/tint v1.1.3
 	github.com/mattn/go-isatty v0.0.20
 	github.com/pierrec/lz4/v4 v4.1.22

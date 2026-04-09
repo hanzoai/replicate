@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"filippo.io/age"
+	"github.com/luxfi/age"
 	"github.com/dustin/go-humanize"
 	"github.com/superfly/ltx"
 	_ "golang.org/x/crypto/x509roots/fallback"
