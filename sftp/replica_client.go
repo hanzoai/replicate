@@ -18,8 +18,8 @@ import (
 	"github.com/superfly/ltx"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/internal"
 )
 
 func init() {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
 )
 
 func TestVFSFile_Compact(t *testing.T) {

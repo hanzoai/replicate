@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
 
 	_ "modernc.org/sqlite"
 )

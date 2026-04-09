@@ -23,17 +23,17 @@ import (
 
 	"github.com/psanford/sqlite3vfs"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 
 	// Import all replica backends to register their URL factories.
-	_ "github.com/benbjohnson/litestream/abs"
-	_ "github.com/benbjohnson/litestream/file"
-	_ "github.com/benbjohnson/litestream/gs"
-	_ "github.com/benbjohnson/litestream/nats"
-	_ "github.com/benbjohnson/litestream/oss"
-	_ "github.com/benbjohnson/litestream/s3"
-	_ "github.com/benbjohnson/litestream/sftp"
-	_ "github.com/benbjohnson/litestream/webdav"
+	_ "github.com/hanzoai/replicate/abs"
+	_ "github.com/hanzoai/replicate/file"
+	_ "github.com/hanzoai/replicate/gs"
+	_ "github.com/hanzoai/replicate/nats"
+	_ "github.com/hanzoai/replicate/oss"
+	_ "github.com/hanzoai/replicate/s3"
+	_ "github.com/hanzoai/replicate/sftp"
+	_ "github.com/hanzoai/replicate/webdav"
 )
 
 func main() {}

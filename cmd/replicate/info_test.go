@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/benbjohnson/litestream"
-	main "github.com/benbjohnson/litestream/cmd/replicate"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate"
+	main "github.com/hanzoai/replicate/cmd/replicate"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 var testSocketCounter uint64

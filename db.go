@@ -23,7 +23,7 @@ import (
 	"github.com/superfly/ltx"
 	"modernc.org/sqlite"
 
-	"github.com/benbjohnson/litestream/internal"
+	"github.com/hanzoai/replicate/internal"
 )
 
 // Default DB settings.
