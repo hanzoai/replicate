@@ -17,7 +17,7 @@ type LTXCommand struct{}
 
 // Run executes the command.
 func (c *LTXCommand) Run(ctx context.Context, args []string) (err error) {
-	fs := flag.NewFlagSet("litestream-ltx", flag.ContinueOnError)
+	fs := flag.NewFlagSet("replicate-ltx", flag.ContinueOnError)
 	configPath, noExpandEnv := registerConfigFlag(fs)
 	var level levelVar
 	fs.Var(&level, "level", "compaction level (0-9 or \"all\")")
@@ -114,9 +114,9 @@ The ltx command lists all LTX files available for a database.
 
 Usage:
 
-	litestream ltx [arguments] DB_PATH
+	replicate ltx [arguments] DB_PATH
 
-	litestream ltx [arguments] REPLICA_URL
+	replicate ltx [arguments] REPLICA_URL
 
 Arguments:
 

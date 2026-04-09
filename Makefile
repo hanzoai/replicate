@@ -1,7 +1,7 @@
 default:
 
 docker:
-	docker build -t litestream .
+	docker build -t replicate .
 
 # VFS build configuration
 VFS_BUILD_TAGS := vfs,SQLITE3VFS_LOADABLE_EXT
