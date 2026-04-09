@@ -20,12 +20,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 	CGO_ENABLED=1 go build \
 	-tags "vfs,SQLITE3VFS_LOADABLE_EXT" \
 	-buildmode=c-archive \
-	-o dist/litestream-vfs.a ./cmd/replicate-vfs && \
-	mv dist/litestream-vfs.h src/litestream-vfs.h && \
+	-o dist/replicate-vfs.a ./cmd/replicate-vfs && \
+	mv dist/replicate-vfs.h src/replicate-vfs.h && \
 	gcc -DSQLITE3VFS_LOADABLE_EXT -g -fPIC -shared \
-	-o dist/litestream-vfs.so \
-	src/litestream-vfs.c \
-	dist/litestream-vfs.a \
+	-o dist/replicate-vfs.so \
+	src/replicate-vfs.c \
+	dist/replicate-vfs.a \
 	-lpthread -ldl -lm
 
 # --- Hardened image (Scratch) ---
@@ -51,7 +51,7 @@ RUN apt-get update && \
 	rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/bin/replicate /usr/local/bin/replicate
-COPY --from=builder /src/litestream/dist/litestream-vfs.so /usr/local/lib/litestream-vfs.so
+COPY --from=builder /src/litestream/dist/replicate-vfs.so /usr/local/lib/replicate-vfs.so
 
 ENTRYPOINT ["/usr/local/bin/replicate"]
 CMD []
