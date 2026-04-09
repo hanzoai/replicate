@@ -14,8 +14,8 @@ import (
 
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 // TestStore_CompactDB_RemotePartialRead ensures that compactions do not rely on

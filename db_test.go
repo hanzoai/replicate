@@ -13,10 +13,10 @@ import (
 
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/internal/testingutil"
-	"github.com/benbjohnson/litestream/mock"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/internal/testingutil"
+	"github.com/hanzoai/replicate/mock"
 )
 
 func TestDB_Path(t *testing.T) {

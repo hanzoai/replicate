@@ -16,15 +16,15 @@ import (
 	"github.com/mattn/go-shellwords"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/benbjohnson/litestream"
-	"github.com/benbjohnson/litestream/abs"
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/gs"
-	"github.com/benbjohnson/litestream/internal"
-	"github.com/benbjohnson/litestream/nats"
-	"github.com/benbjohnson/litestream/oss"
-	"github.com/benbjohnson/litestream/s3"
-	"github.com/benbjohnson/litestream/sftp"
+	"github.com/hanzoai/replicate"
+	"github.com/hanzoai/replicate/abs"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/gs"
+	"github.com/hanzoai/replicate/internal"
+	"github.com/hanzoai/replicate/nats"
+	"github.com/hanzoai/replicate/oss"
+	"github.com/hanzoai/replicate/s3"
+	"github.com/hanzoai/replicate/sftp"
 )
 
 // ReplicateCommand represents a command that continuously replicates SQLite databases.

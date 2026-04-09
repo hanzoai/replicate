@@ -13,8 +13,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/benbjohnson/litestream/file"
-	"github.com/benbjohnson/litestream/internal/testingutil"
+	"github.com/hanzoai/replicate/file"
+	"github.com/hanzoai/replicate/internal/testingutil"
 )
 
 // TestVFS_FuzzSeedCorpus runs a handful of fixed corpora so `go test`

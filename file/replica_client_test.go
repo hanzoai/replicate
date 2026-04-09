@@ -15,9 +15,9 @@ import (
 	"github.com/pierrec/lz4/v4"
 	"github.com/superfly/ltx"
 
-	"github.com/benbjohnson/litestream"
+	"github.com/hanzoai/replicate"
 
-	"github.com/benbjohnson/litestream/file"
+	"github.com/hanzoai/replicate/file"
 )
 
 func TestReplicaClient_Path(t *testing.T) {
