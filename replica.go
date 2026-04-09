@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"filippo.io/age"
+	"github.com/luxfi/age"
 	"github.com/superfly/ltx"
 
 	"github.com/benbjohnson/litestream/internal"
