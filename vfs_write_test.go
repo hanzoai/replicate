@@ -1,7 +1,7 @@
 //go:build vfs
 // +build vfs
 
-package litestream
+package replicate
 
 import (
 	"bytes"
@@ -205,7 +205,7 @@ func setupWriteableVFSFile(t *testing.T, client *writeTestReplicaClient) *VFSFil
 	f.syncInterval = 0
 
 	// Create a temporary buffer file
-	tmpFile, err := os.CreateTemp("", "litestream-test-buffer-*")
+	tmpFile, err := os.CreateTemp("", "replicate-test-buffer-*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -487,7 +487,7 @@ func TestVFSFile_WriteBuffer(t *testing.T) {
 
 	// Create temp directory for buffer
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	// Create VFSFile with write buffer
 	logger := slog.Default()
@@ -545,7 +545,7 @@ func TestVFSFile_WriteBufferDiscardedOnOpen(t *testing.T) {
 
 	// Create temp directory for buffer
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	// First: create a VFSFile and write some data
 	logger := slog.Default()
@@ -609,7 +609,7 @@ func TestVFSFile_WriteBufferClearAfterSync(t *testing.T) {
 
 	// Create temp directory for buffer
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	// Create VFSFile with write buffer
 	logger := slog.Default()
@@ -702,7 +702,7 @@ func TestVFSFile_OpenNewDatabase(t *testing.T) {
 
 	// Create temp directory for buffer
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	// Create VFSFile with write support - no existing data
 	logger := slog.Default()
@@ -744,7 +744,7 @@ func TestVFSFile_NewDatabase_ReadReturnsZeros(t *testing.T) {
 	client := newWriteTestReplicaClient()
 
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	logger := slog.Default()
 	f := NewVFSFile(client, "new.db", logger)
@@ -782,7 +782,7 @@ func TestVFSFile_NewDatabase_WriteAndSync(t *testing.T) {
 	client := newWriteTestReplicaClient()
 
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	logger := slog.Default()
 	f := NewVFSFile(client, "new.db", logger)
@@ -843,7 +843,7 @@ func TestVFSFile_NewDatabase_FileSize(t *testing.T) {
 	client := newWriteTestReplicaClient()
 
 	tmpDir := t.TempDir()
-	bufferPath := tmpDir + "/.litestream-write-buffer"
+	bufferPath := tmpDir + "/.replicate-write-buffer"
 
 	logger := slog.Default()
 	f := NewVFSFile(client, "new.db", logger)
@@ -899,8 +899,8 @@ func TestSetWriteEnabled_ReadValue(t *testing.T) {
 	}
 	defer f.Close()
 
-	// Read via FileControl (simulates PRAGMA litestream_write_enabled)
-	result, err := f.FileControl(14, "litestream_write_enabled", nil)
+	// Read via FileControl (simulates PRAGMA replicate_write_enabled)
+	result, err := f.FileControl(14, "replicate_write_enabled", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -925,7 +925,7 @@ func TestSetWriteEnabled_ReadValueEnabled(t *testing.T) {
 	defer f.Close()
 
 	// Read via FileControl
-	result, err := f.FileControl(14, "litestream_write_enabled", nil)
+	result, err := f.FileControl(14, "replicate_write_enabled", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1265,9 +1265,9 @@ func TestSetWriteEnabled_FileControlWrite(t *testing.T) {
 	}
 	defer f.Close()
 
-	// Disable via FileControl (PRAGMA litestream_write_enabled = 0)
+	// Disable via FileControl (PRAGMA replicate_write_enabled = 0)
 	value := "0"
-	_, err := f.FileControl(14, "litestream_write_enabled", &value)
+	_, err := f.FileControl(14, "replicate_write_enabled", &value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1276,9 +1276,9 @@ func TestSetWriteEnabled_FileControlWrite(t *testing.T) {
 		t.Error("expected writeEnabled to be false after PRAGMA = 0")
 	}
 
-	// Enable via FileControl (PRAGMA litestream_write_enabled = 1)
+	// Enable via FileControl (PRAGMA replicate_write_enabled = 1)
 	value = "1"
-	_, err = f.FileControl(14, "litestream_write_enabled", &value)
+	_, err = f.FileControl(14, "replicate_write_enabled", &value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1289,7 +1289,7 @@ func TestSetWriteEnabled_FileControlWrite(t *testing.T) {
 
 	// Test alternate values
 	value = "off"
-	_, err = f.FileControl(14, "litestream_write_enabled", &value)
+	_, err = f.FileControl(14, "replicate_write_enabled", &value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1298,7 +1298,7 @@ func TestSetWriteEnabled_FileControlWrite(t *testing.T) {
 	}
 
 	value = "on"
-	_, err = f.FileControl(14, "litestream_write_enabled", &value)
+	_, err = f.FileControl(14, "replicate_write_enabled", &value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1307,7 +1307,7 @@ func TestSetWriteEnabled_FileControlWrite(t *testing.T) {
 	}
 
 	value = "false"
-	_, err = f.FileControl(14, "litestream_write_enabled", &value)
+	_, err = f.FileControl(14, "replicate_write_enabled", &value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1316,7 +1316,7 @@ func TestSetWriteEnabled_FileControlWrite(t *testing.T) {
 	}
 
 	value = "true"
-	_, err = f.FileControl(14, "litestream_write_enabled", &value)
+	_, err = f.FileControl(14, "replicate_write_enabled", &value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1341,11 +1341,11 @@ func TestSetWriteEnabled_InvalidValue(t *testing.T) {
 
 	// Invalid value should return error
 	value := "invalid"
-	_, err := f.FileControl(14, "litestream_write_enabled", &value)
+	_, err := f.FileControl(14, "replicate_write_enabled", &value)
 	if err == nil {
 		t.Error("expected error for invalid value")
 	}
-	if err.Error() != "invalid value for litestream_write_enabled: invalid (use 0 or 1)" {
+	if err.Error() != "invalid value for replicate_write_enabled: invalid (use 0 or 1)" {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -1391,7 +1391,7 @@ func TestSetWriteEnabled_SyncFailureKeepsWritesEnabled(t *testing.T) {
 	f.syncInterval = 0
 
 	// Create a temporary buffer file
-	tmpFile, err := os.CreateTemp("", "litestream-test-buffer-*")
+	tmpFile, err := os.CreateTemp("", "replicate-test-buffer-*")
 	if err != nil {
 		t.Fatal(err)
 	}

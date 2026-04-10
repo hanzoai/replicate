@@ -1,6 +1,6 @@
-# Litestream Testing Guide
+# Replicate Testing Guide
 
-Comprehensive guide for testing Litestream components and handling edge cases.
+Comprehensive guide for testing Replicate components and handling edge cases.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ Comprehensive guide for testing Litestream components and handling edge cases.
 
 ## Testing Philosophy
 
-Litestream testing follows these principles:
+Replicate testing follows these principles:
 
 1. **Test at Multiple Levels**: Unit, integration, and end-to-end
 2. **Focus on Edge Cases**: Especially >1GB databases and eventual consistency
@@ -34,8 +34,8 @@ SQLite reserves a special lock page at exactly 1GB (0x40000000 bytes). This page
 #### Creating Test Databases
 
 ```bash
-# Use litestream-test tool for large databases
-./bin/litestream-test populate \
+# Use replicate-test tool for large databases
+./bin/replicate-test populate \
     -db test.db \
     -target-size 1.5GB \
     -page-size 4096
@@ -131,14 +131,14 @@ func TestDB_LockPageHandling(t *testing.T) {
             dbPath := filepath.Join(t.TempDir(), "test.db")
             createLargeTestDB(t, dbPath, 1100*1024*1024) // 1.1GB
 
-            // Open with Litestream
-            db := litestream.NewDB(dbPath)
+            // Open with Replicate
+            db := replicate.NewDB(dbPath)
             err := db.Open()
             require.NoError(t, err)
             defer db.Close(context.Background())
 
             // Start replication
-            replica := litestream.NewReplicaWithClient(db, newMockClient())
+            replica := replicate.NewReplicaWithClient(db, newMockClient())
             err = replica.Start(context.Background())
             require.NoError(t, err)
 
@@ -174,7 +174,7 @@ func TestDB_LockPageHandling(t *testing.T) {
     }
 }
 
-func verifyLockPageSkipped(t *testing.T, replica *litestream.Replica, lockPgno uint32) {
+func verifyLockPageSkipped(t *testing.T, replica *replicate.Replica, lockPgno uint32) {
     // Get LTX files
     files, err := replica.Client.LTXFiles(context.Background(), 0, 0, false)
     require.NoError(t, err)
@@ -184,7 +184,7 @@ func verifyLockPageSkipped(t *testing.T, replica *litestream.Replica, lockPgno u
         info := files.Item()
 
         // Read page index
-        pageIndex, err := litestream.FetchPageIndex(context.Background(),
+        pageIndex, err := replicate.FetchPageIndex(context.Background(),
             replica.Client, info)
         require.NoError(t, err)
 
@@ -205,12 +205,12 @@ func TestDB_RestoreLargeDatabase(t *testing.T) {
     createLargeTestDB(t, srcPath, 1500*1024*1024) // 1.5GB
 
     // Setup replication
-    db := litestream.NewDB(srcPath)
+    db := replicate.NewDB(srcPath)
     err := db.Open()
     require.NoError(t, err)
 
     client := file.NewReplicaClient(filepath.Join(t.TempDir(), "replica"))
-    replica := litestream.NewReplicaWithClient(db, client)
+    replica := replicate.NewReplicaWithClient(db, client)
 
     err = replica.Start(context.Background())
     require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestDB_RestoreLargeDatabase(t *testing.T) {
 
     // Restore to new location
     dstPath := filepath.Join(t.TempDir(), "restored.db")
-    err = litestream.Restore(context.Background(), client, dstPath, nil)
+    err = replicate.Restore(context.Background(), client, dstPath, nil)
     require.NoError(t, err)
 
     // Verify restoration
@@ -273,7 +273,7 @@ go test -race -v -run TestStore_CompactDB ./...
 
 ```go
 func TestReplica_ConcurrentPositionUpdate(t *testing.T) {
-    replica := litestream.NewReplica(nil)
+    replica := replicate.NewReplica(nil)
     var wg sync.WaitGroup
     errors := make(chan error, 100)
 
@@ -378,7 +378,7 @@ func TestDB_ConcurrentWALAccess(t *testing.T) {
             case <-ctx.Done():
                 return
             case <-ticker.C:
-                _ = db.Checkpoint(context.Background(), litestream.CheckpointModePassive)
+                _ = db.Checkpoint(context.Background(), replicate.CheckpointModePassive)
             }
         }
     }()
@@ -425,7 +425,7 @@ func TestStore_Integration(t *testing.T) {
 ```go
 // +build integration
 
-package litestream_test
+package replicate_test
 
 import (
     "context"
@@ -481,7 +481,7 @@ func setupS3Client() *s3.ReplicaClient {
         AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
         SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
         Region:          getEnvOrDefault("AWS_REGION", "us-east-1"),
-        Bucket:          getEnvOrDefault("TEST_S3_BUCKET", "litestream-test"),
+        Bucket:          getEnvOrDefault("TEST_S3_BUCKET", "replicate-test"),
         Path:            fmt.Sprintf("test-%d", time.Now().Unix()),
     }
 }
@@ -774,7 +774,7 @@ import (
     "path/filepath"
 )
 
-func NewTestDB(t testing.TB) *litestream.DB {
+func NewTestDB(t testing.TB) *replicate.DB {
     t.Helper()
 
     path := filepath.Join(t.TempDir(), "test.db")
@@ -792,8 +792,8 @@ func NewTestDB(t testing.TB) *litestream.DB {
     require.NoError(t, err)
     conn.Close()
 
-    // Open with Litestream
-    db := litestream.NewDB(path)
+    // Open with Replicate
+    db := replicate.NewDB(path)
     db.MonitorInterval = 10 * time.Millisecond  // Speed up for tests
     db.MinCheckpointPageN = 100  // Lower threshold for tests
 
@@ -807,7 +807,7 @@ func NewTestDB(t testing.TB) *litestream.DB {
     return db
 }
 
-func WriteTestData(t testing.TB, db *litestream.DB, count int) {
+func WriteTestData(t testing.TB, db *replicate.DB, count int) {
     t.Helper()
 
     conn, err := sql.Open("sqlite", db.Path())

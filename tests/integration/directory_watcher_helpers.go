@@ -50,7 +50,7 @@ func SetupDirectoryWatchTest(t *testing.T, name string, pattern string, recursiv
 
 // CreateDirectoryWatchConfig generates YAML config for directory watching
 func (db *DirWatchTestDB) CreateDirectoryWatchConfig() (string, error) {
-	configPath := filepath.Join(db.TempDir, "litestream.yml")
+	configPath := filepath.Join(db.TempDir, "replicate.yml")
 	config := fmt.Sprintf(`dbs:
   - dir: %s
     pattern: %q

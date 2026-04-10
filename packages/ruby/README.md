@@ -1,35 +1,35 @@
-# litestream-vfs
+# replicate-vfs
 
-Litestream VFS extension for SQLite — distributed as a Ruby gem.
+Replicate VFS extension for SQLite — distributed as a Ruby gem.
 
-This gem bundles the [Litestream](https://litestream.io) VFS shared library
+This gem bundles the [Replicate](https://replicate.io) VFS shared library
 so you can load it directly into a SQLite connection.
 
 ## Installation
 
 ```bash
-gem install litestream-vfs
+gem install replicate-vfs
 ```
 
 Or add to your Gemfile:
 
 ```ruby
-gem "litestream-vfs"
+gem "replicate-vfs"
 ```
 
 ## Usage
 
 ```ruby
-require "litestream_vfs"
+require "replicate_vfs"
 
 db = SQLite3::Database.new(":memory:")
-LitestreamVfs.load(db)
+ReplicateVfs.load(db)
 ```
 
 To get the path to the shared library:
 
 ```ruby
-path = LitestreamVfs.loadable_path
+path = ReplicateVfs.loadable_path
 ```
 
 ## Platform Support
@@ -41,4 +41,4 @@ path = LitestreamVfs.loadable_path
 
 ## License
 
-Apache-2.0 — see [LICENSE](https://github.com/benbjohnson/litestream/blob/main/LICENSE).
+Apache-2.0 — see [LICENSE](https://github.com/hanzoai/replicate/blob/main/LICENSE).

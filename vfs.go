@@ -1,7 +1,7 @@
 //go:build vfs
 // +build vfs
 
-package litestream
+package replicate
 
 import (
 	"context"
@@ -49,7 +49,7 @@ var (
 	vfsConnectionMap sync.Map // map[uintptr]uint64
 )
 
-// VFS implements the SQLite VFS interface for Litestream.
+// VFS implements the SQLite VFS interface for Replicate.
 // It is intended to be used for read replicas that read directly from S3.
 // When WriteEnabled is true, also supports writes with periodic sync.
 type VFS struct {
@@ -202,7 +202,7 @@ func (vfs *VFS) openMainDB(name string, flags sqlite3vfs.OpenFlag) (sqlite3vfs.F
 	}
 
 	// When SQLite requests read-write access, always report ReadWrite in the
-	// output flags so that cold enable via PRAGMA litestream_write_enabled
+	// output flags so that cold enable via PRAGMA replicate_write_enabled
 	// works. SQLite permanently marks databases as read-only based on the
 	// output flags from xOpen (pager.c:readOnly, btree.c:BTS_READ_ONLY),
 	// which would prevent write transactions even after enabling writes at
@@ -269,7 +269,7 @@ func (vfs *VFS) requiresTempFile(flags sqlite3vfs.OpenFlag) bool {
 
 func (vfs *VFS) ensureTempDir() (string, error) {
 	vfs.tempDirOnce.Do(func() {
-		dir, err := os.MkdirTemp("", "litestream-vfs-*")
+		dir, err := os.MkdirTemp("", "replicate-vfs-*")
 		if err != nil {
 			vfs.tempDirErr = fmt.Errorf("create temp dir: %w", err)
 			return
@@ -1830,7 +1830,7 @@ func (f *VFSFile) SetWriteEnabledWithTimeout(enabled bool, timeout time.Duration
 			f.bufferPath = filepath.Join(dir, "write-buffer")
 		} else {
 			// Fallback to os.TempDir() for cold enable without VFS reference
-			f.bufferPath = filepath.Join(os.TempDir(), "litestream-write-buffer")
+			f.bufferPath = filepath.Join(os.TempDir(), "replicate-write-buffer")
 		}
 	}
 
@@ -2341,17 +2341,17 @@ func (f *VFSFile) FileControl(op int, pragmaName string, pragmaValue *string) (*
 	f.logger.Debug("file control", "pragma", name, "value", pragmaValue)
 
 	switch name {
-	case "litestream_txid":
+	case "replicate_txid":
 		if pragmaValue != nil {
-			return nil, fmt.Errorf("litestream_txid is read-only")
+			return nil, fmt.Errorf("replicate_txid is read-only")
 		}
 		txid := f.Pos().TXID
 		result := txid.String()
 		return &result, nil
 
-	case "litestream_lag":
+	case "replicate_lag":
 		if pragmaValue != nil {
-			return nil, fmt.Errorf("litestream_lag is read-only")
+			return nil, fmt.Errorf("replicate_lag is read-only")
 		}
 		lastPoll := f.LastPollSuccess()
 		if lastPoll.IsZero() {
@@ -2362,7 +2362,7 @@ func (f *VFSFile) FileControl(op int, pragmaName string, pragmaValue *string) (*
 		result := strconv.FormatInt(lag, 10)
 		return &result, nil
 
-	case "litestream_time":
+	case "replicate_time":
 		if pragmaValue == nil {
 			result := f.currentTimeString()
 			return &result, nil
@@ -2384,9 +2384,9 @@ func (f *VFSFile) FileControl(op int, pragmaName string, pragmaValue *string) (*
 		}
 		return nil, nil
 
-	case "litestream_hydration_progress":
+	case "replicate_hydration_progress":
 		if pragmaValue != nil {
-			return nil, fmt.Errorf("litestream_hydration_progress is read-only")
+			return nil, fmt.Errorf("replicate_hydration_progress is read-only")
 		}
 		if f.hydrator == nil {
 			result := "0"
@@ -2396,14 +2396,14 @@ func (f *VFSFile) FileControl(op int, pragmaName string, pragmaValue *string) (*
 		result := strconv.FormatFloat(pct, 'f', 1, 64)
 		return &result, nil
 
-	case "litestream_hydration_file":
+	case "replicate_hydration_file":
 		if pragmaValue != nil {
-			return nil, fmt.Errorf("litestream_hydration_file is read-only")
+			return nil, fmt.Errorf("replicate_hydration_file is read-only")
 		}
 		result := f.hydrationPath
 		return &result, nil
 
-	case "litestream_write_enabled":
+	case "replicate_write_enabled":
 		if pragmaValue == nil {
 			// READ mode - return current state
 			f.mu.Lock()
@@ -2429,7 +2429,7 @@ func (f *VFSFile) FileControl(op int, pragmaName string, pragmaValue *string) (*
 			}
 			return nil, nil
 		default:
-			return nil, fmt.Errorf("invalid value for litestream_write_enabled: %s (use 0 or 1)", *pragmaValue)
+			return nil, fmt.Errorf("invalid value for replicate_write_enabled: %s (use 0 or 1)", *pragmaValue)
 		}
 
 	default:

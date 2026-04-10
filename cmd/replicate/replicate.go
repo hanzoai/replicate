@@ -43,10 +43,10 @@ type ReplicateCommand struct {
 	MCP *MCPServer
 
 	// Server for IPC control commands.
-	Server *litestream.Server
+	Server *replicate.Server
 
 	// Manages the set of databases & compaction levels.
-	Store *litestream.Store
+	Store *replicate.Store
 
 	// Directory monitors for dynamic database discovery.
 	directoryMonitors []*DirectoryMonitor
@@ -129,7 +129,7 @@ func (c *ReplicateCommand) ParseFlags(_ context.Context, args []string) (err err
 			if strings.HasPrefix(u, "-") {
 				return fmt.Errorf("flag %q must be positioned before DB_PATH and REPLICA_URL arguments", u)
 			}
-			syncInterval := litestream.DefaultSyncInterval
+			syncInterval := replicate.DefaultSyncInterval
 			dbConfig.Replicas = append(dbConfig.Replicas, &ReplicaConfig{
 				URL: u,
 				ReplicaSettings: ReplicaSettings{
@@ -177,7 +177,7 @@ func (c *ReplicateCommand) ParseFlags(_ context.Context, args []string) (err err
 // Run loads all databases specified in the configuration.
 func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 	// Display version information.
-	slog.Info("litestream", "version", Version, "level", c.Config.Logging.Level)
+	slog.Info("replicate", "version", Version, "level", c.Config.Logging.Level)
 
 	// Start MCP server if enabled
 	if c.Config.MCPAddr != "" {
@@ -202,10 +202,10 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 		}
 	}
 
-	var dbs []*litestream.DB
+	var dbs []*replicate.DB
 	var watchables []struct {
 		config *DBConfig
-		dbs    []*litestream.DB
+		dbs    []*replicate.DB
 	}
 	for _, dbConfig := range c.Config.DBs {
 		// Handle directory configuration
@@ -219,7 +219,7 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 			if dbConfig.Watch {
 				watchables = append(watchables, struct {
 					config *DBConfig
-					dbs    []*litestream.DB
+					dbs    []*replicate.DB
 				}{config: dbConfig, dbs: dirDbs})
 			}
 		} else {
@@ -233,7 +233,7 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 	}
 
 	levels := c.Config.CompactionLevels()
-	c.Store = litestream.NewStore(dbs, levels)
+	c.Store = replicate.NewStore(dbs, levels)
 
 	// Only override default snapshot interval if explicitly set in config
 	if c.Config.Snapshot.Interval != nil {
@@ -268,11 +268,11 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 		c.Store.SetDone(c.done)
 	}
 	if c.Config.HeartbeatURL != "" {
-		interval := litestream.DefaultHeartbeatInterval
+		interval := replicate.DefaultHeartbeatInterval
 		if c.Config.HeartbeatInterval != nil {
 			interval = *c.Config.HeartbeatInterval
 		}
-		c.Store.Heartbeat = litestream.NewHeartbeatClient(c.Config.HeartbeatURL, interval)
+		c.Store.Heartbeat = replicate.NewHeartbeatClient(c.Config.HeartbeatURL, interval)
 	}
 
 	// Disable all background monitors when running once.
@@ -299,7 +299,7 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 
 	// Start control server if socket is enabled
 	if c.Config.Socket.Enabled {
-		c.Server = litestream.NewServer(c.Store)
+		c.Server = replicate.NewServer(c.Store)
 		c.Server.SocketPath = c.Config.Socket.Path
 		c.Server.SocketPerms = c.Config.Socket.Permissions
 		c.Server.PathExpander = expand
@@ -446,7 +446,7 @@ func (c *ReplicateCommand) Close(ctx context.Context) error {
 	}
 	if c.Store != nil {
 		if err := c.Store.Close(ctx); err != nil {
-			if errors.Is(err, litestream.ErrShutdownInterrupted) {
+			if errors.Is(err, replicate.ErrShutdownInterrupted) {
 				slog.Warn("shutdown sync skipped by user interrupt", "error", err)
 			} else {
 				slog.Error("failed to close database", "error", err)
@@ -499,11 +499,11 @@ func (c *ReplicateCommand) restoreIfNeeded(ctx context.Context, dbConfig *DBConf
 	}
 
 	// Attempt restore
-	opt := litestream.NewRestoreOptions()
+	opt := replicate.NewRestoreOptions()
 	opt.OutputPath = dbPath
 
 	slog.Info("attempting restore before replication", "path", dbPath)
-	if err := r.Restore(ctx, opt); errors.Is(err, litestream.ErrTxNotAvailable) {
+	if err := r.Restore(ctx, opt); errors.Is(err, replicate.ErrTxNotAvailable) {
 		// No backup exists yet (first start) - this is OK
 		slog.Info("no backup found, starting fresh", "path", dbPath)
 		return nil

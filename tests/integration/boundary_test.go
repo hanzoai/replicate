@@ -48,9 +48,9 @@ func Test1GBBoundary(t *testing.T) {
 		t.Fatalf("Database did not reach 1GB threshold: %.2f GB", sizeGB)
 	}
 
-	t.Log("[3] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[3] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(30 * time.Second)
@@ -87,7 +87,7 @@ func Test1GBBoundary(t *testing.T) {
 
 	t.Log("✓ No lock page errors detected")
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[6] Testing restore of large database...")
@@ -153,8 +153,8 @@ func TestLockPageWithDifferentPageSizes(t *testing.T) {
 			t.Logf("✓ Database: %.2f MB", float64(dbSize)/(1024*1024))
 
 			t.Log("[3] Starting replication...")
-			if err := db.StartLitestream(); err != nil {
-				t.Fatalf("Failed to start Litestream: %v", err)
+			if err := db.StartReplicate(); err != nil {
+				t.Fatalf("Failed to start Replicate: %v", err)
 			}
 
 			t.Log("[3a] Waiting for replication to produce files...")
@@ -164,7 +164,7 @@ func TestLockPageWithDifferentPageSizes(t *testing.T) {
 			}
 			t.Logf("✓ LTX files: %d", fileCount)
 
-			db.StopLitestream()
+			db.StopReplicate()
 
 			t.Log("[4] Testing restore...")
 			restoredPath := filepath.Join(db.TempDir, fmt.Sprintf("lockpage-%d-restored.db", ps.size))

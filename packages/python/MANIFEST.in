@@ -1,2 +1,2 @@
 include README.md
-recursive-include litestream_vfs *.so *.dylib
+recursive-include replicate_vfs *.so *.dylib

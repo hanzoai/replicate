@@ -13,33 +13,33 @@ echo "Verifying LTX file cleanup after retention period"
 echo ""
 
 # Check if we have S3 environment setup
-if [ -z "$AWS_ACCESS_KEY_ID" ] && [ -z "$LITESTREAM_S3_ACCESS_KEY_ID" ]; then
+if [ -z "$AWS_ACCESS_KEY_ID" ] && [ -z "$REPLICATE_S3_ACCESS_KEY_ID" ]; then
     echo "⚠️  No S3 credentials found. Setting up local S3-compatible test..."
     echo ""
 
     # Create minimal S3-like configuration for testing
-    export LITESTREAM_S3_ACCESS_KEY_ID="testkey"
-    export LITESTREAM_S3_SECRET_ACCESS_KEY="testsecret"
-    export LITESTREAM_S3_BUCKET="test754bucket"
-    export LITESTREAM_S3_ENDPOINT="s3.amazonaws.com"
-    export LITESTREAM_S3_REGION="us-east-1"
+    export REPLICATE_S3_ACCESS_KEY_ID="testkey"
+    export REPLICATE_S3_SECRET_ACCESS_KEY="testsecret"
+    export REPLICATE_S3_BUCKET="test754bucket"
+    export REPLICATE_S3_ENDPOINT="s3.amazonaws.com"
+    export REPLICATE_S3_REGION="us-east-1"
 
     echo "ℹ️  S3 test environment configured (will use real S3 if credentials are valid)"
-    echo "   Bucket: $LITESTREAM_S3_BUCKET"
-    echo "   Region: $LITESTREAM_S3_REGION"
+    echo "   Bucket: $REPLICATE_S3_BUCKET"
+    echo "   Region: $REPLICATE_S3_REGION"
 else
     echo "✓ Using existing S3 credentials"
 fi
 
 DB="/tmp/s3-754-test.db"
-S3_PATH="s3://$LITESTREAM_S3_BUCKET/754-test"
+S3_PATH="s3://$REPLICATE_S3_BUCKET/754-test"
 FILE_REPLICA="/tmp/file-754-replica"
-LITESTREAM="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*s3-754-test.db" 2>/dev/null || true
+    pkill -f "replicate replicate.*s3-754-test.db" 2>/dev/null || true
     rm -f "$DB"* /tmp/s3-754-*.log /tmp/s3-754-*.yml
     rm -rf "$FILE_REPLICA"
 }
@@ -53,7 +53,7 @@ echo "Test 1: Compare File vs S3 #754 Behavior"
 echo "=========================================="
 
 echo "[1] Creating large database for comparison testing..."
-$LITESTREAM_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
+$REPLICATE_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
 
 sqlite3 "$DB" <<EOF
 CREATE TABLE s3_test (
@@ -74,7 +74,7 @@ echo ""
 echo "[2] Testing file replication first (baseline)..."
 
 # Test with file replication first
-$LITESTREAM replicate "$DB" "file://$FILE_REPLICA" > /tmp/s3-754-file.log 2>&1 &
+$REPLICATE replicate "$DB" "file://$FILE_REPLICA" > /tmp/s3-754-file.log 2>&1 &
 FILE_PID=$!
 sleep 5
 
@@ -124,29 +124,29 @@ dbs:
   - path: $DB
     replicas:
       - type: s3
-        bucket: $LITESTREAM_S3_BUCKET
+        bucket: $REPLICATE_S3_BUCKET
         path: 754-test
-        region: $LITESTREAM_S3_REGION
-        access-key-id: $LITESTREAM_S3_ACCESS_KEY_ID
-        secret-access-key: $LITESTREAM_S3_SECRET_ACCESS_KEY
+        region: $REPLICATE_S3_REGION
+        access-key-id: $REPLICATE_S3_ACCESS_KEY_ID
+        secret-access-key: $REPLICATE_S3_SECRET_ACCESS_KEY
         retention: 24h
         sync-interval: 5s
 EOF
 
-if [ -n "$LITESTREAM_S3_ENDPOINT" ] && [ "$LITESTREAM_S3_ENDPOINT" != "s3.amazonaws.com" ]; then
-    echo "        endpoint: $LITESTREAM_S3_ENDPOINT" >> /tmp/s3-754-config.yml
+if [ -n "$REPLICATE_S3_ENDPOINT" ] && [ "$REPLICATE_S3_ENDPOINT" != "s3.amazonaws.com" ]; then
+    echo "        endpoint: $REPLICATE_S3_ENDPOINT" >> /tmp/s3-754-config.yml
 fi
 
 # Add offline data between tests
 sqlite3 "$DB" "INSERT INTO s3_test (test_type, scenario, data) VALUES ('between-tests', 'offline', randomblob(4000));"
 
 echo "  S3 Configuration:"
-echo "    Bucket: $LITESTREAM_S3_BUCKET"
+echo "    Bucket: $REPLICATE_S3_BUCKET"
 echo "    Path: 754-test"
 echo "    Retention: 24h"
 
 # Test S3 replication
-$LITESTREAM replicate -config /tmp/s3-754-config.yml > /tmp/s3-754-s3.log 2>&1 &
+$REPLICATE replicate -config /tmp/s3-754-config.yml > /tmp/s3-754-s3.log 2>&1 &
 S3_PID=$!
 sleep 10
 
@@ -202,11 +202,11 @@ echo "=========================================="
 if [ "${S3_SKIPPED:-false}" != "true" ]; then
     echo "[4] Testing S3 restart scenario..."
 
-    # Add data while Litestream is down
+    # Add data while Replicate is down
     sqlite3 "$DB" "INSERT INTO s3_test (test_type, scenario, data) VALUES ('restart-test', 'offline-data', randomblob(5000));"
 
     # Restart S3 replication
-    $LITESTREAM replicate -config /tmp/s3-754-config.yml > /tmp/s3-754-restart.log 2>&1 &
+    $REPLICATE replicate -config /tmp/s3-754-config.yml > /tmp/s3-754-restart.log 2>&1 &
     S3_RESTART_PID=$!
     sleep 15
 
@@ -258,11 +258,11 @@ dbs:
   - path: $DB
     replicas:
       - type: s3
-        bucket: $LITESTREAM_S3_BUCKET
+        bucket: $REPLICATE_S3_BUCKET
         path: 754-retention-test
-        region: $LITESTREAM_S3_REGION
-        access-key-id: $LITESTREAM_S3_ACCESS_KEY_ID
-        secret-access-key: $LITESTREAM_S3_SECRET_ACCESS_KEY
+        region: $REPLICATE_S3_REGION
+        access-key-id: $REPLICATE_S3_ACCESS_KEY_ID
+        secret-access-key: $REPLICATE_S3_SECRET_ACCESS_KEY
         retention: 30s
         sync-interval: 2s
 EOF
@@ -270,7 +270,7 @@ EOF
     echo "  ⏱️  Testing with 30-second retention period..."
 
     # Start short retention replication
-    $LITESTREAM replicate -config "$SHORT_RETENTION_CONFIG" > /tmp/s3-754-retention.log 2>&1 &
+    $REPLICATE replicate -config "$SHORT_RETENTION_CONFIG" > /tmp/s3-754-retention.log 2>&1 &
     RETENTION_PID=$!
     sleep 5
 
@@ -356,7 +356,7 @@ fi
 
 echo ""
 echo "For Ben's debugging:"
-echo "  ✓ Test scripts available in cmd/litestream-test/scripts/"
+echo "  ✓ Test scripts available in cmd/replicate-test/scripts/"
 echo "  ✓ Log files in /tmp/s3-754-*.log"
 echo "  ✓ S3 configuration example in /tmp/s3-754-config.yml"
 echo "  ✓ Test focused on HeaderFlagNoChecksum issue locations:"

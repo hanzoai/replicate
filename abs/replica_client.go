@@ -30,17 +30,17 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("abs", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("abs", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
 const ReplicaClientType = "abs"
 
 // MetadataKeyTimestamp is the metadata key for storing LTX file timestamps in Azure Blob Storage.
-// Azure metadata keys cannot contain hyphens, so we use litestreamtimestamp (C# identifier rules).
-const MetadataKeyTimestamp = "litestreamtimestamp"
+// Azure metadata keys cannot contain hyphens, so we use replicatetimestamp (C# identifier rules).
+const MetadataKeyTimestamp = "replicatetimestamp"
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files to Azure Blob Storage.
 type ReplicaClient struct {
@@ -73,7 +73,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
 // URL format: abs://[account-name@]container/path
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	client := NewReplicaClient()
 
 	// Extract account name from userinfo if present (abs://account@container/path)
@@ -137,7 +137,7 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 				},
 			},
 			Telemetry: policy.TelemetryOptions{
-				ApplicationID: "litestream",
+				ApplicationID: "replicate",
 			},
 		},
 	}
@@ -145,13 +145,13 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 	// Check for SAS token first (highest priority for explicit credentials)
 	sasToken := c.SASToken
 	if sasToken == "" {
-		sasToken = os.Getenv("LITESTREAM_AZURE_SAS_TOKEN")
+		sasToken = os.Getenv("REPLICATE_AZURE_SAS_TOKEN")
 	}
 
 	// Check if we have explicit credentials or should use default credential chain
 	accountKey := c.AccountKey
 	if accountKey == "" {
-		accountKey = os.Getenv("LITESTREAM_AZURE_ACCOUNT_KEY")
+		accountKey = os.Getenv("REPLICATE_AZURE_ACCOUNT_KEY")
 	}
 
 	// Create Azure Blob Storage client with appropriate authentication
@@ -219,7 +219,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 		return nil, err
 	}
 
-	key := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	key := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
 	// Use TeeReader to peek at LTX header while preserving data for upload
 	var buf bytes.Buffer
@@ -236,7 +236,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 	rc := internal.NewReadCounter(io.MultiReader(&buf, rd))
 
 	// Upload blob with proper content type, access tier, and metadata
-	// Azure metadata keys cannot contain hyphens, so use litestreamtimestamp
+	// Azure metadata keys cannot contain hyphens, so use replicatetimestamp
 	_, err = c.client.UploadStream(ctx, c.Bucket, key, rc, &azblob.UploadStreamOptions{
 		HTTPHeaders: &blob.HTTPHeaders{
 			BlobContentType: to.Ptr("application/octet-stream"),
@@ -269,7 +269,7 @@ func (c *ReplicaClient) OpenLTXFile(ctx context.Context, level int, minTXID, max
 		return nil, err
 	}
 
-	key := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	key := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 	resp, err := c.client.DownloadStream(ctx, c.Bucket, key, &azblob.DownloadStreamOptions{
 		Range: blob.HTTPRange{
 			Offset: offset,
@@ -296,7 +296,7 @@ func (c *ReplicaClient) DeleteLTXFiles(ctx context.Context, a []*ltx.FileInfo) e
 	}
 
 	for _, info := range a {
-		key := litestream.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
+		key := replicate.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
 
 		c.logger.Debug("deleting ltx file", "level", info.Level, "minTXID", info.MinTXID, "maxTXID", info.MaxTXID, "key", key)
 
@@ -381,7 +381,7 @@ func newLTXFileIterator(ctx context.Context, client *ReplicaClient, level int, s
 	}
 
 	// Create paginator for listing blobs with level prefix
-	dir := litestream.LTXLevelDir(client.Path, level)
+	dir := replicate.LTXLevelDir(client.Path, level)
 	prefix := dir + "/"
 	if seek != 0 {
 		prefix += seek.String()

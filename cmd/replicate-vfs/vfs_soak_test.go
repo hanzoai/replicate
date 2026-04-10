@@ -20,10 +20,10 @@ import (
 
 // TestVFS_LongRunningSoak exercises the VFS under sustained read/write load.
 // The default duration is 5 minutes but can be overridden with the
-// LITESTREAM_VFS_SOAK_DURATION environment variable (e.g. "10m").
+// REPLICATE_VFS_SOAK_DURATION environment variable (e.g. "10m").
 func TestVFS_LongRunningSoak(t *testing.T) {
 	duration := 5 * time.Minute
-	if v := os.Getenv("LITESTREAM_VFS_SOAK_DURATION"); v != "" {
+	if v := os.Getenv("REPLICATE_VFS_SOAK_DURATION"); v != "" {
 		if parsed, err := time.ParseDuration(v); err == nil {
 			duration = parsed
 		}

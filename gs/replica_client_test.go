@@ -39,7 +39,7 @@ func setupTestClient(tb testing.TB) (*ReplicaClient, *fakestorage.Server) {
 		tb.Fatalf("new server: %v", err)
 	}
 
-	bucket := "litestream-test"
+	bucket := "replicate-test"
 	server.CreateBucketWithOpts(fakestorage.CreateBucketOpts{Name: bucket})
 
 	client := server.Client()

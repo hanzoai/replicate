@@ -171,7 +171,7 @@ func TestVFS_ChaosEngineering(t *testing.T) {
 	}
 }
 
-func newChaosReplicaClient(base litestream.ReplicaClient) *chaosReplicaClient {
+func newChaosReplicaClient(base replicate.ReplicaClient) *chaosReplicaClient {
 	return &chaosReplicaClient{
 		ReplicaClient: base,
 		rnd:           rand.New(rand.NewSource(99)),
@@ -179,7 +179,7 @@ func newChaosReplicaClient(base litestream.ReplicaClient) *chaosReplicaClient {
 }
 
 type chaosReplicaClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	rnd      *rand.Rand
 	failures atomic.Int32
 	active   atomic.Bool

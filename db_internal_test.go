@@ -1,4 +1,4 @@
-package litestream
+package replicate
 
 import (
 	"bytes"
@@ -181,7 +181,7 @@ func TestDB_Sync_UpdatesMetrics(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "db")
 
-	// Create and open litestream DB
+	// Create and open replicate DB
 	db := NewDB(dbPath)
 	db.MonitorInterval = 0 // disable background goroutine
 	db.Replica = NewReplica(db)
@@ -228,7 +228,7 @@ func TestDB_Sync_UpdatesMetrics(t *testing.T) {
 		t.Fatalf("failed to stat db file: %v", err)
 	}
 	if dbSizeValue != float64(dbFileInfo.Size()) {
-		t.Fatalf("litestream_db_size=%v, want %v", dbSizeValue, dbFileInfo.Size())
+		t.Fatalf("replicate_db_size=%v, want %v", dbSizeValue, dbFileInfo.Size())
 	}
 
 	// Verify WAL size metric matches actual file size
@@ -239,35 +239,35 @@ func TestDB_Sync_UpdatesMetrics(t *testing.T) {
 		t.Fatalf("failed to stat wal file: %v", err)
 	}
 	if walSizeValue != float64(walFileInfo.Size()) {
-		t.Fatalf("litestream_wal_size=%v, want %v", walSizeValue, walFileInfo.Size())
+		t.Fatalf("replicate_wal_size=%v, want %v", walSizeValue, walFileInfo.Size())
 	}
 
 	// Verify total WAL bytes counter was incremented
 	totalWALMetric := totalWALBytesCounterVec.WithLabelValues(db.Path())
 	totalWALValue := testutil.ToFloat64(totalWALMetric)
 	if totalWALValue <= 0 {
-		t.Fatalf("litestream_total_wal_bytes=%v, want > 0", totalWALValue)
+		t.Fatalf("replicate_total_wal_bytes=%v, want > 0", totalWALValue)
 	}
 
 	// Verify txid metric was updated (should be > 0 after writes)
 	txidMetric := txIDIndexGaugeVec.WithLabelValues(db.Path())
 	txidValue := testutil.ToFloat64(txidMetric)
 	if txidValue <= 0 {
-		t.Fatalf("litestream_txid=%v, want > 0", txidValue)
+		t.Fatalf("replicate_txid=%v, want > 0", txidValue)
 	}
 
 	// Verify sync count was incremented
 	syncCountMetric := syncNCounterVec.WithLabelValues(db.Path())
 	syncCountValue := testutil.ToFloat64(syncCountMetric)
 	if syncCountValue <= 0 {
-		t.Fatalf("litestream_sync_count=%v, want > 0", syncCountValue)
+		t.Fatalf("replicate_sync_count=%v, want > 0", syncCountValue)
 	}
 
 	// Verify sync seconds was recorded
 	syncSecondsMetric := syncSecondsCounterVec.WithLabelValues(db.Path())
 	syncSecondsValue := testutil.ToFloat64(syncSecondsMetric)
 	if syncSecondsValue <= 0 {
-		t.Fatalf("litestream_sync_seconds=%v, want > 0", syncSecondsValue)
+		t.Fatalf("replicate_sync_seconds=%v, want > 0", syncSecondsValue)
 	}
 }
 
@@ -325,14 +325,14 @@ func TestDB_Checkpoint_UpdatesMetrics(t *testing.T) {
 	checkpointCountMetric := checkpointNCounterVec.WithLabelValues(db.Path(), "PASSIVE")
 	checkpointCountValue := testutil.ToFloat64(checkpointCountMetric)
 	if checkpointCountValue <= baselineCount {
-		t.Fatalf("litestream_checkpoint_count=%v, want > %v", checkpointCountValue, baselineCount)
+		t.Fatalf("replicate_checkpoint_count=%v, want > %v", checkpointCountValue, baselineCount)
 	}
 
 	// Verify checkpoint_seconds was recorded
 	checkpointSecondsMetric := checkpointSecondsCounterVec.WithLabelValues(db.Path(), "PASSIVE")
 	checkpointSecondsValue := testutil.ToFloat64(checkpointSecondsMetric)
 	if checkpointSecondsValue <= baselineSeconds {
-		t.Fatalf("litestream_checkpoint_seconds=%v, want > %v", checkpointSecondsValue, baselineSeconds)
+		t.Fatalf("replicate_checkpoint_seconds=%v, want > %v", checkpointSecondsValue, baselineSeconds)
 	}
 }
 
@@ -391,10 +391,10 @@ func TestDB_ReplicaSync_OperationMetrics(t *testing.T) {
 		internal.OperationBytesCounterVec.WithLabelValues("test", "PUT"))
 
 	if putTotal <= baselinePutTotal {
-		t.Fatalf("litestream_replica_operation_total[test,PUT]=%v, want > %v", putTotal, baselinePutTotal)
+		t.Fatalf("replicate_replica_operation_total[test,PUT]=%v, want > %v", putTotal, baselinePutTotal)
 	}
 	if putBytes <= baselinePutBytes {
-		t.Fatalf("litestream_replica_operation_bytes[test,PUT]=%v, want > %v", putBytes, baselinePutBytes)
+		t.Fatalf("replicate_replica_operation_bytes[test,PUT]=%v, want > %v", putBytes, baselinePutBytes)
 	}
 }
 
@@ -448,7 +448,7 @@ func TestDB_Sync_ErrorMetrics(t *testing.T) {
 
 	syncErrorValue := testutil.ToFloat64(syncErrorNCounterVec.WithLabelValues(db.Path()))
 	if syncErrorValue <= baselineErrors {
-		t.Fatalf("litestream_sync_error_count=%v, want > %v", syncErrorValue, baselineErrors)
+		t.Fatalf("replicate_sync_error_count=%v, want > %v", syncErrorValue, baselineErrors)
 	}
 }
 
@@ -494,7 +494,7 @@ func TestDB_Checkpoint_ErrorMetrics(t *testing.T) {
 
 	checkpointErrorValue := testutil.ToFloat64(checkpointErrorNCounterVec.WithLabelValues(db.Path(), "PASSIVE"))
 	if checkpointErrorValue <= baselineErrors {
-		t.Fatalf("litestream_checkpoint_error_count=%v, want > %v", checkpointErrorValue, baselineErrors)
+		t.Fatalf("replicate_checkpoint_error_count=%v, want > %v", checkpointErrorValue, baselineErrors)
 	}
 }
 
@@ -1164,12 +1164,12 @@ func TestIsSQLiteBusyError(t *testing.T) {
 }
 
 // TestDB_IdleCheckpointSnapshotLoop tests for the feedback loop described in issue #997.
-// After bulk inserts trigger a checkpoint, litestream should NOT enter a self-perpetuating
+// After bulk inserts trigger a checkpoint, replicate should NOT enter a self-perpetuating
 // loop where checkpoint triggers cause repeated LTX file creation on an idle database.
 //
 // The bug occurred because:
 // 1. PASSIVE checkpoint completes but doesn't truncate WAL file
-// 2. WAL salt changes, new _litestream_seq write goes to offset 32 with new salt
+// 2. WAL salt changes, new _replicate_seq write goes to offset 32 with new salt
 // 3. Old WAL frames (with old salt) make file size exceed checkpoint threshold
 // 4. checkpointIfNeeded() uses file size, triggering another checkpoint
 // 5. Loop repeats, creating LTX files every sync cycle
@@ -1256,7 +1256,7 @@ func TestDB_IdleCheckpointSnapshotLoop(t *testing.T) {
 }
 
 // TestDB_Issue994_RunawayDiskUsage reproduces the scenario from issue #994 where
-// the local -litestream directory grows unboundedly. The reporter saw ~10MB/s growth
+// the local -replicate directory grows unboundedly. The reporter saw ~10MB/s growth
 // in LTX files. This test verifies that after bulk writes and idle sync cycles,
 // local LTX file count and total size stabilize rather than growing linearly.
 func TestDB_Issue994_RunawayDiskUsage(t *testing.T) {
@@ -1334,7 +1334,7 @@ func TestDB_Issue994_RunawayDiskUsage(t *testing.T) {
 	finalFiles := dirFileCount(t, db.LTXDir())
 	t.Logf("after 20 idle cycles: %d bytes, %d files", finalSize, finalFiles)
 
-	// Allow for at most 1 additional LTX file (the _litestream_seq bookkeeping write).
+	// Allow for at most 1 additional LTX file (the _replicate_seq bookkeeping write).
 	// With the bug, we'd see 20+ new files.
 	newFiles := finalFiles - baselineFiles
 	if newFiles > 2 {
@@ -1460,7 +1460,7 @@ func TestDB_WALPageCoverage_AllNewPagesPresent(t *testing.T) {
 
 // TestDB_WriteLTXFromWAL_PageGrowthCoverage verifies that an incremental LTX
 // file produced by writeLTXFromWAL contains all new pages when the database
-// grows between syncs. This tests the full Litestream sync path.
+// grows between syncs. This tests the full Replicate sync path.
 func TestDB_WriteLTXFromWAL_PageGrowthCoverage(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "db")
@@ -2054,7 +2054,7 @@ func TestDB_Sync_InitErrorMetrics(t *testing.T) {
 
 	syncErrorValue := testutil.ToFloat64(syncErrorNCounterVec.WithLabelValues(db.Path()))
 	if syncErrorValue <= baselineErrors {
-		t.Fatalf("litestream_sync_error_count=%v, want > %v (init error should be counted)", syncErrorValue, baselineErrors)
+		t.Fatalf("replicate_sync_error_count=%v, want > %v (init error should be counted)", syncErrorValue, baselineErrors)
 	}
 }
 

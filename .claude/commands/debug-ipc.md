@@ -4,17 +4,17 @@ description: Debug IPC Unix socket issues
 
 # Debug IPC Command
 
-Diagnose issues with the Litestream IPC control socket (`server.go`).
+Diagnose issues with the Replicate IPC control socket (`server.go`).
 
 ## 1. Socket Configuration Check
 
 Verify the socket is enabled and correctly configured:
 
 ```yaml
-# litestream.yml
+# replicate.yml
 socket:
   enabled: true                          # Default: false
-  path: /var/run/litestream.sock         # Default path
+  path: /var/run/replicate.sock         # Default path
   permissions: 0600                      # Default permissions
 ```
 
@@ -41,32 +41,32 @@ All endpoints are HTTP over Unix socket (`server.go:74-87`):
 
 ```bash
 # Server info (version, PID, uptime)
-curl --unix-socket /var/run/litestream.sock http://localhost/info
+curl --unix-socket /var/run/replicate.sock http://localhost/info
 
 # List all managed databases
-curl --unix-socket /var/run/litestream.sock http://localhost/list
+curl --unix-socket /var/run/replicate.sock http://localhost/list
 
 # Get transaction ID for a specific database
-curl --unix-socket /var/run/litestream.sock "http://localhost/txid?path=/path/to/db"
+curl --unix-socket /var/run/replicate.sock "http://localhost/txid?path=/path/to/db"
 
 # Register a new database at runtime
-curl --unix-socket /var/run/litestream.sock -X POST \
+curl --unix-socket /var/run/replicate.sock -X POST \
   -H "Content-Type: application/json" \
   -d '{"path":"/path/to/db","replica_url":"s3://bucket/path"}' \
   http://localhost/register
 
 # Unregister (stop replicating) a database
-curl --unix-socket /var/run/litestream.sock -X POST \
+curl --unix-socket /var/run/replicate.sock -X POST \
   -H "Content-Type: application/json" \
   -d '{"path":"/path/to/db"}' \
   http://localhost/unregister
 
 # CPU profile (30 seconds by default)
-curl --unix-socket /var/run/litestream.sock http://localhost/debug/pprof/profile > cpu.prof
+curl --unix-socket /var/run/replicate.sock http://localhost/debug/pprof/profile > cpu.prof
 go tool pprof cpu.prof
 
 # Heap profile
-curl --unix-socket /var/run/litestream.sock http://localhost/debug/pprof/heap > heap.prof
+curl --unix-socket /var/run/replicate.sock http://localhost/debug/pprof/heap > heap.prof
 go tool pprof heap.prof
 ```
 
@@ -74,15 +74,15 @@ go tool pprof heap.prof
 
 ### Socket not enabled
 **Symptom**: `curl: (7) Couldn't connect to server`
-**Fix**: Set `socket.enabled: true` in config and restart litestream.
+**Fix**: Set `socket.enabled: true` in config and restart replicate.
 
 ### Permission denied
 **Symptom**: `curl: (7) Permission denied`
-**Fix**: Check `socket.permissions` (default `0600`). The connecting user must match the litestream process owner.
+**Fix**: Check `socket.permissions` (default `0600`). The connecting user must match the replicate process owner.
 
 ### Stale socket file after crash
 **Symptom**: `bind: address already in use` in logs on startup
-**Fix**: Remove the stale socket file: `rm /var/run/litestream.sock`
+**Fix**: Remove the stale socket file: `rm /var/run/replicate.sock`
 
 ### Database not found
 **Symptom**: `{"error":"database not found"}` from `/txid` or `/start`
@@ -98,21 +98,21 @@ Available pprof endpoints on the IPC socket:
 
 ```bash
 # Interactive CPU profile analysis
-curl -s --unix-socket /var/run/litestream.sock \
+curl -s --unix-socket /var/run/replicate.sock \
   http://localhost/debug/pprof/profile?seconds=30 > cpu.prof
 go tool pprof -http=:8080 cpu.prof
 
 # Goroutine dump (useful for deadlock investigation)
-curl --unix-socket /var/run/litestream.sock \
+curl --unix-socket /var/run/replicate.sock \
   http://localhost/debug/pprof/goroutine?debug=2
 
 # Memory allocation profile
-curl -s --unix-socket /var/run/litestream.sock \
+curl -s --unix-socket /var/run/replicate.sock \
   http://localhost/debug/pprof/heap > heap.prof
 go tool pprof -http=:8080 heap.prof
 
 # Execution trace (captures scheduler, GC, goroutine events)
-curl -s --unix-socket /var/run/litestream.sock \
+curl -s --unix-socket /var/run/replicate.sock \
   http://localhost/debug/pprof/trace?seconds=5 > trace.out
 go tool trace trace.out
 ```

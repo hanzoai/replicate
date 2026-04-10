@@ -10,7 +10,7 @@ import (
 	"github.com/hanzoai/replicate"
 )
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 type ReplicaClient struct {
 	InitFunc           func(ctx context.Context) error

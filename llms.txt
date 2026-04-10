@@ -1,4 +1,4 @@
-# Litestream
+# Replicate
 
 Disaster recovery tool for SQLite. Replicates WAL changes to S3, GCS, Azure, SFTP, or local filesystem.
 
@@ -57,7 +57,7 @@ Disaster recovery tool for SQLite. Replicates WAL changes to S3, GCS, Azure, SFT
 ## Build
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
+go build -o bin/replicate ./cmd/replicate
 go test -race -v ./...
 pre-commit run --all-files
 ```

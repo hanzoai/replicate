@@ -57,14 +57,14 @@ func (c *InfoCommand) Run(_ context.Context, args []string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("info failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("info failed: %s", string(body))
 	}
 
-	var result litestream.InfoResponse
+	var result replicate.InfoResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -77,7 +77,7 @@ func (c *InfoCommand) Run(_ context.Context, args []string) error {
 		fmt.Println(string(output))
 	} else {
 		uptime := time.Duration(result.UptimeSeconds) * time.Second
-		fmt.Printf("Litestream %s\n", result.Version)
+		fmt.Printf("Replicate %s\n", result.Version)
 		fmt.Printf("  PID:        %d\n", result.PID)
 		fmt.Printf("  Uptime:     %s\n", uptime)
 		fmt.Printf("  Started at: %s\n", result.StartedAt.Format(time.RFC3339))
@@ -90,9 +90,9 @@ func (c *InfoCommand) Run(_ context.Context, args []string) error {
 // Usage prints the help text for the info command.
 func (c *InfoCommand) Usage() {
 	fmt.Println(`
-usage: litestream info [OPTIONS]
+usage: replicate info [OPTIONS]
 
-Show daemon information from a running Litestream instance.
+Show daemon information from a running Replicate instance.
 
 Options:
   -json

@@ -101,44 +101,44 @@ jobs:
 
       - name: Verify artifact
         run: |
-          file dist/litestream-vfs-linux-${{ matrix.arch }}.so
+          file dist/replicate-vfs-linux-${{ matrix.arch }}.so
           # For native arch, verify it can be loaded by SQLite
           if [ "${{ matrix.arch }}" == "amd64" ]; then
-            sqlite3 ':memory:' ".load dist/litestream-vfs-linux-amd64.so" ".exit" && echo "Extension loads successfully"
+            sqlite3 ':memory:' ".load dist/replicate-vfs-linux-amd64.so" ".exit" && echo "Extension loads successfully"
           fi
           # For cross-compiled arch, verify ELF header and architecture
           if [ "${{ matrix.arch }}" == "arm64" ]; then
-            readelf -h dist/litestream-vfs-linux-arm64.so | grep -E "(Class|Machine)"
+            readelf -h dist/replicate-vfs-linux-arm64.so | grep -E "(Class|Machine)"
             echo "ARM64 ELF header verified"
           fi
 
       - name: Create archive
         run: |
           cd dist
-          cp litestream-vfs-linux-${{ matrix.arch }}.so litestream.so
-          tar -czvf litestream-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
-            litestream.so
+          cp replicate-vfs-linux-${{ matrix.arch }}.so replicate.so
+          tar -czvf replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
+            replicate.so
 
       - name: Generate checksum
         run: |
           cd dist
-          sha256sum litestream-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
-            > litestream-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256
+          sha256sum replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
+            > replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload ${{ steps.version.outputs.version }} \
-            dist/litestream-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
-            dist/litestream-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256 \
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256 \
             --clobber
 
       - name: Upload artifact for packaging
         uses: actions/upload-artifact@v4
         with:
           name: vfs-linux-${{ matrix.arch }}
-          path: dist/litestream-vfs-linux-${{ matrix.arch }}.so
+          path: dist/replicate-vfs-linux-${{ matrix.arch }}.so
 
   vfs-build-darwin:
     name: Build VFS (macOS ${{ matrix.arch }})
@@ -177,39 +177,39 @@ jobs:
 
       - name: Verify artifact
         run: |
-          file dist/litestream-vfs-darwin-${{ matrix.arch }}.dylib
+          file dist/replicate-vfs-darwin-${{ matrix.arch }}.dylib
           # Verify architecture matches target
-          lipo -info dist/litestream-vfs-darwin-${{ matrix.arch }}.dylib
+          lipo -info dist/replicate-vfs-darwin-${{ matrix.arch }}.dylib
           # Verify the expected symbol exists (macOS sqlite3 doesn't support .load)
-          nm -gU dist/litestream-vfs-darwin-${{ matrix.arch }}.dylib | grep sqlite3_litestreamvfs_init && echo "Entry point symbol found"
+          nm -gU dist/replicate-vfs-darwin-${{ matrix.arch }}.dylib | grep sqlite3_replicatevfs_init && echo "Entry point symbol found"
 
       - name: Create archive
         run: |
           cd dist
-          cp litestream-vfs-darwin-${{ matrix.arch }}.dylib litestream.dylib
-          tar -czvf litestream-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
-            litestream.dylib
+          cp replicate-vfs-darwin-${{ matrix.arch }}.dylib replicate.dylib
+          tar -czvf replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
+            replicate.dylib
 
       - name: Generate checksum
         run: |
           cd dist
-          shasum -a 256 litestream-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
-            > litestream-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256
+          shasum -a 256 replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
+            > replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload ${{ steps.version.outputs.version }} \
-            dist/litestream-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
-            dist/litestream-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256 \
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256 \
             --clobber
 
       - name: Upload artifact for packaging
         uses: actions/upload-artifact@v4
         with:
           name: vfs-darwin-${{ matrix.arch }}
-          path: dist/litestream-vfs-darwin-${{ matrix.arch }}.dylib
+          path: dist/replicate-vfs-darwin-${{ matrix.arch }}.dylib
 
   # macos-sign:
   #   runs-on: macos-latest
@@ -229,7 +229,7 @@ jobs:
   #     - name: Download release artifacts
   #       uses: actions/download-artifact@v4
   #       with:
-  #         name: litestream-darwin-${{ matrix.arch }}
+  #         name: replicate-darwin-${{ matrix.arch }}
   #         path: dist/
 
   #     - name: Import Apple Developer Certificate
@@ -257,7 +257,7 @@ jobs:
   #       env:
   #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   #       run: |
-  #         gh release upload ${{ github.ref_name }} dist/litestream-*-darwin-${{ matrix.arch }}.zip
+  #         gh release upload ${{ github.ref_name }} dist/replicate-*-darwin-${{ matrix.arch }}.zip
 
   # windows-sign:
   #   runs-on: windows-latest
@@ -272,7 +272,7 @@ jobs:
   #     - name: Download release artifacts
   #       uses: actions/download-artifact@v4
   #       with:
-  #         name: litestream-windows-${{ matrix.arch }}
+  #         name: replicate-windows-${{ matrix.arch }}
   #         path: dist/
   #
   #     - name: Sign Windows binary
@@ -281,14 +281,14 @@ jobs:
   #         WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
   #       run: |
   #         echo "$env:WINDOWS_CERTIFICATE_PFX" | base64 -d > cert.pfx
-  #         & signtool sign /f cert.pfx /p "$env:WINDOWS_CERTIFICATE_PASSWORD" /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com dist\litestream.exe
+  #         & signtool sign /f cert.pfx /p "$env:WINDOWS_CERTIFICATE_PASSWORD" /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com dist\replicate.exe
   #         Remove-Item cert.pfx
   #
   #     - name: Upload signed binary
   #       env:
   #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   #       run: |
-  #         gh release upload ${{ github.ref_name }} dist\litestream-*-windows-${{ matrix.arch }}.zip
+  #         gh release upload ${{ github.ref_name }} dist\replicate-*-windows-${{ matrix.arch }}.zip
 
   publish-pypi:
     name: Publish to PyPI (${{ matrix.os }}-${{ matrix.arch }})
@@ -303,26 +303,26 @@ jobs:
           - os: linux
             arch: amd64
             ext: so
-            src_name: litestream-vfs-linux-amd64.so
-            dest_name: litestream-vfs.so
+            src_name: replicate-vfs-linux-amd64.so
+            dest_name: replicate-vfs.so
             platform_tag: manylinux_2_35_x86_64
           - os: linux
             arch: arm64
             ext: so
-            src_name: litestream-vfs-linux-arm64.so
-            dest_name: litestream-vfs.so
+            src_name: replicate-vfs-linux-arm64.so
+            dest_name: replicate-vfs.so
             platform_tag: manylinux_2_35_aarch64
           - os: darwin
             arch: amd64
             ext: dylib
-            src_name: litestream-vfs-darwin-amd64.dylib
-            dest_name: litestream-vfs.dylib
+            src_name: replicate-vfs-darwin-amd64.dylib
+            dest_name: replicate-vfs.dylib
             platform_tag: macosx_11_0_x86_64
           - os: darwin
             arch: arm64
             ext: dylib
-            src_name: litestream-vfs-darwin-arm64.dylib
-            dest_name: litestream-vfs.dylib
+            src_name: replicate-vfs-darwin-arm64.dylib
+            dest_name: replicate-vfs.dylib
             platform_tag: macosx_11_0_arm64
     steps:
       - name: Checkout
@@ -337,12 +337,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: vfs-${{ matrix.os }}-${{ matrix.arch }}
-          path: packages/python/litestream_vfs/
+          path: packages/python/replicate_vfs/
 
       - name: Rename binary
         run: |
-          mv packages/python/litestream_vfs/${{ matrix.src_name }} \
-             packages/python/litestream_vfs/${{ matrix.dest_name }}
+          mv packages/python/replicate_vfs/${{ matrix.src_name }} \
+             packages/python/replicate_vfs/${{ matrix.dest_name }}
 
       - name: Get version
         id: version
@@ -358,7 +358,7 @@ jobs:
         run: |
           cd packages/python
           pip install setuptools wheel
-          LITESTREAM_VERSION=${{ steps.version.outputs.version }} python setup.py bdist_wheel
+          REPLICATE_VERSION=${{ steps.version.outputs.version }} python setup.py bdist_wheel
 
       - name: Rename wheel with platform tag
         run: |
@@ -391,14 +391,14 @@ jobs:
 
       - name: Copy binaries to platform packages
         run: |
-          cp artifacts/vfs-linux-amd64/litestream-vfs-linux-amd64.so \
-             packages/npm/litestream-vfs-linux-amd64/litestream-vfs.so
-          cp artifacts/vfs-linux-arm64/litestream-vfs-linux-arm64.so \
-             packages/npm/litestream-vfs-linux-arm64/litestream-vfs.so
-          cp artifacts/vfs-darwin-amd64/litestream-vfs-darwin-amd64.dylib \
-             packages/npm/litestream-vfs-darwin-amd64/litestream-vfs.dylib
-          cp artifacts/vfs-darwin-arm64/litestream-vfs-darwin-arm64.dylib \
-             packages/npm/litestream-vfs-darwin-arm64/litestream-vfs.dylib
+          cp artifacts/vfs-linux-amd64/replicate-vfs-linux-amd64.so \
+             packages/npm/replicate-vfs-linux-amd64/replicate-vfs.so
+          cp artifacts/vfs-linux-arm64/replicate-vfs-linux-arm64.so \
+             packages/npm/replicate-vfs-linux-arm64/replicate-vfs.so
+          cp artifacts/vfs-darwin-amd64/replicate-vfs-darwin-amd64.dylib \
+             packages/npm/replicate-vfs-darwin-amd64/replicate-vfs.dylib
+          cp artifacts/vfs-darwin-arm64/replicate-vfs-darwin-arm64.dylib \
+             packages/npm/replicate-vfs-darwin-arm64/replicate-vfs.dylib
 
       - name: Get version
         id: version
@@ -413,19 +413,19 @@ jobs:
       - name: Set versions
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          for dir in packages/npm/litestream-vfs-*/; do
+          for dir in packages/npm/replicate-vfs-*/; do
             jq --arg v "$VERSION" '.version = $v' "$dir/package.json" > tmp.json && mv tmp.json "$dir/package.json"
           done
           jq --arg v "$VERSION" '
             .version = $v |
             .optionalDependencies = (.optionalDependencies | to_entries | map(.value = $v) | from_entries)
-          ' packages/npm/litestream-vfs/package.json > tmp.json && mv tmp.json packages/npm/litestream-vfs/package.json
+          ' packages/npm/replicate-vfs/package.json > tmp.json && mv tmp.json packages/npm/replicate-vfs/package.json
 
       - name: Publish platform packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for dir in packages/npm/litestream-vfs-*/; do
+          for dir in packages/npm/replicate-vfs-*/; do
             cd "$dir"
             npm publish --access public
             cd -
@@ -438,7 +438,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          cd packages/npm/litestream-vfs
+          cd packages/npm/replicate-vfs
           npm publish --access public
 
   publish-gem:
@@ -451,26 +451,26 @@ jobs:
           - os: linux
             arch: amd64
             ext: so
-            src_name: litestream-vfs-linux-amd64.so
-            dest_name: litestream-vfs.so
+            src_name: replicate-vfs-linux-amd64.so
+            dest_name: replicate-vfs.so
             platform: x86_64-linux
           - os: linux
             arch: arm64
             ext: so
-            src_name: litestream-vfs-linux-arm64.so
-            dest_name: litestream-vfs.so
+            src_name: replicate-vfs-linux-arm64.so
+            dest_name: replicate-vfs.so
             platform: aarch64-linux
           - os: darwin
             arch: amd64
             ext: dylib
-            src_name: litestream-vfs-darwin-amd64.dylib
-            dest_name: litestream-vfs.dylib
+            src_name: replicate-vfs-darwin-amd64.dylib
+            dest_name: replicate-vfs.dylib
             platform: x86_64-darwin
           - os: darwin
             arch: arm64
             ext: dylib
-            src_name: litestream-vfs-darwin-arm64.dylib
-            dest_name: litestream-vfs.dylib
+            src_name: replicate-vfs-darwin-arm64.dylib
+            dest_name: replicate-vfs.dylib
             platform: arm64-darwin
     steps:
       - name: Checkout
@@ -505,13 +505,13 @@ jobs:
       - name: Build gem
         run: |
           cd packages/ruby
-          LITESTREAM_VERSION=${{ steps.version.outputs.version }} \
+          REPLICATE_VERSION=${{ steps.version.outputs.version }} \
           PLATFORM=${{ matrix.platform }} \
-          gem build litestream-vfs.gemspec
+          gem build replicate-vfs.gemspec
 
       - name: Publish to RubyGems
         env:
           GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
         run: |
           cd packages/ruby
-          gem push litestream-vfs-*.gem
+          gem push replicate-vfs-*.gem
