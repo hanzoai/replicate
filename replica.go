@@ -337,7 +337,7 @@ func (d *decryptReadCloser) Close() error {
 // EnforceRetention forces a new snapshot once the retention interval has passed.
 // Older snapshots and WAL files are then removed.
 func (r *Replica) EnforceRetention(ctx context.Context) (err error) {
-	panic("TODO(ltx): Re-implement after multi-level compaction")
+	return fmt.Errorf("replicate: enforce retention not yet re-implemented after multi-level compaction")
 
 	/*
 		// Obtain list of snapshots that are within the retention period.
