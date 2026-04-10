@@ -29,8 +29,8 @@ type TestDB struct {
 	ReplicaEnv    []string
 	ConfigPath    string
 	TempDir       string
-	LitestreamCmd *exec.Cmd
-	LitestreamPID int
+	ReplicateCmd *exec.Cmd
+	ReplicatePID int
 	t             *testing.T
 }
 
@@ -84,7 +84,7 @@ func SetupTestDB(t *testing.T, name string) *TestDB {
 
 	var tempDir string
 	if os.Getenv("SOAK_KEEP_TEMP") != "" {
-		dir, err := os.MkdirTemp("", fmt.Sprintf("litestream-%s-", name))
+		dir, err := os.MkdirTemp("", fmt.Sprintf("replicate-%s-", name))
 		if err != nil {
 			t.Fatalf("create temp dir: %v", err)
 		}
@@ -140,7 +140,7 @@ func (db *TestDB) CreateWithPageSize(pageSize int) error {
 }
 
 func (db *TestDB) Populate(targetSize string) error {
-	cmd := exec.Command(getBinaryPath("litestream-test"), "populate",
+	cmd := exec.Command(getBinaryPath("replicate-test"), "populate",
 		"-db", db.Path,
 		"-target-size", targetSize,
 	)
@@ -159,7 +159,7 @@ func (db *TestDB) Populate(targetSize string) error {
 }
 
 func (db *TestDB) PopulateWithOptions(targetSize string, pageSize int, rowSize int) error {
-	cmd := exec.Command(getBinaryPath("litestream-test"), "populate",
+	cmd := exec.Command(getBinaryPath("replicate-test"), "populate",
 		"-db", db.Path,
 		"-target-size", targetSize,
 		"-page-size", fmt.Sprintf("%d", pageSize),
@@ -180,7 +180,7 @@ func (db *TestDB) PopulateWithOptions(targetSize string, pageSize int, rowSize i
 }
 
 func (db *TestDB) GenerateLoad(ctx context.Context, writeRate int, duration time.Duration, pattern string) error {
-	cmd := exec.CommandContext(ctx, getBinaryPath("litestream-test"), "load",
+	cmd := exec.CommandContext(ctx, getBinaryPath("replicate-test"), "load",
 		"-db", db.Path,
 		"-write-rate", fmt.Sprintf("%d", writeRate),
 		"-duration", duration.String(),
@@ -215,7 +215,7 @@ func (db *TestDB) GenerateLoadWithOptions(ctx context.Context, writeRate int, du
 		args = append(args, "-payload-size", fmt.Sprintf("%d", payloadSize))
 	}
 
-	cmd := exec.CommandContext(ctx, getBinaryPath("litestream-test"), args...)
+	cmd := exec.CommandContext(ctx, getBinaryPath("replicate-test"), args...)
 	_, stdoutBuf, stderrBuf := configureCmdIO(cmd)
 
 	db.t.Logf("Starting load generation: %d writes/sec for %v (%s pattern, %d workers, %d byte payload)",
@@ -230,15 +230,15 @@ func (db *TestDB) GenerateLoadWithOptions(ctx context.Context, writeRate int, du
 	return nil
 }
 
-func (db *TestDB) StartLitestream() error {
-	logPath := filepath.Join(db.TempDir, "litestream.log")
+func (db *TestDB) StartReplicate() error {
+	logPath := filepath.Join(db.TempDir, "replicate.log")
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		return fmt.Errorf("create log file: %w", err)
 	}
 
 	replicaURL := fmt.Sprintf("file://%s", filepath.ToSlash(db.ReplicaPath))
-	cmd := exec.Command(getBinaryPath("litestream"), "replicate",
+	cmd := exec.Command(getBinaryPath("replicate"), "replicate",
 		db.Path,
 		replicaURL,
 	)
@@ -247,31 +247,31 @@ func (db *TestDB) StartLitestream() error {
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return fmt.Errorf("start litestream: %w", err)
+		return fmt.Errorf("start replicate: %w", err)
 	}
 
-	db.LitestreamCmd = cmd
-	db.LitestreamPID = cmd.Process.Pid
+	db.ReplicateCmd = cmd
+	db.ReplicatePID = cmd.Process.Pid
 
 	time.Sleep(2 * time.Second)
 
 	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
 		logFile.Close()
-		return fmt.Errorf("litestream exited immediately")
+		return fmt.Errorf("replicate exited immediately")
 	}
 
 	return nil
 }
 
-func (db *TestDB) StartLitestreamWithConfig(configPath string) error {
-	logPath := filepath.Join(db.TempDir, "litestream.log")
+func (db *TestDB) StartReplicateWithConfig(configPath string) error {
+	logPath := filepath.Join(db.TempDir, "replicate.log")
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		return fmt.Errorf("create log file: %w", err)
 	}
 
 	db.ConfigPath = configPath
-	cmd := exec.Command(getBinaryPath("litestream"), "replicate",
+	cmd := exec.Command(getBinaryPath("replicate"), "replicate",
 		"-config", configPath,
 	)
 	cmd.Env = append(os.Environ(), "LOG_LEVEL=DEBUG")
@@ -280,47 +280,47 @@ func (db *TestDB) StartLitestreamWithConfig(configPath string) error {
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return fmt.Errorf("start litestream: %w", err)
+		return fmt.Errorf("start replicate: %w", err)
 	}
 
-	db.LitestreamCmd = cmd
-	db.LitestreamPID = cmd.Process.Pid
+	db.ReplicateCmd = cmd
+	db.ReplicatePID = cmd.Process.Pid
 
 	time.Sleep(2 * time.Second)
 
 	return nil
 }
 
-func (db *TestDB) StopLitestream() error {
-	if db.LitestreamCmd == nil || db.LitestreamCmd.Process == nil {
+func (db *TestDB) StopReplicate() error {
+	if db.ReplicateCmd == nil || db.ReplicateCmd.Process == nil {
 		return nil
 	}
 
-	// Send SIGTERM for graceful shutdown so Litestream can flush pending syncs.
+	// Send SIGTERM for graceful shutdown so Replicate can flush pending syncs.
 	// On Windows, SIGTERM is unsupported — fall back to Kill().
 	if runtime.GOOS == "windows" {
-		db.LitestreamCmd.Process.Kill()
-		db.LitestreamCmd.Wait()
+		db.ReplicateCmd.Process.Kill()
+		db.ReplicateCmd.Wait()
 		time.Sleep(1 * time.Second)
 		return nil
 	}
-	if err := db.LitestreamCmd.Process.Signal(syscall.SIGTERM); err != nil {
+	if err := db.ReplicateCmd.Process.Signal(syscall.SIGTERM); err != nil {
 		// Process may have already exited — check exit status.
-		if state, waitErr := db.LitestreamCmd.Process.Wait(); waitErr == nil && state != nil && !state.Success() {
-			return fmt.Errorf("litestream exited before shutdown: %s", state)
+		if state, waitErr := db.ReplicateCmd.Process.Wait(); waitErr == nil && state != nil && !state.Success() {
+			return fmt.Errorf("replicate exited before shutdown: %s", state)
 		}
 		return nil
 	}
 
 	// Wait for graceful exit with timeout.
 	done := make(chan error, 1)
-	go func() { done <- db.LitestreamCmd.Wait() }()
+	go func() { done <- db.ReplicateCmd.Wait() }()
 
 	var waitErr error
 	select {
 	case waitErr = <-done:
 	case <-time.After(35 * time.Second):
-		db.LitestreamCmd.Process.Kill()
+		db.ReplicateCmd.Process.Kill()
 		waitErr = <-done
 	}
 
@@ -335,13 +335,13 @@ func (db *TestDB) Restore(outputPath string) error {
 	}
 	var cmd *exec.Cmd
 	if db.ConfigPath != "" && (strings.HasPrefix(replicaURL, "s3://") || strings.HasPrefix(replicaURL, "abs://") || strings.HasPrefix(replicaURL, "nats://")) {
-		cmd = exec.Command(getBinaryPath("litestream"), "restore",
+		cmd = exec.Command(getBinaryPath("replicate"), "restore",
 			"-config", db.ConfigPath,
 			"-o", outputPath,
 			db.Path,
 		)
 	} else {
-		cmd = exec.Command(getBinaryPath("litestream"), "restore",
+		cmd = exec.Command(getBinaryPath("replicate"), "restore",
 			"-o", outputPath,
 			replicaURL,
 		)
@@ -359,7 +359,7 @@ func (db *TestDB) Validate(restoredPath string) error {
 	if replicaURL == "" {
 		replicaURL = fmt.Sprintf("file://%s", filepath.ToSlash(db.ReplicaPath))
 	}
-	cmd := exec.Command(getBinaryPath("litestream-test"), "validate",
+	cmd := exec.Command(getBinaryPath("replicate-test"), "validate",
 		"-source-db", db.Path,
 		"-replica-url", replicaURL,
 		"-restored-db", restoredPath,
@@ -378,7 +378,7 @@ func (db *TestDB) QuickValidate(restoredPath string) error {
 	if replicaURL == "" {
 		replicaURL = fmt.Sprintf("file://%s", filepath.ToSlash(db.ReplicaPath))
 	}
-	cmd := exec.Command(getBinaryPath("litestream-test"), "validate",
+	cmd := exec.Command(getBinaryPath("replicate-test"), "validate",
 		"-source-db", db.Path,
 		"-replica-url", replicaURL,
 		"-restored-db", restoredPath,
@@ -449,8 +449,8 @@ func (db *TestDB) WaitForReplicaFiles(minFiles int, timeout time.Duration) (int,
 	return count, fmt.Errorf("timeout waiting for %d replica files, got %d", minFiles, count)
 }
 
-func (db *TestDB) GetLitestreamLog() (string, error) {
-	logPath := filepath.Join(db.TempDir, "litestream.log")
+func (db *TestDB) GetReplicateLog() (string, error) {
+	logPath := filepath.Join(db.TempDir, "replicate.log")
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		return "", err
@@ -459,7 +459,7 @@ func (db *TestDB) GetLitestreamLog() (string, error) {
 }
 
 func (db *TestDB) CheckForErrors() ([]string, error) {
-	log, err := db.GetLitestreamLog()
+	log, err := db.GetReplicateLog()
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func (db *TestDB) CheckForErrors() ([]string, error) {
 }
 
 func (db *TestDB) Cleanup() {
-	db.StopLitestream()
+	db.StopReplicate()
 }
 
 // WaitForSnapshots waits for snapshots & WAL segments to appear on file replicas.
@@ -489,7 +489,7 @@ func (db *TestDB) WaitForSnapshots(timeout time.Duration) error {
 		return nil
 	}
 
-	snapshotDir := filepath.Join(db.ReplicaPath, "ltx", fmt.Sprintf("%d", litestream.SnapshotLevel))
+	snapshotDir := filepath.Join(db.ReplicaPath, "ltx", fmt.Sprintf("%d", replicate.SnapshotLevel))
 	walDir := filepath.Join(db.ReplicaPath, "ltx", "0")
 
 	deadline := time.Now().Add(timeout)
@@ -536,14 +536,14 @@ func GetTestDuration(t *testing.T, defaultDuration time.Duration) time.Duration 
 func RequireBinaries(t *testing.T) {
 	t.Helper()
 
-	litestreamBin := getBinaryPath("litestream")
-	if _, err := os.Stat(litestreamBin); err != nil {
-		t.Skip("litestream binary not found, run: go build -o bin/litestream ./cmd/litestream")
+	replicateBin := getBinaryPath("replicate")
+	if _, err := os.Stat(replicateBin); err != nil {
+		t.Skip("replicate binary not found, run: go build -o bin/replicate ./cmd/replicate")
 	}
 
-	litestreamTestBin := getBinaryPath("litestream-test")
-	if _, err := os.Stat(litestreamTestBin); err != nil {
-		t.Skip("litestream-test binary not found, run: go build -o bin/litestream-test ./cmd/litestream-test")
+	replicateTestBin := getBinaryPath("replicate-test")
+	if _, err := os.Stat(replicateTestBin); err != nil {
+		t.Skip("replicate-test binary not found, run: go build -o bin/replicate-test ./cmd/replicate-test")
 	}
 }
 
@@ -552,7 +552,7 @@ func WriteS3AccessPointConfig(t *testing.T, dbPath, replicaURL, endpoint string,
 	t.Helper()
 
 	dir := filepath.Dir(dbPath)
-	configPath := filepath.Join(dir, "litestream-access-point.yml")
+	configPath := filepath.Join(dir, "replicate-access-point.yml")
 
 	config := fmt.Sprintf(`access-key-id: %s
 secret-access-key: %s
@@ -657,6 +657,6 @@ func (db *TestDB) PrintTestSummary(t *testing.T, testName string, startTime time
 	t.Logf("Duration:           %v", duration.Round(time.Second))
 	t.Logf("Database Size:      %.2f MB", float64(dbSize)/(1024*1024))
 	t.Logf("Replica Files:      %d LTX files", fileCount)
-	t.Logf("Litestream Errors:  %d", len(errors))
+	t.Logf("Replicate Errors:  %d", len(errors))
 	t.Log(strings.Repeat("=", 80))
 }

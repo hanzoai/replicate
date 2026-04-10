@@ -16,14 +16,14 @@ echo ""
 DB="/tmp/massive-upgrade-test.db"
 REPLICA="/tmp/massive-upgrade-replica"
 RESTORED="/tmp/massive-restored.db"
-LITESTREAM_V3="/opt/homebrew/bin/litestream"
-LITESTREAM_V5="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE_V3="/opt/homebrew/bin/replicate"
+REPLICATE_V5="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*massive-upgrade-test.db" 2>/dev/null || true
-    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-litestream"
+    pkill -f "replicate replicate.*massive-upgrade-test.db" 2>/dev/null || true
+    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-replicate"
     rm -f "$RESTORED" "$RESTORED-wal" "$RESTORED-shm"
     rm -rf "$REPLICA"
     rm -f /tmp/massive-*.log
@@ -57,7 +57,7 @@ EOF
 echo "  Creating 3GB database in 500MB chunks..."
 for chunk in {1..6}; do
     echo "    Chunk $chunk/6 (500MB each)..."
-    $LITESTREAM_TEST populate -db "$DB" -target-size 500MB -table-count 1 >/dev/null 2>&1
+    $REPLICATE_TEST populate -db "$DB" -target-size 500MB -table-count 1 >/dev/null 2>&1
 
     # Add identifiable data for this chunk
     sqlite3 "$DB" "INSERT INTO massive_test (phase, batch_id, data) VALUES ('v0.3.x-chunk-$chunk', $chunk, randomblob(5000));"
@@ -89,7 +89,7 @@ fi
 
 echo ""
 echo "[2] Starting v0.3.13 with massive database..."
-$LITESTREAM_V3 replicate "$DB" "file://$REPLICA" > /tmp/massive-v3.log 2>&1 &
+$REPLICATE_V3 replicate "$DB" "file://$REPLICA" > /tmp/massive-v3.log 2>&1 &
 V3_PID=$!
 sleep 10
 
@@ -181,7 +181,7 @@ echo "  ✓ Offline data added, count: $TRANSITION_COUNT"
 
 echo ""
 echo "[8] Starting v0.5.0 with massive database..."
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/massive-v5.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/massive-v5.log 2>&1 &
 V5_PID=$!
 sleep 10
 
@@ -228,7 +228,7 @@ kill $V5_PID 2>/dev/null || true
 wait $V5_PID 2>/dev/null
 
 echo "  Attempting restore from massive mixed backup files..."
-$LITESTREAM_V5 restore -o "$RESTORED" "file://$REPLICA" > /tmp/massive-restore.log 2>&1
+$REPLICATE_V5 restore -o "$RESTORED" "file://$REPLICA" > /tmp/massive-restore.log 2>&1
 RESTORE_EXIT=$?
 
 if [ $RESTORE_EXIT -eq 0 ]; then

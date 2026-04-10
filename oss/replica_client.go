@@ -26,7 +26,7 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("oss", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("oss", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
@@ -34,7 +34,7 @@ const ReplicaClientType = "oss"
 
 // MetadataKeyTimestamp is the metadata key for storing LTX file timestamps in OSS.
 // Note: OSS SDK automatically adds "x-oss-meta-" prefix when setting metadata.
-const MetadataKeyTimestamp = "litestream-timestamp"
+const MetadataKeyTimestamp = "replicate-timestamp"
 
 // MaxKeys is the number of keys OSS can operate on per batch.
 const MaxKeys = 1000
@@ -46,7 +46,7 @@ const DefaultRegion = "cn-hangzhou"
 // for fetching accurate timestamps during timestamp-based restore.
 const DefaultMetadataConcurrency = 50
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files to Alibaba Cloud OSS.
 type ReplicaClient struct {
@@ -89,7 +89,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
 // URL format: oss://bucket[.oss-region.aliyuncs.com]/path
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	client := NewReplicaClient()
 
 	bucket, region, _ := ParseHost(host)

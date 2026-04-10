@@ -26,13 +26,13 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
 	vfs.PollInterval = 50 * time.Millisecond
-	if err := sqlite3vfs.RegisterVFS("litestream-time", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate-time", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 50 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 50 * time.Millisecond
 	if err := db.Open(); err != nil {
@@ -67,7 +67,7 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/time-travel.db?vfs=litestream-time")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/time-travel.db?vfs=replicate-time")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 	}, 10*time.Second, vfs.PollInterval, "VFS should observe updated value")
 
 	target := firstCreatedAt.Add(1 * time.Millisecond).UTC().Format(time.RFC3339Nano)
-	if _, err := sqldb1.Exec(fmt.Sprintf("PRAGMA LITESTREAM_TIME = '%s'", target)); err != nil {
+	if _, err := sqldb1.Exec(fmt.Sprintf("PRAGMA REPLICATE_TIME = '%s'", target)); err != nil {
 		t.Fatalf("set target time: %v", err)
 	}
 
@@ -94,13 +94,13 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 	}
 
 	var currentTime string
-	if err := sqldb1.QueryRow("PRAGMA litestream_time").Scan(&currentTime); err != nil {
+	if err := sqldb1.QueryRow("PRAGMA replicate_time").Scan(&currentTime); err != nil {
 		t.Fatalf("current time: %v", err)
 	} else if currentTime != target {
 		t.Fatalf("current time mismatch: got %s, want %s", currentTime, target)
 	}
 
-	if _, err := sqldb1.Exec("PRAGMA LITESTREAM_TIME = LATEST"); err != nil {
+	if _, err := sqldb1.Exec("PRAGMA REPLICATE_TIME = LATEST"); err != nil {
 		t.Fatalf("reset time: %v", err)
 	}
 
@@ -110,7 +110,7 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 		t.Fatalf("reset value: got %d, want %d", got, want)
 	}
 
-	if err := sqldb1.QueryRow("PRAGMA litestream_time").Scan(&currentTime); err != nil {
+	if err := sqldb1.QueryRow("PRAGMA replicate_time").Scan(&currentTime); err != nil {
 		t.Fatalf("current time after reset: %v", err)
 	}
 	// After reset, should return actual LTX timestamp (not "latest" anymore per #853)
@@ -119,18 +119,18 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 	}
 }
 
-func TestVFS_PragmaLitestreamTxid(t *testing.T) {
+func TestVFS_PragmaReplicateTxid(t *testing.T) {
 	ctx := context.Background()
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
 	vfs.PollInterval = 50 * time.Millisecond
-	if err := sqlite3vfs.RegisterVFS("litestream-txid", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate-txid", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 50 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 50 * time.Millisecond
 	if err := db.Open(); err != nil {
@@ -148,7 +148,7 @@ func TestVFS_PragmaLitestreamTxid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/txid-test.db?vfs=litestream-txid")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/txid-test.db?vfs=replicate-txid")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -157,30 +157,30 @@ func TestVFS_PragmaLitestreamTxid(t *testing.T) {
 
 	var txid int64
 	require.Eventually(t, func() bool {
-		if err := sqldb1.QueryRow("PRAGMA litestream_txid").Scan(&txid); err != nil {
+		if err := sqldb1.QueryRow("PRAGMA replicate_txid").Scan(&txid); err != nil {
 			return false
 		}
 		return txid > 0
-	}, 10*time.Second, vfs.PollInterval, "PRAGMA litestream_txid should return positive value")
+	}, 10*time.Second, vfs.PollInterval, "PRAGMA replicate_txid should return positive value")
 
-	// Test that setting litestream_txid fails (read-only)
-	if _, err := sqldb1.Exec("PRAGMA litestream_txid = 123"); err == nil {
-		t.Fatal("expected error setting litestream_txid (read-only)")
+	// Test that setting replicate_txid fails (read-only)
+	if _, err := sqldb1.Exec("PRAGMA replicate_txid = 123"); err == nil {
+		t.Fatal("expected error setting replicate_txid (read-only)")
 	}
 }
 
-func TestVFS_PragmaLitestreamLag(t *testing.T) {
+func TestVFS_PragmaReplicateLag(t *testing.T) {
 	ctx := context.Background()
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
 	vfs.PollInterval = 50 * time.Millisecond
-	if err := sqlite3vfs.RegisterVFS("litestream-lag", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate-lag", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 50 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 50 * time.Millisecond
 	if err := db.Open(); err != nil {
@@ -198,7 +198,7 @@ func TestVFS_PragmaLitestreamLag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/lag-test.db?vfs=litestream-lag")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/lag-test.db?vfs=replicate-lag")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -208,16 +208,16 @@ func TestVFS_PragmaLitestreamLag(t *testing.T) {
 	// Wait for replica to catch up with polling.
 	var lag int64
 	require.Eventually(t, func() bool {
-		if err := sqldb1.QueryRow("PRAGMA litestream_lag").Scan(&lag); err != nil {
+		if err := sqldb1.QueryRow("PRAGMA replicate_lag").Scan(&lag); err != nil {
 			t.Logf("query lag: %v", err)
 			return false
 		}
 		return lag >= 0
 	}, 10*time.Second, vfs.PollInterval, "lag should become >= 0")
 
-	// Test that setting litestream_lag fails (read-only)
-	if _, err := sqldb1.Exec("PRAGMA litestream_lag = 123"); err == nil {
-		t.Fatal("expected error setting litestream_lag (read-only)")
+	// Test that setting replicate_lag fails (read-only)
+	if _, err := sqldb1.Exec("PRAGMA replicate_lag = 123"); err == nil {
+		t.Fatal("expected error setting replicate_lag (read-only)")
 	}
 }
 
@@ -226,13 +226,13 @@ func TestVFS_PragmaRelativeTime(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
 	vfs.PollInterval = 50 * time.Millisecond
-	if err := sqlite3vfs.RegisterVFS("litestream-relative", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate-relative", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 50 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 50 * time.Millisecond
 	if err := db.Open(); err != nil {
@@ -250,7 +250,7 @@ func TestVFS_PragmaRelativeTime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/relative-test.db?vfs=litestream-relative")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/relative-test.db?vfs=replicate-relative")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestVFS_PragmaRelativeTime(t *testing.T) {
 	// Test that relative time parsing works (even if no data exists at that time)
 	// The parse should succeed, but may return "no backup files available" if too far in past
 	now := time.Now()
-	_, err = sqldb1.Exec("PRAGMA litestream_time = '1 second ago'")
+	_, err = sqldb1.Exec("PRAGMA replicate_time = '1 second ago'")
 	// This might fail if no LTX files exist at that time, which is expected.
 	// The important thing is that the parsing worked (not a "parse timestamp" error).
 	if err != nil {
@@ -303,13 +303,13 @@ func TestVFS_PragmaRelativeTime(t *testing.T) {
 	}
 
 	// Reset to latest
-	if _, err := sqldb1.Exec("PRAGMA litestream_time = LATEST"); err != nil {
+	if _, err := sqldb1.Exec("PRAGMA replicate_time = LATEST"); err != nil {
 		t.Fatalf("reset to latest: %v", err)
 	}
 
 	// Verify the current time is recent (within last minute)
 	var currentTime string
-	if err := sqldb1.QueryRow("PRAGMA litestream_time").Scan(&currentTime); err != nil {
+	if err := sqldb1.QueryRow("PRAGMA replicate_time").Scan(&currentTime); err != nil {
 		t.Fatalf("query current time: %v", err)
 	}
 	ts, err := time.Parse(time.RFC3339Nano, currentTime)
@@ -321,7 +321,7 @@ func TestVFS_PragmaRelativeTime(t *testing.T) {
 	}
 }
 
-func fetchLTXCreatedAt(tb testing.TB, ctx context.Context, client litestream.ReplicaClient) time.Time {
+func fetchLTXCreatedAt(tb testing.TB, ctx context.Context, client replicate.ReplicaClient) time.Time {
 	tb.Helper()
 
 	itr, err := client.LTXFiles(ctx, 0, 0, true)

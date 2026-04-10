@@ -33,7 +33,7 @@ import (
 const (
 	defaultTigrisEndpoint = "https://fly.storage.tigris.dev"
 	defaultTigrisRegion   = "auto"
-	defaultTigrisBucket   = "litestream-dev"
+	defaultTigrisBucket   = "replicate-dev"
 	defaultTigrisPathRoot = "integration-tests"
 )
 
@@ -49,87 +49,87 @@ var (
 // S3 settings
 var (
 	// Replica client settings
-	s3AccessKeyID     = flag.String("s3-access-key-id", os.Getenv("LITESTREAM_S3_ACCESS_KEY_ID"), "")
-	s3SecretAccessKey = flag.String("s3-secret-access-key", os.Getenv("LITESTREAM_S3_SECRET_ACCESS_KEY"), "")
-	s3Region          = flag.String("s3-region", os.Getenv("LITESTREAM_S3_REGION"), "")
-	s3Bucket          = flag.String("s3-bucket", os.Getenv("LITESTREAM_S3_BUCKET"), "")
-	s3Path            = flag.String("s3-path", os.Getenv("LITESTREAM_S3_PATH"), "")
-	s3Endpoint        = flag.String("s3-endpoint", os.Getenv("LITESTREAM_S3_ENDPOINT"), "")
-	s3ForcePathStyle  = flag.Bool("s3-force-path-style", os.Getenv("LITESTREAM_S3_FORCE_PATH_STYLE") == "true", "")
-	s3SkipVerify      = flag.Bool("s3-skip-verify", os.Getenv("LITESTREAM_S3_SKIP_VERIFY") == "true", "")
+	s3AccessKeyID     = flag.String("s3-access-key-id", os.Getenv("REPLICATE_S3_ACCESS_KEY_ID"), "")
+	s3SecretAccessKey = flag.String("s3-secret-access-key", os.Getenv("REPLICATE_S3_SECRET_ACCESS_KEY"), "")
+	s3Region          = flag.String("s3-region", os.Getenv("REPLICATE_S3_REGION"), "")
+	s3Bucket          = flag.String("s3-bucket", os.Getenv("REPLICATE_S3_BUCKET"), "")
+	s3Path            = flag.String("s3-path", os.Getenv("REPLICATE_S3_PATH"), "")
+	s3Endpoint        = flag.String("s3-endpoint", os.Getenv("REPLICATE_S3_ENDPOINT"), "")
+	s3ForcePathStyle  = flag.Bool("s3-force-path-style", os.Getenv("REPLICATE_S3_FORCE_PATH_STYLE") == "true", "")
+	s3SkipVerify      = flag.Bool("s3-skip-verify", os.Getenv("REPLICATE_S3_SKIP_VERIFY") == "true", "")
 )
 
 // Tigris settings (S3-compatible)
 var (
-	tigrisAccessKeyID     = flag.String("tigris-access-key-id", os.Getenv("LITESTREAM_TIGRIS_ACCESS_KEY_ID"), "")
-	tigrisSecretAccessKey = flag.String("tigris-secret-access-key", os.Getenv("LITESTREAM_TIGRIS_SECRET_ACCESS_KEY"), "")
+	tigrisAccessKeyID     = flag.String("tigris-access-key-id", os.Getenv("REPLICATE_TIGRIS_ACCESS_KEY_ID"), "")
+	tigrisSecretAccessKey = flag.String("tigris-secret-access-key", os.Getenv("REPLICATE_TIGRIS_SECRET_ACCESS_KEY"), "")
 )
 
 // Cloudflare R2 settings (S3-compatible)
 var (
-	r2AccessKeyID     = flag.String("r2-access-key-id", os.Getenv("LITESTREAM_R2_ACCESS_KEY_ID"), "")
-	r2SecretAccessKey = flag.String("r2-secret-access-key", os.Getenv("LITESTREAM_R2_SECRET_ACCESS_KEY"), "")
-	r2Endpoint        = flag.String("r2-endpoint", os.Getenv("LITESTREAM_R2_ENDPOINT"), "")
-	r2Bucket          = flag.String("r2-bucket", os.Getenv("LITESTREAM_R2_BUCKET"), "")
+	r2AccessKeyID     = flag.String("r2-access-key-id", os.Getenv("REPLICATE_R2_ACCESS_KEY_ID"), "")
+	r2SecretAccessKey = flag.String("r2-secret-access-key", os.Getenv("REPLICATE_R2_SECRET_ACCESS_KEY"), "")
+	r2Endpoint        = flag.String("r2-endpoint", os.Getenv("REPLICATE_R2_ENDPOINT"), "")
+	r2Bucket          = flag.String("r2-bucket", os.Getenv("REPLICATE_R2_BUCKET"), "")
 )
 
 // Backblaze B2 settings (S3-compatible)
 var (
-	b2KeyID          = flag.String("b2-key-id", os.Getenv("LITESTREAM_B2_KEY_ID"), "")
-	b2ApplicationKey = flag.String("b2-application-key", os.Getenv("LITESTREAM_B2_APPLICATION_KEY"), "")
-	b2Endpoint       = flag.String("b2-endpoint", os.Getenv("LITESTREAM_B2_ENDPOINT"), "")
-	b2Bucket         = flag.String("b2-bucket", os.Getenv("LITESTREAM_B2_BUCKET"), "")
+	b2KeyID          = flag.String("b2-key-id", os.Getenv("REPLICATE_B2_KEY_ID"), "")
+	b2ApplicationKey = flag.String("b2-application-key", os.Getenv("REPLICATE_B2_APPLICATION_KEY"), "")
+	b2Endpoint       = flag.String("b2-endpoint", os.Getenv("REPLICATE_B2_ENDPOINT"), "")
+	b2Bucket         = flag.String("b2-bucket", os.Getenv("REPLICATE_B2_BUCKET"), "")
 )
 
 // Google cloud storage settings
 var (
-	gsBucket = flag.String("gs-bucket", os.Getenv("LITESTREAM_GS_BUCKET"), "")
-	gsPath   = flag.String("gs-path", os.Getenv("LITESTREAM_GS_PATH"), "")
+	gsBucket = flag.String("gs-bucket", os.Getenv("REPLICATE_GS_BUCKET"), "")
+	gsPath   = flag.String("gs-path", os.Getenv("REPLICATE_GS_PATH"), "")
 )
 
 // Azure blob storage settings
 var (
-	absAccountName = flag.String("abs-account-name", os.Getenv("LITESTREAM_ABS_ACCOUNT_NAME"), "")
-	absAccountKey  = flag.String("abs-account-key", os.Getenv("LITESTREAM_ABS_ACCOUNT_KEY"), "")
-	absSASToken    = flag.String("abs-sas-token", os.Getenv("LITESTREAM_ABS_SAS_TOKEN"), "")
-	absBucket      = flag.String("abs-bucket", os.Getenv("LITESTREAM_ABS_BUCKET"), "")
-	absPath        = flag.String("abs-path", os.Getenv("LITESTREAM_ABS_PATH"), "")
+	absAccountName = flag.String("abs-account-name", os.Getenv("REPLICATE_ABS_ACCOUNT_NAME"), "")
+	absAccountKey  = flag.String("abs-account-key", os.Getenv("REPLICATE_ABS_ACCOUNT_KEY"), "")
+	absSASToken    = flag.String("abs-sas-token", os.Getenv("REPLICATE_ABS_SAS_TOKEN"), "")
+	absBucket      = flag.String("abs-bucket", os.Getenv("REPLICATE_ABS_BUCKET"), "")
+	absPath        = flag.String("abs-path", os.Getenv("REPLICATE_ABS_PATH"), "")
 )
 
 // SFTP settings
 var (
-	sftpHost     = flag.String("sftp-host", os.Getenv("LITESTREAM_SFTP_HOST"), "")
-	sftpUser     = flag.String("sftp-user", os.Getenv("LITESTREAM_SFTP_USER"), "")
-	sftpPassword = flag.String("sftp-password", os.Getenv("LITESTREAM_SFTP_PASSWORD"), "")
-	sftpKeyPath  = flag.String("sftp-key-path", os.Getenv("LITESTREAM_SFTP_KEY_PATH"), "")
-	sftpPath     = flag.String("sftp-path", os.Getenv("LITESTREAM_SFTP_PATH"), "")
+	sftpHost     = flag.String("sftp-host", os.Getenv("REPLICATE_SFTP_HOST"), "")
+	sftpUser     = flag.String("sftp-user", os.Getenv("REPLICATE_SFTP_USER"), "")
+	sftpPassword = flag.String("sftp-password", os.Getenv("REPLICATE_SFTP_PASSWORD"), "")
+	sftpKeyPath  = flag.String("sftp-key-path", os.Getenv("REPLICATE_SFTP_KEY_PATH"), "")
+	sftpPath     = flag.String("sftp-path", os.Getenv("REPLICATE_SFTP_PATH"), "")
 )
 
 // WebDAV settings
 var (
-	webdavURL      = flag.String("webdav-url", os.Getenv("LITESTREAM_WEBDAV_URL"), "")
-	webdavUsername = flag.String("webdav-username", os.Getenv("LITESTREAM_WEBDAV_USERNAME"), "")
-	webdavPassword = flag.String("webdav-password", os.Getenv("LITESTREAM_WEBDAV_PASSWORD"), "")
-	webdavPath     = flag.String("webdav-path", os.Getenv("LITESTREAM_WEBDAV_PATH"), "")
+	webdavURL      = flag.String("webdav-url", os.Getenv("REPLICATE_WEBDAV_URL"), "")
+	webdavUsername = flag.String("webdav-username", os.Getenv("REPLICATE_WEBDAV_USERNAME"), "")
+	webdavPassword = flag.String("webdav-password", os.Getenv("REPLICATE_WEBDAV_PASSWORD"), "")
+	webdavPath     = flag.String("webdav-path", os.Getenv("REPLICATE_WEBDAV_PATH"), "")
 )
 
 // NATS settings
 var (
-	natsURL      = flag.String("nats-url", os.Getenv("LITESTREAM_NATS_URL"), "")
-	natsBucket   = flag.String("nats-bucket", os.Getenv("LITESTREAM_NATS_BUCKET"), "")
-	natsCreds    = flag.String("nats-creds", os.Getenv("LITESTREAM_NATS_CREDS"), "")
-	natsUsername = flag.String("nats-username", os.Getenv("LITESTREAM_NATS_USERNAME"), "")
-	natsPassword = flag.String("nats-password", os.Getenv("LITESTREAM_NATS_PASSWORD"), "")
+	natsURL      = flag.String("nats-url", os.Getenv("REPLICATE_NATS_URL"), "")
+	natsBucket   = flag.String("nats-bucket", os.Getenv("REPLICATE_NATS_BUCKET"), "")
+	natsCreds    = flag.String("nats-creds", os.Getenv("REPLICATE_NATS_CREDS"), "")
+	natsUsername = flag.String("nats-username", os.Getenv("REPLICATE_NATS_USERNAME"), "")
+	natsPassword = flag.String("nats-password", os.Getenv("REPLICATE_NATS_PASSWORD"), "")
 )
 
 // Alibaba Cloud OSS settings
 var (
-	ossAccessKeyID     = flag.String("oss-access-key-id", os.Getenv("LITESTREAM_OSS_ACCESS_KEY_ID"), "")
-	ossAccessKeySecret = flag.String("oss-access-key-secret", os.Getenv("LITESTREAM_OSS_ACCESS_KEY_SECRET"), "")
-	ossRegion          = flag.String("oss-region", os.Getenv("LITESTREAM_OSS_REGION"), "")
-	ossBucket          = flag.String("oss-bucket", os.Getenv("LITESTREAM_OSS_BUCKET"), "")
-	ossPath            = flag.String("oss-path", os.Getenv("LITESTREAM_OSS_PATH"), "")
-	ossEndpoint        = flag.String("oss-endpoint", os.Getenv("LITESTREAM_OSS_ENDPOINT"), "")
+	ossAccessKeyID     = flag.String("oss-access-key-id", os.Getenv("REPLICATE_OSS_ACCESS_KEY_ID"), "")
+	ossAccessKeySecret = flag.String("oss-access-key-secret", os.Getenv("REPLICATE_OSS_ACCESS_KEY_SECRET"), "")
+	ossRegion          = flag.String("oss-region", os.Getenv("REPLICATE_OSS_REGION"), "")
+	ossBucket          = flag.String("oss-bucket", os.Getenv("REPLICATE_OSS_BUCKET"), "")
+	ossPath            = flag.String("oss-path", os.Getenv("REPLICATE_OSS_PATH"), "")
+	ossEndpoint        = flag.String("oss-endpoint", os.Getenv("REPLICATE_OSS_ENDPOINT"), "")
 )
 
 func Integration() bool {
@@ -140,7 +140,7 @@ func ReplicaClientTypes() []string {
 	return strings.Split(*replicaClientTypes, ",")
 }
 
-func NewDB(tb testing.TB, path string) *litestream.DB {
+func NewDB(tb testing.TB, path string) *replicate.DB {
 	tb.Helper()
 	tb.Logf("db=%s", path)
 
@@ -149,7 +149,7 @@ func NewDB(tb testing.TB, path string) *litestream.DB {
 		level = internal.LevelTrace
 	}
 
-	db := litestream.NewDB(path)
+	db := replicate.NewDB(path)
 	db.Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level:       level,
 		ReplaceAttr: internal.ReplaceAttr,
@@ -158,33 +158,33 @@ func NewDB(tb testing.TB, path string) *litestream.DB {
 }
 
 // MustOpenDBs returns a new instance of a DB & associated SQL DB.
-func MustOpenDBs(tb testing.TB) (*litestream.DB, *sql.DB) {
+func MustOpenDBs(tb testing.TB) (*replicate.DB, *sql.DB) {
 	tb.Helper()
 	db := MustOpenDB(tb)
 	return db, MustOpenSQLDB(tb, db.Path())
 }
 
 // MustCloseDBs closes db & sqldb and removes the parent directory.
-func MustCloseDBs(tb testing.TB, db *litestream.DB, sqldb *sql.DB) {
+func MustCloseDBs(tb testing.TB, db *replicate.DB, sqldb *sql.DB) {
 	tb.Helper()
 	MustCloseDB(tb, db)
 	MustCloseSQLDB(tb, sqldb)
 }
 
 // MustOpenDB returns a new instance of a DB.
-func MustOpenDB(tb testing.TB) *litestream.DB {
+func MustOpenDB(tb testing.TB) *replicate.DB {
 	tb.Helper()
 	dir := tb.TempDir()
 	return MustOpenDBAt(tb, filepath.Join(dir, "db"))
 }
 
 // MustOpenDBAt returns a new instance of a DB for a given path.
-func MustOpenDBAt(tb testing.TB, path string) *litestream.DB {
+func MustOpenDBAt(tb testing.TB, path string) *replicate.DB {
 	tb.Helper()
 	db := NewDB(tb, path)
 	db.MonitorInterval = 0     // disable background goroutine
 	db.ShutdownSyncTimeout = 0 // disable shutdown sync retry for faster tests
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = NewFileReplicaClient(tb)
 	db.Replica.MonitorEnabled = false // disable background goroutine
 	if err := db.Open(); err != nil {
@@ -194,7 +194,7 @@ func MustOpenDBAt(tb testing.TB, path string) *litestream.DB {
 }
 
 // MustCloseDB closes db and removes its parent directory.
-func MustCloseDB(tb testing.TB, db *litestream.DB) {
+func MustCloseDB(tb testing.TB, db *replicate.DB) {
 	tb.Helper()
 	if err := db.Close(context.Background()); err != nil && !strings.Contains(err.Error(), `database is closed`) && !strings.Contains(err.Error(), `file already closed`) {
 		tb.Fatal(err)
@@ -226,7 +226,7 @@ func MustCloseSQLDB(tb testing.TB, d *sql.DB) {
 }
 
 // NewReplicaClient returns a new client for integration testing by type name.
-func NewReplicaClient(tb testing.TB, typ string) litestream.ReplicaClient {
+func NewReplicaClient(tb testing.TB, typ string) replicate.ReplicaClient {
 	tb.Helper()
 
 	switch typ {
@@ -285,7 +285,7 @@ func NewTigrisReplicaClient(tb testing.TB) *s3.ReplicaClient {
 	tb.Helper()
 
 	if *tigrisAccessKeyID == "" || *tigrisSecretAccessKey == "" {
-		tb.Skip("tigris credentials not configured (set LITESTREAM_TIGRIS_ACCESS_KEY_ID/SECRET_ACCESS_KEY)")
+		tb.Skip("tigris credentials not configured (set REPLICATE_TIGRIS_ACCESS_KEY_ID/SECRET_ACCESS_KEY)")
 	}
 
 	c := s3.NewReplicaClient()
@@ -306,13 +306,13 @@ func NewR2ReplicaClient(tb testing.TB) *s3.ReplicaClient {
 	tb.Helper()
 
 	if *r2AccessKeyID == "" || *r2SecretAccessKey == "" {
-		tb.Skip("r2 credentials not configured (set LITESTREAM_R2_ACCESS_KEY_ID/SECRET_ACCESS_KEY)")
+		tb.Skip("r2 credentials not configured (set REPLICATE_R2_ACCESS_KEY_ID/SECRET_ACCESS_KEY)")
 	}
 	if *r2Endpoint == "" {
-		tb.Skip("r2 endpoint not configured (set LITESTREAM_R2_ENDPOINT)")
+		tb.Skip("r2 endpoint not configured (set REPLICATE_R2_ENDPOINT)")
 	}
 	if *r2Bucket == "" {
-		tb.Skip("r2 bucket not configured (set LITESTREAM_R2_BUCKET)")
+		tb.Skip("r2 bucket not configured (set REPLICATE_R2_BUCKET)")
 	}
 
 	c := s3.NewReplicaClient()
@@ -333,13 +333,13 @@ func NewB2ReplicaClient(tb testing.TB) *s3.ReplicaClient {
 	tb.Helper()
 
 	if *b2KeyID == "" || *b2ApplicationKey == "" {
-		tb.Skip("b2 credentials not configured (set LITESTREAM_B2_KEY_ID/APPLICATION_KEY)")
+		tb.Skip("b2 credentials not configured (set REPLICATE_B2_KEY_ID/APPLICATION_KEY)")
 	}
 	if *b2Endpoint == "" {
-		tb.Skip("b2 endpoint not configured (set LITESTREAM_B2_ENDPOINT)")
+		tb.Skip("b2 endpoint not configured (set REPLICATE_B2_ENDPOINT)")
 	}
 	if *b2Bucket == "" {
-		tb.Skip("b2 bucket not configured (set LITESTREAM_B2_BUCKET)")
+		tb.Skip("b2 bucket not configured (set REPLICATE_B2_BUCKET)")
 	}
 
 	c := s3.NewReplicaClient()
@@ -365,8 +365,8 @@ func NewGSReplicaClient(tb testing.TB) *gs.ReplicaClient {
 		credsSet = "set"
 	}
 	tb.Logf("  GOOGLE_APPLICATION_CREDENTIALS: %s", credsSet)
-	tb.Logf("  LITESTREAM_GS_BUCKET: %s", *gsBucket)
-	tb.Logf("  LITESTREAM_GS_PATH: %s", *gsPath)
+	tb.Logf("  REPLICATE_GS_BUCKET: %s", *gsBucket)
+	tb.Logf("  REPLICATE_GS_PATH: %s", *gsPath)
 
 	c := gs.NewReplicaClient()
 	c.Bucket = *gsBucket
@@ -450,7 +450,7 @@ func NewOSSReplicaClient(tb testing.TB) *oss.ReplicaClient {
 }
 
 // MustDeleteAll deletes all objects under the client's path.
-func MustDeleteAll(tb testing.TB, c litestream.ReplicaClient) {
+func MustDeleteAll(tb testing.TB, c replicate.ReplicaClient) {
 	tb.Helper()
 
 	if err := c.DeleteAll(context.Background()); err != nil {

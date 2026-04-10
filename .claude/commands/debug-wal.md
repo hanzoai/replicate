@@ -1,4 +1,4 @@
-Debug WAL monitoring issues in Litestream. This command helps diagnose problems with WAL change detection, checkpointing, and replication triggers.
+Debug WAL monitoring issues in Replicate. This command helps diagnose problems with WAL change detection, checkpointing, and replication triggers.
 
 First, understand the symptoms:
 - Is replication not triggering on changes?

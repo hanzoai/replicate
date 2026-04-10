@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("sftp", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("sftp", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
@@ -34,7 +34,7 @@ const (
 	DefaultDialTimeout = 30 * time.Second
 )
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files over SFTP.
 type ReplicaClient struct {
@@ -73,7 +73,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
 // URL format: sftp://[user[:password]@]host[:port]/path
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	client := NewReplicaClient()
 
 	// Extract credentials from userinfo
@@ -233,7 +233,7 @@ func (c *ReplicaClient) LTXFiles(ctx context.Context, level int, seek ltx.TXID, 
 		return nil, err
 	}
 
-	dir := litestream.LTXLevelDir(c.Path, level)
+	dir := replicate.LTXLevelDir(c.Path, level)
 	fis, err := sftpClient.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return ltx.NewFileInfoSliceIterator(nil), nil
@@ -272,7 +272,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 		return nil, err
 	}
 
-	filename := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	filename := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
 	// Use TeeReader to peek at LTX header while preserving data for upload
 	var buf bytes.Buffer
@@ -332,7 +332,7 @@ func (c *ReplicaClient) OpenLTXFile(ctx context.Context, level int, minTXID, max
 		return nil, err
 	}
 
-	filename := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	filename := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 	f, err := sftpClient.OpenFile(filename, os.O_RDONLY)
 	if err != nil {
 		return nil, err
@@ -362,7 +362,7 @@ func (c *ReplicaClient) DeleteLTXFiles(ctx context.Context, a []*ltx.FileInfo) (
 	}
 
 	for _, info := range a {
-		filename := litestream.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
+		filename := replicate.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
 
 		c.logger.Debug("deleting ltx file", "level", info.Level, "minTXID", info.MinTXID, "maxTXID", info.MaxTXID, "path", filename)
 

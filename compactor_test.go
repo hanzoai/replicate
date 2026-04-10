@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 func TestCompactor_Compact(t *testing.T) {
 	t.Run("L0ToL1", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create test L0 files
 		createTestLTXFile(t, client, 0, 1, 1)
@@ -37,17 +37,17 @@ func TestCompactor_Compact(t *testing.T) {
 
 	t.Run("NoFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		_, err := compactor.Compact(context.Background(), 1)
-		if err != litestream.ErrNoCompaction {
+		if err != replicate.ErrNoCompaction {
 			t.Errorf("err=%v, want ErrNoCompaction", err)
 		}
 	})
 
 	t.Run("L1ToL2", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create L0 files
 		createTestLTXFile(t, client, 0, 1, 1)
@@ -88,7 +88,7 @@ func TestCompactor_Compact(t *testing.T) {
 func TestCompactor_MaxLTXFileInfo(t *testing.T) {
 	t.Run("WithFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		createTestLTXFile(t, client, 0, 1, 1)
 		createTestLTXFile(t, client, 0, 2, 2)
@@ -105,7 +105,7 @@ func TestCompactor_MaxLTXFileInfo(t *testing.T) {
 
 	t.Run("NoFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		info, err := compactor.MaxLTXFileInfo(context.Background(), 0)
 		if err != nil {
@@ -118,7 +118,7 @@ func TestCompactor_MaxLTXFileInfo(t *testing.T) {
 
 	t.Run("WithCache", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Use callbacks for caching
 		cache := make(map[int]*ltx.FileInfo)
@@ -155,7 +155,7 @@ func TestCompactor_MaxLTXFileInfo(t *testing.T) {
 func TestCompactor_EnforceRetentionByTXID(t *testing.T) {
 	t.Run("DeletesOldFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create files at L1
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -195,7 +195,7 @@ func TestCompactor_EnforceRetentionByTXID(t *testing.T) {
 
 	t.Run("KeepsLastFile", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create single file
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -220,7 +220,7 @@ func TestCompactor_EnforceRetentionByTXID(t *testing.T) {
 func TestCompactor_EnforceL0Retention(t *testing.T) {
 	t.Run("DeletesCompactedFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create L0 files
 		createTestLTXFile(t, client, 0, 1, 1)
@@ -258,7 +258,7 @@ func TestCompactor_EnforceL0Retention(t *testing.T) {
 
 	t.Run("SkipsIfNoL1", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create L0 files without compacting to L1
 		createTestLTXFile(t, client, 0, 1, 1)
@@ -290,12 +290,12 @@ func TestCompactor_EnforceL0Retention(t *testing.T) {
 func TestCompactor_EnforceSnapshotRetention(t *testing.T) {
 	t.Run("DeletesOldSnapshots", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create snapshot files with different timestamps
-		createTestLTXFileWithTimestamp(t, client, litestream.SnapshotLevel, 1, 5, time.Now().Add(-2*time.Hour))
-		createTestLTXFileWithTimestamp(t, client, litestream.SnapshotLevel, 1, 10, time.Now().Add(-30*time.Minute))
-		createTestLTXFileWithTimestamp(t, client, litestream.SnapshotLevel, 1, 15, time.Now().Add(-5*time.Minute))
+		createTestLTXFileWithTimestamp(t, client, replicate.SnapshotLevel, 1, 5, time.Now().Add(-2*time.Hour))
+		createTestLTXFileWithTimestamp(t, client, replicate.SnapshotLevel, 1, 10, time.Now().Add(-30*time.Minute))
+		createTestLTXFileWithTimestamp(t, client, replicate.SnapshotLevel, 1, 15, time.Now().Add(-5*time.Minute))
 
 		// Enforce retention - keep snapshots from last hour
 		_, err := compactor.EnforceSnapshotRetention(context.Background(), time.Hour)
@@ -304,7 +304,7 @@ func TestCompactor_EnforceSnapshotRetention(t *testing.T) {
 		}
 
 		// Count remaining snapshots
-		itr, err := client.LTXFiles(context.Background(), litestream.SnapshotLevel, 0, false)
+		itr, err := client.LTXFiles(context.Background(), replicate.SnapshotLevel, 0, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -323,7 +323,7 @@ func TestCompactor_EnforceSnapshotRetention(t *testing.T) {
 
 func TestCompactor_EnforceSnapshotRetention_RetentionDisabled(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
-	compactor := litestream.NewCompactor(client, slog.Default())
+	compactor := replicate.NewCompactor(client, slog.Default())
 	compactor.RetentionEnabled = false
 
 	var localDeleted []ltx.TXID
@@ -332,9 +332,9 @@ func TestCompactor_EnforceSnapshotRetention_RetentionDisabled(t *testing.T) {
 		return nil
 	}
 
-	createTestLTXFileWithTimestamp(t, client, litestream.SnapshotLevel, 1, 5, time.Now().Add(-2*time.Hour))
-	createTestLTXFileWithTimestamp(t, client, litestream.SnapshotLevel, 1, 10, time.Now().Add(-30*time.Minute))
-	createTestLTXFileWithTimestamp(t, client, litestream.SnapshotLevel, 1, 15, time.Now().Add(-5*time.Minute))
+	createTestLTXFileWithTimestamp(t, client, replicate.SnapshotLevel, 1, 5, time.Now().Add(-2*time.Hour))
+	createTestLTXFileWithTimestamp(t, client, replicate.SnapshotLevel, 1, 10, time.Now().Add(-30*time.Minute))
+	createTestLTXFileWithTimestamp(t, client, replicate.SnapshotLevel, 1, 15, time.Now().Add(-5*time.Minute))
 
 	_, err := compactor.EnforceSnapshotRetention(context.Background(), time.Hour)
 	if err != nil {
@@ -342,7 +342,7 @@ func TestCompactor_EnforceSnapshotRetention_RetentionDisabled(t *testing.T) {
 	}
 
 	// Remote files should all still exist (skip remote deletion).
-	itr, err := client.LTXFiles(context.Background(), litestream.SnapshotLevel, 0, false)
+	itr, err := client.LTXFiles(context.Background(), replicate.SnapshotLevel, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -364,7 +364,7 @@ func TestCompactor_EnforceSnapshotRetention_RetentionDisabled(t *testing.T) {
 
 func TestCompactor_EnforceRetentionByTXID_RetentionDisabled(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
-	compactor := litestream.NewCompactor(client, slog.Default())
+	compactor := replicate.NewCompactor(client, slog.Default())
 	compactor.RetentionEnabled = false
 
 	var localDeleted []ltx.TXID
@@ -405,7 +405,7 @@ func TestCompactor_EnforceRetentionByTXID_RetentionDisabled(t *testing.T) {
 
 func TestCompactor_EnforceL0Retention_RetentionDisabled(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
-	compactor := litestream.NewCompactor(client, slog.Default())
+	compactor := replicate.NewCompactor(client, slog.Default())
 	compactor.RetentionEnabled = false
 
 	var localDeleted []ltx.TXID
@@ -456,7 +456,7 @@ func TestCompactor_EnforceL0Retention_RetentionDisabled(t *testing.T) {
 func TestCompactor_VerifyLevelConsistency(t *testing.T) {
 	t.Run("ContiguousFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create contiguous files
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -472,7 +472,7 @@ func TestCompactor_VerifyLevelConsistency(t *testing.T) {
 
 	t.Run("GapDetected", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create files with a gap (missing TXID 3-4)
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -489,7 +489,7 @@ func TestCompactor_VerifyLevelConsistency(t *testing.T) {
 
 	t.Run("OverlapDetected", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create overlapping files
 		createTestLTXFile(t, client, 1, 1, 5)
@@ -506,7 +506,7 @@ func TestCompactor_VerifyLevelConsistency(t *testing.T) {
 
 	t.Run("SingleFile", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Create single file - should pass
 		createTestLTXFile(t, client, 1, 1, 5)
@@ -519,7 +519,7 @@ func TestCompactor_VerifyLevelConsistency(t *testing.T) {
 
 	t.Run("EmptyLevel", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Empty level - should pass
 		err := compactor.VerifyLevelConsistency(context.Background(), 1)
@@ -532,7 +532,7 @@ func TestCompactor_VerifyLevelConsistency(t *testing.T) {
 func TestCompactor_CompactWithVerification(t *testing.T) {
 	t.Run("VerificationEnabled", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 		compactor.VerifyCompaction = true
 
 		// Create contiguous L0 files
@@ -560,13 +560,13 @@ func containsString(s, substr string) bool {
 }
 
 // createTestLTXFile creates a minimal LTX file for testing.
-func createTestLTXFile(t testing.TB, client litestream.ReplicaClient, level int, minTXID, maxTXID ltx.TXID) {
+func createTestLTXFile(t testing.TB, client replicate.ReplicaClient, level int, minTXID, maxTXID ltx.TXID) {
 	t.Helper()
 	createTestLTXFileWithTimestamp(t, client, level, minTXID, maxTXID, time.Now())
 }
 
 // createTestLTXFileWithTimestamp creates a minimal LTX file with a specific timestamp.
-func createTestLTXFileWithTimestamp(t testing.TB, client litestream.ReplicaClient, level int, minTXID, maxTXID ltx.TXID, ts time.Time) {
+func createTestLTXFileWithTimestamp(t testing.TB, client replicate.ReplicaClient, level int, minTXID, maxTXID ltx.TXID, ts time.Time) {
 	t.Helper()
 
 	var buf bytes.Buffer

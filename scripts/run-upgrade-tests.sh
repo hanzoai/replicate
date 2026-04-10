@@ -7,8 +7,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CACHE_DIR="$ROOT_DIR/.cache/litestream-v3"
-V3_BIN="$CACHE_DIR/litestream"
+CACHE_DIR="$ROOT_DIR/.cache/replicate-v3"
+V3_BIN="$CACHE_DIR/replicate"
 
 # Detect platform.
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -25,7 +25,7 @@ esac
 
 # Download v0.3.13 binary if not cached.
 if [ ! -x "$V3_BIN" ]; then
-    echo "Downloading Litestream v0.3.13 (${OS}-${ARCH})..."
+    echo "Downloading upstream Litestream v0.3.13 (${OS}-${ARCH})..."
     mkdir -p "$CACHE_DIR"
 
     case "$OS" in
@@ -58,12 +58,12 @@ echo "v0.3.13 version: $("$V3_BIN" version)"
 # Build current binaries.
 echo "Building current binaries..."
 cd "$ROOT_DIR"
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
-echo "Current version: $(./bin/litestream version)"
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
+echo "Current version: $(./bin/replicate version)"
 
 # Run upgrade tests.
 echo ""
 echo "Running upgrade integration tests..."
-LITESTREAM_V3_BIN="$V3_BIN" CGO_ENABLED=1 \
+REPLICATE_V3_BIN="$V3_BIN" CGO_ENABLED=1 \
     go test -v -tags=integration -timeout=10m ./tests/integration/... -run=TestUpgrade "$@"

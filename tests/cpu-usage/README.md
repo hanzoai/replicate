@@ -1,18 +1,18 @@
 # CPU Usage Testing
 
-This directory contains test scripts and configurations for measuring Litestream's idle CPU usage, particularly for validating the fixes in issue #992.
+This directory contains test scripts and configurations for measuring Replicate's idle CPU usage, particularly for validating the fixes in issue #992.
 
 ## Files
 
 - `test-cpu-usage.sh` - Automated CPU monitoring script
-- `litestream-test-polling.yml` - Config for testing with S3 replication
+- `replicate-test-polling.yml` - Config for testing with S3 replication
 
 ## Prerequisites
 
-1. Build Litestream binary:
+1. Build Replicate binary:
    ```bash
    cd ../..
-   go build -o bin/litestream ./cmd/litestream
+   go build -o bin/replicate ./cmd/replicate
    ```
 
 2. Set up AWS credentials in `.envrc` at repo root:
@@ -41,7 +41,7 @@ From this directory, run:
 
 The script:
 1. Creates a test SQLite database at `/tmp/test.db`
-2. Starts Litestream with S3 replication
+2. Starts Replicate with S3 replication
 3. Monitors CPU usage every second using `ps`
 4. Calculates average CPU usage
 5. Verifies S3 replication is working
@@ -59,7 +59,7 @@ The S3 transport fix achieves near-zero idle CPU usage, validating the fix.
 ## Output
 
 Results are printed to stdout and detailed logs are saved to:
-- `/tmp/litestream-cpu-log.csv` - Per-second CPU measurements
+- `/tmp/replicate-cpu-log.csv` - Per-second CPU measurements
 
 ## Notes
 

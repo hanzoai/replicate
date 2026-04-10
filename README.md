@@ -27,7 +27,7 @@ ghcr.io/hanzoai/replicate:latest
 ## Encryption
 
 Replicated data is encrypted before leaving the process using `luxfi/age`.
-Configure encryption in `litestream.yml`:
+Configure encryption in `replicate.yml`:
 
 ```yaml
 dbs:

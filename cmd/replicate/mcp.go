@@ -82,7 +82,7 @@ func isReplicaURL(path string) bool {
 
 func DatabasesTool(configPath string) (mcp.Tool, server.ToolHandlerFunc) {
 	tool := mcp.NewTool("replicate_databases",
-		mcp.WithDescription("List databases and their replicas as defined in the replicate config file. The default path is /etc/litestream.yml but is not required."),
+		mcp.WithDescription("List databases and their replicas as defined in the replicate config file. The default path is /etc/replicate.yml but is not required."),
 		mcp.WithString("config", mcp.Description("Path to the replicate config file. Optional.")),
 	)
 

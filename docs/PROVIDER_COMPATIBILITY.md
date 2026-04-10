@@ -1,13 +1,13 @@
 # Storage Provider Compatibility Guide
 
-This document details S3-compatible storage provider compatibility with Litestream,
+This document details S3-compatible storage provider compatibility with Replicate,
 including known limitations, required configuration, and tested configurations.
 
 ## Overview
 
-Litestream uses the AWS SDK v2 for S3-compatible storage backends. While most providers
+Replicate uses the AWS SDK v2 for S3-compatible storage backends. While most providers
 implement the S3 API, there are important differences in behavior that can affect
-Litestream's operation.
+Replicate's operation.
 
 ## Provider-Specific Configuration
 
@@ -272,12 +272,12 @@ replicas:
     sas-token: "sv=2023-01-03&ss=b&srt=co&sp=rwdlacx..."
 ```
 
-Or via environment variable: `LITESTREAM_AZURE_SAS_TOKEN`
+Or via environment variable: `REPLICATE_AZURE_SAS_TOKEN`
 
 **Alternative Authentication**:
 
-- SAS token: `sas-token` config or `LITESTREAM_AZURE_SAS_TOKEN` env var
-- Account key: `account-key` config or `LITESTREAM_AZURE_ACCOUNT_KEY` env var
+- SAS token: `sas-token` config or `REPLICATE_AZURE_SAS_TOKEN` env var
+- Account key: `account-key` config or `REPLICATE_AZURE_ACCOUNT_KEY` env var
 - Managed identity on Azure (via DefaultAzureCredential)
 
 **Authentication Priority**: SAS token > Account key > Default credential chain
@@ -328,7 +328,7 @@ Parameters with an alias accept both camelCase and hyphenated forms
 
 ### Provider Detection
 
-Litestream automatically detects certain providers and applies appropriate defaults:
+Replicate automatically detects certain providers and applies appropriate defaults:
 
 | Provider | Detection Pattern | Applied Settings |
 |----------|-------------------|------------------|
@@ -379,7 +379,7 @@ Litestream automatically detects certain providers and applies appropriate defau
 Enable verbose logging to diagnose issues:
 
 ```bash
-LITESTREAM_DEBUG=1 litestream replicate ...
+REPLICATE_DEBUG=1 replicate replicate ...
 ```
 
 Or in configuration:
@@ -395,23 +395,23 @@ Test connectivity without starting replication:
 
 ```bash
 # List any existing backups
-litestream snapshots s3://bucket/path?endpoint=...
+replicate snapshots s3://bucket/path?endpoint=...
 
 # Perform a test restore (requires existing backup)
-litestream restore -o /tmp/test.db s3://bucket/path?endpoint=...
+replicate restore -o /tmp/test.db s3://bucket/path?endpoint=...
 ```
 
 ## Version Compatibility
 
-- **Litestream v0.5.x**: AWS SDK v2, improved provider compatibility
-- **Litestream v0.4.x**: AWS SDK v1, different authentication handling
-- **Litestream v0.3.x**: Legacy format — v0.5.x can restore from v0.3.x backups via `ReplicaClientV3` interface
+- **Replicate v0.5.x**: AWS SDK v2, improved provider compatibility
+- **Replicate v0.4.x**: AWS SDK v1, different authentication handling
+- **Replicate v0.3.x**: Legacy format — v0.5.x can restore from v0.3.x backups via `ReplicaClientV3` interface
 
 When upgrading from v0.3.x, v0.5.x can automatically restore from v0.3.x backups if no v0.4.x+ backup exists. The S3 backend implements `ReplicaClientV3` to read the v0.3.x `generations/{id}/snapshots/` and `generations/{id}/wal/` directory structure. See [REPLICA_CLIENT_GUIDE.md](REPLICA_CLIENT_GUIDE.md#replicaclientv3-interface-v03x-restore) for details.
 
 ### Validation Interval
 
-Litestream supports periodic validation of replica integrity:
+Replicate supports periodic validation of replica integrity:
 
 ```yaml
 validation:
@@ -427,9 +427,9 @@ instructions.
 When reporting provider compatibility issues, please include:
 
 1. Provider name and region
-2. Litestream version (`litestream version`)
+2. Replicate version (`replicate version`)
 3. Full error message
 4. Configuration (with credentials redacted)
 5. Whether the issue is with replication, restore, or both
 
-File issues at: [GitHub Issues](https://github.com/benbjohnson/litestream/issues)
+File issues at: [GitHub Issues](https://github.com/benbjohnson/replicate/issues)

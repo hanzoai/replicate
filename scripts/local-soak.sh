@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Local nightly soak test runner for Litestream.
+# Local nightly soak test runner for Replicate.
 # Usage:
 #   ./scripts/local-soak.sh              # 30m per profile (default)
 #   ./scripts/local-soak.sh 2h           # 2h per profile
@@ -18,7 +18,7 @@ mkdir -p "$LOG_DIR"
 
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
-log "Litestream local soak test"
+log "Replicate local soak test"
 log "Duration per profile: $DURATION"
 log "Log: $LOG_FILE"
 log ""
@@ -28,15 +28,15 @@ cd "$REPO_DIR"
 # Clean up old test artifacts so results are unambiguous.
 # Every error in the run is guaranteed to be from THIS run.
 log "Cleaning old test artifacts..."
-rm -rf /tmp/litestream-ltx-behavior-* /tmp/litestream-minio-soak-* /tmp/litestream-comprehensive-soak-*
+rm -rf /tmp/replicate-ltx-behavior-* /tmp/replicate-minio-soak-* /tmp/replicate-comprehensive-soak-*
 go clean -testcache
 log "Clean complete."
 log ""
 
 # Build binaries
 log "Building binaries..."
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 log "Build complete."
 log ""
 
@@ -81,7 +81,7 @@ log "================================================"
 log "LTX Behavioral: $([ $LTX_EXIT -eq 0 ] && echo 'PASS' || echo 'FAIL')"
 log "Snapshot Regression: $([ $SNAP_EXIT -eq 0 ] && echo 'PASS' || echo 'FAIL')"
 log "Full log: $LOG_FILE"
-log "Artifacts: /tmp/litestream-ltx-behavior-*/"
+log "Artifacts: /tmp/replicate-ltx-behavior-*/"
 
 if [[ $LTX_EXIT -ne 0 || $SNAP_EXIT -ne 0 ]]; then
     log "FAILURES DETECTED — review log for details"

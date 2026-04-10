@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"bytes"
@@ -31,17 +31,17 @@ func TestStore_CompactDB_RemotePartialRead(t *testing.T) {
 	client := newDelayedReplicaClient(200 * time.Millisecond)
 
 	dbPath := filepath.Join(t.TempDir(), "db")
-	db := litestream.NewDB(dbPath)
+	db := replicate.NewDB(dbPath)
 	db.MonitorInterval = 0
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.MonitorEnabled = false
 
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: time.Second},
 	}
-	store := litestream.NewStore([]*litestream.DB{db}, levels)
+	store := replicate.NewStore([]*replicate.DB{db}, levels)
 	store.CompactionMonitorEnabled = false
 
 	if err := store.Open(ctx); err != nil {
@@ -94,7 +94,7 @@ func TestStore_CompactDB_RemotePartialRead(t *testing.T) {
 	client.waitForAvailability()
 
 	restorePath := filepath.Join(t.TempDir(), "restore.db")
-	if err := db.Replica.Restore(ctx, litestream.RestoreOptions{OutputPath: restorePath}); err != nil {
+	if err := db.Replica.Restore(ctx, replicate.RestoreOptions{OutputPath: restorePath}); err != nil {
 		t.Fatalf("restore: %v", err)
 	}
 }
