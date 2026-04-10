@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-# Test Litestream v0.3.x to v0.5.0 upgrade scenarios
+# Test Replicate v0.3.x to v0.5.0 upgrade scenarios
 # Based on conversation with Ben Johnson about upgrade behavior expectations
 
 echo "=========================================="
-echo "Litestream v0.3.x → v0.5.0 Upgrade Test"
+echo "Replicate v0.3.x → v0.5.0 Upgrade Test"
 echo "=========================================="
 echo ""
-echo "Testing upgrade from Litestream v0.3.13 to v0.5.0"
+echo "Testing upgrade from Replicate v0.3.13 to v0.5.0"
 echo ""
 
 # Configuration
@@ -16,14 +16,14 @@ DB="/tmp/upgrade-test.db"
 REPLICA="/tmp/upgrade-replica"
 RESTORED_V3="/tmp/upgrade-restored-v3.db"
 RESTORED_V5="/tmp/upgrade-restored-v5.db"
-LITESTREAM_V3="/opt/homebrew/bin/litestream"
-LITESTREAM_V5="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE_V3="/opt/homebrew/bin/replicate"
+REPLICATE_V5="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*upgrade-test.db" 2>/dev/null || true
-    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-litestream"
+    pkill -f "replicate replicate.*upgrade-test.db" 2>/dev/null || true
+    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-replicate"
     rm -f "$RESTORED_V3" "$RESTORED_V3-wal" "$RESTORED_V3-shm"
     rm -f "$RESTORED_V5" "$RESTORED_V5-wal" "$RESTORED_V5-shm"
     rm -rf "$REPLICA"
@@ -37,20 +37,20 @@ cleanup
 
 # Verify versions
 echo ""
-echo "[VERSIONS] Verifying Litestream versions..."
-V3_VERSION=$($LITESTREAM_V3 version 2>/dev/null || echo "NOT_FOUND")
-V5_VERSION=$($LITESTREAM_V5 version 2>/dev/null || echo "NOT_FOUND")
+echo "[VERSIONS] Verifying Replicate versions..."
+V3_VERSION=$($REPLICATE_V3 version 2>/dev/null || echo "NOT_FOUND")
+V5_VERSION=$($REPLICATE_V5 version 2>/dev/null || echo "NOT_FOUND")
 
 echo "  v0.3.x (system): $V3_VERSION"
 echo "  v0.5.0 (built):  $V5_VERSION"
 
 if [ "$V3_VERSION" = "NOT_FOUND" ]; then
-    echo "  ✗ System Litestream v0.3.x not found at $LITESTREAM_V3"
+    echo "  ✗ System Replicate v0.3.x not found at $REPLICATE_V3"
     exit 1
 fi
 
 if [ "$V5_VERSION" = "NOT_FOUND" ]; then
-    echo "  ✗ Built Litestream v0.5.0 not found at $LITESTREAM_V5"
+    echo "  ✗ Built Replicate v0.5.0 not found at $REPLICATE_V5"
     exit 1
 fi
 
@@ -76,17 +76,17 @@ INITIAL_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM upgrade_test;")
 echo "  ✓ Database created with $INITIAL_COUNT rows"
 
 echo ""
-echo "[2] Starting Litestream v0.3.13 replication..."
-$LITESTREAM_V3 replicate "$DB" "file://$REPLICA" > /tmp/upgrade-v3.log 2>&1 &
+echo "[2] Starting Replicate v0.3.13 replication..."
+$REPLICATE_V3 replicate "$DB" "file://$REPLICA" > /tmp/upgrade-v3.log 2>&1 &
 V3_PID=$!
 sleep 3
 
 if ! kill -0 $V3_PID 2>/dev/null; then
-    echo "  ✗ Litestream v0.3.13 failed to start"
+    echo "  ✗ Replicate v0.3.13 failed to start"
     cat /tmp/upgrade-v3.log
     exit 1
 fi
-echo "  ✓ Litestream v0.3.13 running (PID: $V3_PID)"
+echo "  ✓ Replicate v0.3.13 running (PID: $V3_PID)"
 
 echo ""
 echo "[3] Adding data while v0.3.13 is replicating..."
@@ -115,7 +115,7 @@ fi
 
 echo ""
 echo "[5] Testing v0.3.x restore capability..."
-$LITESTREAM_V3 restore -o "$RESTORED_V3" "file://$REPLICA" > /tmp/upgrade-restore-v3.log 2>&1
+$REPLICATE_V3 restore -o "$RESTORED_V3" "file://$REPLICA" > /tmp/upgrade-restore-v3.log 2>&1
 if [ $? -eq 0 ]; then
     RESTORED_V3_COUNT=$(sqlite3 "$RESTORED_V3" "SELECT COUNT(*) FROM upgrade_test;" 2>/dev/null || echo "0")
     echo "  ✓ v0.3.x restore successful: $RESTORED_V3_COUNT rows"
@@ -130,13 +130,13 @@ echo "=========================================="
 echo "Phase 2: Upgrade to v0.5.0"
 echo "=========================================="
 
-echo "[6] Stopping Litestream v0.3.13..."
+echo "[6] Stopping Replicate v0.3.13..."
 kill $V3_PID 2>/dev/null || true
 wait $V3_PID 2>/dev/null
 echo "  ✓ v0.3.13 stopped"
 
 echo ""
-echo "[7] Adding data while Litestream is offline..."
+echo "[7] Adding data while Replicate is offline..."
 for i in {1..3}; do
     sqlite3 "$DB" "INSERT INTO upgrade_test (phase, data) VALUES ('offline-transition', randomblob(1200));"
 done
@@ -144,17 +144,17 @@ OFFLINE_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM upgrade_test;")
 echo "  ✓ Added data during transition, total rows: $OFFLINE_COUNT"
 
 echo ""
-echo "[8] Starting Litestream v0.5.0..."
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/upgrade-v5.log 2>&1 &
+echo "[8] Starting Replicate v0.5.0..."
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/upgrade-v5.log 2>&1 &
 V5_PID=$!
 sleep 3
 
 if ! kill -0 $V5_PID 2>/dev/null; then
-    echo "  ✗ Litestream v0.5.0 failed to start"
+    echo "  ✗ Replicate v0.5.0 failed to start"
     cat /tmp/upgrade-v5.log
     exit 1
 fi
-echo "  ✓ Litestream v0.5.0 running (PID: $V5_PID)"
+echo "  ✓ Replicate v0.5.0 running (PID: $V5_PID)"
 
 echo ""
 echo "[9] Checking for #754 flag errors in upgrade scenario..."
@@ -199,7 +199,7 @@ echo "Phase 3: Restore compatibility testing"
 echo "=========================================="
 
 echo "[12] Testing v0.5.0 restore from mixed backup files..."
-$LITESTREAM_V5 restore -o "$RESTORED_V5" "file://$REPLICA" > /tmp/upgrade-restore-v5.log 2>&1
+$REPLICATE_V5 restore -o "$RESTORED_V5" "file://$REPLICA" > /tmp/upgrade-restore-v5.log 2>&1
 RESTORE_EXIT=$?
 
 if [ $RESTORE_EXIT -eq 0 ]; then

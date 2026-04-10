@@ -21,8 +21,8 @@ echo ""
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-LITESTREAM="$PROJECT_ROOT/bin/litestream"
-LITESTREAM_TEST="$PROJECT_ROOT/bin/litestream-test"
+REPLICATE="$PROJECT_ROOT/bin/replicate"
+REPLICATE_TEST="$PROJECT_ROOT/bin/replicate-test"
 S3_MOCK="$PROJECT_ROOT/etc/s3_mock.py"
 
 # Test configuration
@@ -81,24 +81,24 @@ check_dependencies() {
     # Check for required binaries
     local missing_deps=false
 
-    if [ ! -f "$LITESTREAM" ]; then
-        echo "Building litestream binary..."
-        go build -o bin/litestream ./cmd/litestream || {
-            echo "✗ Failed to build litestream"
+    if [ ! -f "$REPLICATE" ]; then
+        echo "Building replicate binary..."
+        go build -o bin/replicate ./cmd/replicate || {
+            echo "✗ Failed to build replicate"
             missing_deps=true
         }
     else
-        echo "✓ litestream binary found"
+        echo "✓ replicate binary found"
     fi
 
-    if [ ! -f "$LITESTREAM_TEST" ]; then
-        echo "Building litestream-test binary..."
-        go build -o bin/litestream-test ./cmd/litestream-test || {
-            echo "✗ Failed to build litestream-test"
+    if [ ! -f "$REPLICATE_TEST" ]; then
+        echo "Building replicate-test binary..."
+        go build -o bin/replicate-test ./cmd/replicate-test || {
+            echo "✗ Failed to build replicate-test"
             missing_deps=true
         }
     else
-        echo "✓ litestream-test binary found"
+        echo "✓ replicate-test binary found"
     fi
 
     # Check for Python dependencies
@@ -144,7 +144,7 @@ global_cleanup() {
     echo "Performing global cleanup..."
 
     # Kill any running processes
-    pkill -f "litestream replicate" 2>/dev/null || true
+    pkill -f "replicate replicate" 2>/dev/null || true
     pkill -f "python.*s3_mock.py" 2>/dev/null || true
 
     if [ "$CLEANUP_AFTER" = true ]; then
@@ -389,7 +389,7 @@ generate_final_report() {
     echo "Critical Validations:"
     echo "===================="
     echo "✓ Local S3 mock environment setup and operation"
-    echo "✓ Litestream replication with retention policies"
+    echo "✓ Replicate replication with retention policies"
     echo "✓ Database restoration from replicated data"
     echo "✓ Multi-scenario testing approach"
 
@@ -428,7 +428,7 @@ generate_final_report() {
     echo "3. Monitor actual storage costs and API usage patterns"
     echo "4. Validate behavior under network interruptions"
     echo "5. Test with multiple concurrent databases"
-    echo "6. Verify cleanup across different Litestream versions"
+    echo "6. Verify cleanup across different Replicate versions"
 
     echo ""
     echo "For Ben's Review:"

@@ -1,6 +1,6 @@
-# SQLite Internals for Litestream
+# SQLite Internals for Replicate
 
-This document explains SQLite internals critical for understanding Litestream's operation.
+This document explains SQLite internals critical for understanding Replicate's operation.
 
 ## Table of Contents
 - [SQLite File Structure](#sqlite-file-structure)
@@ -85,7 +85,7 @@ type WALFrameHeader struct {
 }
 ```
 
-### Reading WAL in Litestream
+### Reading WAL in Replicate
 
 ```go
 // db.go - Reading WAL for replication
@@ -206,7 +206,7 @@ func LockPageNumber(pageSize int) uint32 {
 3. **Affects large databases** - Only databases >1GB
 4. **Page number changes** - Different for each page size
 
-### Implementation in Litestream
+### Implementation in Replicate
 
 ```go
 // From superfly/ltx package
@@ -283,7 +283,7 @@ graph TD
 3. **PENDING** - Blocking new SHARED locks
 4. **EXCLUSIVE** - Single writer, no readers
 
-### Litestream's Long-Running Read Transaction
+### Replicate's Long-Running Read Transaction
 
 ```go
 // db.go - Maintaining read transaction for consistency
@@ -349,7 +349,7 @@ PRAGMA wal_checkpoint(TRUNCATE);
 - Truncates WAL file to zero length
 - Releases disk space
 
-### Litestream Checkpoint Strategy
+### Replicate Checkpoint Strategy
 
 ```go
 // db.go - Checkpoint decision logic
@@ -376,7 +376,7 @@ func (db *DB) autoCheckpoint() error {
 
 ## Important SQLite Pragmas
 
-### Essential Pragmas for Litestream
+### Essential Pragmas for Replicate
 
 ```sql
 -- Enable WAL mode (required)
@@ -431,7 +431,7 @@ func getDatabaseInfo(db *sql.DB) (*DBInfo, error) {
 
 ### Direct SQLite Access
 
-Litestream uses both database/sql and direct SQLite APIs:
+Replicate uses both database/sql and direct SQLite APIs:
 
 ```go
 // Using database/sql for queries
@@ -463,7 +463,7 @@ db, err := sql.Open("sqlite3", "database.db?_journal=WAL&_busy_timeout=5000&_syn
 ### WAL File Access Pattern
 
 ```go
-// Litestream's approach to reading WAL
+// Replicate's approach to reading WAL
 func (db *DB) monitorWAL() {
     walPath := db.path + "-wal"
 
@@ -491,7 +491,7 @@ func (db *DB) monitorWAL() {
 ### 1. Automatic Checkpoint
 SQLite automatically checkpoints when WAL reaches 1000 pages (default):
 ```go
-// Can interfere with Litestream's control
+// Can interfere with Replicate's control
 // Solution: Set high threshold
 db.Exec("PRAGMA wal_autocheckpoint = 10000")
 ```
@@ -519,7 +519,7 @@ db.Exec("PRAGMA cache_size = -64000") // 64MB
 
 ## WAL to LTX Conversion
 
-Litestream converts WAL frames to LTX format:
+Replicate converts WAL frames to LTX format:
 
 ```go
 func walToLTX(walFrames []WALFrame) *LTXFile {
@@ -556,7 +556,7 @@ func walToLTX(walFrames []WALFrame) *LTXFile {
 4. **Transactions provide consistency** - Long-running read prevents changes
 5. **Checkpoints are critical** - Balance between WAL size and performance
 6. **SQLite locks coordinate access** - Understanding prevents deadlocks
-7. **Pragmas control behavior** - Must be set correctly for Litestream
+7. **Pragmas control behavior** - Must be set correctly for Replicate
 
 This understanding is essential for:
 - Debugging replication issues

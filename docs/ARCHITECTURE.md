@@ -1,4 +1,4 @@
-# Litestream Architecture - Technical Deep Dive
+# Replicate Architecture - Technical Deep Dive
 
 ## Table of Contents
 - [System Layers](#system-layers)
@@ -17,12 +17,12 @@
 
 ## System Layers
 
-Litestream follows a layered architecture with clear separation of concerns:
+Replicate follows a layered architecture with clear separation of concerns:
 
 ```mermaid
 graph TB
     subgraph "Application Layer"
-        CLI[CLI Commands<br/>cmd/litestream/]
+        CLI[CLI Commands<br/>cmd/replicate/]
         Config[Configuration<br/>config.go]
     end
 
@@ -94,7 +94,7 @@ graph TB
 
 ### DB Component (db.go)
 
-The DB component is the heart of Litestream, managing a single SQLite database:
+The DB component is the heart of Replicate, managing a single SQLite database:
 
 ```go
 type DB struct {
@@ -211,14 +211,14 @@ type Store struct {
 
 ## IPC Server & Control Socket
 
-Litestream exposes a Unix socket HTTP server for runtime control (`server.go`).
+Replicate exposes a Unix socket HTTP server for runtime control (`server.go`).
 
 ### Socket Configuration
 
 ```go
 type SocketConfig struct {
     Enabled     bool   `yaml:"enabled"`     // Default: false
-    Path        string `yaml:"path"`        // Default: "/var/run/litestream.sock"
+    Path        string `yaml:"path"`        // Default: "/var/run/replicate.sock"
     Permissions uint32 `yaml:"permissions"` // Default: 0600
 }
 ```
@@ -258,7 +258,7 @@ type TXIDResponse struct {
 
 ## Distributed Leasing
 
-The `Leaser` interface (`leaser.go`) enables distributed coordination so multiple Litestream instances can safely share a replica destination.
+The `Leaser` interface (`leaser.go`) enables distributed coordination so multiple Replicate instances can safely share a replica destination.
 
 ### Interface
 
@@ -296,7 +296,7 @@ type Lease struct {
 
 ## Library Convenience Methods
 
-These methods on `DB` (`db.go`) simplify common operations when Litestream is used as a library:
+These methods on `DB` (`db.go`) simplify common operations when Replicate is used as a library:
 
 ```go
 type SyncStatus struct {
@@ -482,7 +482,7 @@ var DefaultCompactionLevels = CompactionLevels{
 
 ### Long-Running Read Transaction
 
-Litestream maintains a long-running read transaction to ensure consistency:
+Replicate maintains a long-running read transaction to ensure consistency:
 
 ```go
 func (db *DB) initReadTx() error {

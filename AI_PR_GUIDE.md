@@ -1,6 +1,6 @@
 # AI-Assisted Contribution Guide
 
-This guide helps AI assistants (and humans using them) submit high-quality PRs to Litestream.
+This guide helps AI assistants (and humans using them) submit high-quality PRs to Replicate.
 
 ## TL;DR Checklist
 

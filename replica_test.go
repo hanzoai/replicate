@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"bytes"
@@ -42,7 +42,7 @@ func TestReplica_Sync(t *testing.T) {
 	t.Logf("position after sync: %s", dpos.String())
 
 	c := file.NewReplicaClient(t.TempDir())
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 
 	if err := r.Sync(context.Background()); err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestReplica_Sync(t *testing.T) {
 	}
 
 	// Reset WAL so the next write will only write out the segment we are checking.
-	if err := db.Checkpoint(context.Background(), litestream.CheckpointModeTruncate); err != nil {
+	if err := db.Checkpoint(context.Background(), replicate.CheckpointModeTruncate); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,10 +131,10 @@ func TestReplica_RestoreAndReplicateAfterDataLoss(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Start litestream replication
+	// Start replicate replication
 	db1 := testingutil.NewDB(t, dbPath)
 	db1.MonitorInterval = 0
-	db1.Replica = litestream.NewReplicaWithClient(db1, replicaClient)
+	db1.Replica = replicate.NewReplicaWithClient(db1, replicaClient)
 	db1.Replica.MonitorEnabled = false
 
 	if err := db1.Open(); err != nil {
@@ -151,7 +151,7 @@ func TestReplica_RestoreAndReplicateAfterDataLoss(t *testing.T) {
 	}
 	t.Log("Step 1 complete: Initial data replicated")
 
-	// Step 2: Simulate hard recovery - remove database and .litestream directory, then restore
+	// Step 2: Simulate hard recovery - remove database and .replicate directory, then restore
 	if err := os.Remove(dbPath); err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestReplica_RestoreAndReplicateAfterDataLoss(t *testing.T) {
 	}
 
 	// Restore from backup
-	restoreOpt := litestream.RestoreOptions{
+	restoreOpt := replicate.RestoreOptions{
 		OutputPath: dbPath,
 	}
 	if err := db1.Replica.Restore(ctx, restoreOpt); err != nil {
@@ -178,7 +178,7 @@ func TestReplica_RestoreAndReplicateAfterDataLoss(t *testing.T) {
 	// Step 3: Start replication and insert new data
 	db2 := testingutil.NewDB(t, dbPath)
 	db2.MonitorInterval = 0
-	db2.Replica = litestream.NewReplicaWithClient(db2, replicaClient)
+	db2.Replica = replicate.NewReplicaWithClient(db2, replicaClient)
 	db2.Replica.MonitorEnabled = false
 
 	if err := db2.Open(); err != nil {
@@ -260,11 +260,11 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 
 	t.Run("SnapshotOnly", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
-			if level == litestream.SnapshotLevel {
+			if level == replicate.SnapshotLevel {
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{{
-					Level:     litestream.SnapshotLevel,
+					Level:     replicate.SnapshotLevel,
 					MinTXID:   1,
 					MaxTXID:   10,
 					Size:      1024,
@@ -274,7 +274,7 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 			return ltx.NewFileInfoSliceIterator(nil), nil
 		}
 
-		plan, err := litestream.CalcRestorePlan(context.Background(), r.Client, 10, time.Time{}, r.Logger())
+		plan, err := replicate.CalcRestorePlan(context.Background(), r.Client, 10, time.Time{}, r.Logger())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -288,13 +288,13 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 
 	t.Run("SnapshotAndIncremental", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 15},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 15},
 				}), nil
 			case 1:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -315,14 +315,14 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 			}
 		}
 
-		plan, err := litestream.CalcRestorePlan(context.Background(), r.Client, 10, time.Time{}, r.Logger())
+		plan, err := replicate.CalcRestorePlan(context.Background(), r.Client, 10, time.Time{}, r.Logger())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if got, want := len(plan), 4; got != want {
 			t.Fatalf("n=%v, want %v", got, want)
 		}
-		if got, want := *plan[0], (ltx.FileInfo{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
+		if got, want := *plan[0], (ltx.FileInfo{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
 			t.Fatalf("plan[0]=%#v, want %#v", got, want)
 		}
 		if got, want := *plan[1], (ltx.FileInfo{Level: 1, MinTXID: 6, MaxTXID: 7}); got != want {
@@ -338,12 +338,12 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 
 	t.Run("SelectLongestAcrossLevels", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
 				}), nil
 			case 2:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -358,14 +358,14 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 			}
 		}
 
-		plan, err := litestream.CalcRestorePlan(context.Background(), r.Client, 20, time.Time{}, r.Logger())
+		plan, err := replicate.CalcRestorePlan(context.Background(), r.Client, 20, time.Time{}, r.Logger())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if got, want := len(plan), 2; got != want {
 			t.Fatalf("n=%v, want %v", got, want)
 		}
-		if got, want := *plan[0], (ltx.FileInfo{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
+		if got, want := *plan[0], (ltx.FileInfo{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
 			t.Fatalf("plan[0]=%#v, want %#v", got, want)
 		}
 		if got, want := *plan[1], (ltx.FileInfo{Level: 0, MinTXID: 6, MaxTXID: 20}); got != want {
@@ -375,12 +375,12 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 
 	t.Run("GapInLevelResolvedByLowerLevel", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
 				}), nil
 			case 1:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -398,14 +398,14 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 			}
 		}
 
-		plan, err := litestream.CalcRestorePlan(context.Background(), r.Client, 10, time.Time{}, r.Logger())
+		plan, err := replicate.CalcRestorePlan(context.Background(), r.Client, 10, time.Time{}, r.Logger())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if got, want := len(plan), 4; got != want {
 			t.Fatalf("n=%v, want %v", got, want)
 		}
-		if got, want := *plan[0], (ltx.FileInfo{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
+		if got, want := *plan[0], (ltx.FileInfo{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
 			t.Fatalf("plan[0]=%#v, want %#v", got, want)
 		}
 		if got, want := *plan[1], (ltx.FileInfo{Level: 1, MinTXID: 6, MaxTXID: 7}); got != want {
@@ -421,12 +421,12 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 
 	t.Run("SkipsDuplicateRangesAcrossLevels", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 1},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 1},
 				}), nil
 			case 1:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -441,14 +441,14 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 			}
 		}
 
-		plan, err := litestream.CalcRestorePlan(context.Background(), r.Client, 1, time.Time{}, r.Logger())
+		plan, err := replicate.CalcRestorePlan(context.Background(), r.Client, 1, time.Time{}, r.Logger())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if got, want := len(plan), 1; got != want {
 			t.Fatalf("n=%v, want %v", got, want)
 		}
-		if got, want := *plan[0], (ltx.FileInfo{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 1}); got != want {
+		if got, want := *plan[0], (ltx.FileInfo{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 1}); got != want {
 			t.Fatalf("plan[0]=%#v, want %#v", got, want)
 		}
 	})
@@ -458,12 +458,12 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 	// rather than causing a non-contiguous error.
 	t.Run("OverlappingFilesWithinLevel", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5},
 				}), nil
 			case 2:
 				// Simulates issue #847: Files are sorted by MinTXID (filename order).
@@ -480,7 +480,7 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 			}
 		}
 
-		plan, err := litestream.CalcRestorePlan(context.Background(), r.Client, 100, time.Time{}, r.Logger())
+		plan, err := replicate.CalcRestorePlan(context.Background(), r.Client, 100, time.Time{}, r.Logger())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -488,7 +488,7 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 		if got, want := len(plan), 2; got != want {
 			t.Fatalf("n=%d, want %d", got, want)
 		}
-		if got, want := *plan[0], (ltx.FileInfo{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
+		if got, want := *plan[0], (ltx.FileInfo{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5}); got != want {
 			t.Fatalf("plan[0]=%#v, want %#v", got, want)
 		}
 		if got, want := *plan[1], (ltx.FileInfo{Level: 2, MinTXID: 1, MaxTXID: 100}); got != want {
@@ -498,20 +498,20 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 
 	t.Run("ErrTxNotAvailable", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 10},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 10},
 				}), nil
 			default:
 				return ltx.NewFileInfoSliceIterator(nil), nil
 			}
 		}
 
-		_, err := litestream.CalcRestorePlan(context.Background(), r.Client, 5, time.Time{}, r.Logger())
-		if !errors.Is(err, litestream.ErrTxNotAvailable) {
+		_, err := replicate.CalcRestorePlan(context.Background(), r.Client, 5, time.Time{}, r.Logger())
+		if !errors.Is(err, replicate.ErrTxNotAvailable) {
 			t.Fatalf("expected ErrTxNotAvailable, got %v", err)
 		}
 	})
@@ -521,10 +521,10 @@ func TestReplica_CalcRestorePlan(t *testing.T) {
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			return ltx.NewFileInfoSliceIterator(nil), nil
 		}
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 
-		_, err := litestream.CalcRestorePlan(context.Background(), r.Client, 5, time.Time{}, r.Logger())
-		if !errors.Is(err, litestream.ErrTxNotAvailable) {
+		_, err := replicate.CalcRestorePlan(context.Background(), r.Client, 5, time.Time{}, r.Logger())
+		if !errors.Is(err, replicate.ErrTxNotAvailable) {
 			t.Fatalf("expected ErrTxNotAvailable, got %v", err)
 		}
 	})
@@ -537,7 +537,7 @@ func TestReplica_TimeBounds(t *testing.T) {
 	t.Run("Level0Only", func(t *testing.T) {
 		now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			if level == 0 {
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -564,11 +564,11 @@ func TestReplica_TimeBounds(t *testing.T) {
 	t.Run("SnapshotOnly", func(t *testing.T) {
 		now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
-			if level == litestream.SnapshotLevel {
+			if level == replicate.SnapshotLevel {
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: now},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: now},
 				}), nil
 			}
 			return ltx.NewFileInfoSliceIterator(nil), nil
@@ -590,12 +590,12 @@ func TestReplica_TimeBounds(t *testing.T) {
 		snapshotTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		l0Time := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
 				}), nil
 			case 0:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -623,12 +623,12 @@ func TestReplica_TimeBounds(t *testing.T) {
 		l2Time := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 		l0Time := time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 5, CreatedAt: snapshotTime},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 5, CreatedAt: snapshotTime},
 				}), nil
 			case 2:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -657,7 +657,7 @@ func TestReplica_TimeBounds(t *testing.T) {
 
 	t.Run("NoFiles", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			return ltx.NewFileInfoSliceIterator(nil), nil
 		}
@@ -676,7 +676,7 @@ func TestReplica_TimeBounds(t *testing.T) {
 
 	t.Run("ErrorOnLevel", func(t *testing.T) {
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		errTest := errors.New("test error")
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			if level == 3 {
@@ -700,12 +700,12 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 		snapshotTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		l0Time := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
 				}), nil
 			case 0:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -717,7 +717,7 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 		}
 
 		ts := time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC)
-		updatedAt, err := r.CalcRestoreTarget(context.Background(), litestream.RestoreOptions{Timestamp: ts})
+		updatedAt, err := r.CalcRestoreTarget(context.Background(), replicate.RestoreOptions{Timestamp: ts})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -729,12 +729,12 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 	t.Run("TimestampBeforeAllFiles", func(t *testing.T) {
 		snapshotTime := time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
 				}), nil
 			default:
 				return ltx.NewFileInfoSliceIterator(nil), nil
@@ -742,7 +742,7 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 		}
 
 		ts := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-		_, err := r.CalcRestoreTarget(context.Background(), litestream.RestoreOptions{Timestamp: ts})
+		_, err := r.CalcRestoreTarget(context.Background(), replicate.RestoreOptions{Timestamp: ts})
 		if err == nil || err.Error() != "timestamp does not exist" {
 			t.Fatalf("expected 'timestamp does not exist', got %v", err)
 		}
@@ -751,12 +751,12 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 	t.Run("TimestampAfterAllFiles", func(t *testing.T) {
 		snapshotTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			switch level {
-			case litestream.SnapshotLevel:
+			case replicate.SnapshotLevel:
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
-					{Level: litestream.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
+					{Level: replicate.SnapshotLevel, MinTXID: 1, MaxTXID: 10, CreatedAt: snapshotTime},
 				}), nil
 			default:
 				return ltx.NewFileInfoSliceIterator(nil), nil
@@ -764,7 +764,7 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 		}
 
 		ts := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-		_, err := r.CalcRestoreTarget(context.Background(), litestream.RestoreOptions{Timestamp: ts})
+		_, err := r.CalcRestoreTarget(context.Background(), replicate.RestoreOptions{Timestamp: ts})
 		if err == nil || err.Error() != "timestamp does not exist" {
 			t.Fatalf("expected 'timestamp does not exist', got %v", err)
 		}
@@ -773,7 +773,7 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 	t.Run("NoTimestamp", func(t *testing.T) {
 		now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 			if level == 0 {
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{
@@ -784,7 +784,7 @@ func TestReplica_CalcRestoreTarget(t *testing.T) {
 			return ltx.NewFileInfoSliceIterator(nil), nil
 		}
 
-		updatedAt, err := r.CalcRestoreTarget(context.Background(), litestream.RestoreOptions{})
+		updatedAt, err := r.CalcRestoreTarget(context.Background(), replicate.RestoreOptions{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -801,9 +801,9 @@ func TestReplica_Restore_InvalidFileSize(t *testing.T) {
 	t.Run("EmptyFile", func(t *testing.T) {
 		var c mock.ReplicaClient
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
-			if level == litestream.SnapshotLevel {
+			if level == replicate.SnapshotLevel {
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{{
-					Level:     litestream.SnapshotLevel,
+					Level:     replicate.SnapshotLevel,
 					MinTXID:   1,
 					MaxTXID:   10,
 					Size:      0, // Empty file - this should cause an error
@@ -813,10 +813,10 @@ func TestReplica_Restore_InvalidFileSize(t *testing.T) {
 			return ltx.NewFileInfoSliceIterator(nil), nil
 		}
 
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		outputPath := t.TempDir() + "/restored.db"
 
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err == nil {
@@ -830,9 +830,9 @@ func TestReplica_Restore_InvalidFileSize(t *testing.T) {
 	t.Run("TruncatedFile", func(t *testing.T) {
 		var c mock.ReplicaClient
 		c.LTXFilesFunc = func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
-			if level == litestream.SnapshotLevel {
+			if level == replicate.SnapshotLevel {
 				return ltx.NewFileInfoSliceIterator([]*ltx.FileInfo{{
-					Level:     litestream.SnapshotLevel,
+					Level:     replicate.SnapshotLevel,
 					MinTXID:   1,
 					MaxTXID:   10,
 					Size:      50, // Less than ltx.HeaderSize (100) - should cause an error
@@ -842,10 +842,10 @@ func TestReplica_Restore_InvalidFileSize(t *testing.T) {
 			return ltx.NewFileInfoSliceIterator(nil), nil
 		}
 
-		r := litestream.NewReplicaWithClient(db, &c)
+		r := replicate.NewReplicaWithClient(db, &c)
 		outputPath := t.TempDir() + "/restored.db"
 
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err == nil {
@@ -902,7 +902,7 @@ func TestReplica_ContextCancellationNoLogs(t *testing.T) {
 		},
 	}
 
-	r := litestream.NewReplicaWithClient(db, mockClient)
+	r := replicate.NewReplicaWithClient(db, mockClient)
 	r.SyncInterval = 50 * time.Millisecond // Short interval for testing
 
 	// Start the replica monitoring in a goroutine
@@ -943,7 +943,7 @@ func TestReplica_ContextCancellationNoLogs(t *testing.T) {
 func TestReplica_ValidateLevel(t *testing.T) {
 	t.Run("ValidContiguousFiles", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		replica := litestream.NewReplicaWithClient(nil, client)
+		replica := replicate.NewReplicaWithClient(nil, client)
 
 		// Create contiguous files: 1-2, 3-5, 6-10
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -961,7 +961,7 @@ func TestReplica_ValidateLevel(t *testing.T) {
 
 	t.Run("EmptyLevel", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		replica := litestream.NewReplicaWithClient(nil, client)
+		replica := replicate.NewReplicaWithClient(nil, client)
 
 		errs, err := replica.ValidateLevel(context.Background(), 1)
 		if err != nil {
@@ -974,7 +974,7 @@ func TestReplica_ValidateLevel(t *testing.T) {
 
 	t.Run("SingleFile", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		replica := litestream.NewReplicaWithClient(nil, client)
+		replica := replicate.NewReplicaWithClient(nil, client)
 
 		createTestLTXFile(t, client, 1, 1, 5)
 
@@ -989,7 +989,7 @@ func TestReplica_ValidateLevel(t *testing.T) {
 
 	t.Run("GapDetected", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		replica := litestream.NewReplicaWithClient(nil, client)
+		replica := replicate.NewReplicaWithClient(nil, client)
 
 		// Create files with a gap (missing TXID 3-4)
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -1012,7 +1012,7 @@ func TestReplica_ValidateLevel(t *testing.T) {
 
 	t.Run("OverlapDetected", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		replica := litestream.NewReplicaWithClient(nil, client)
+		replica := replicate.NewReplicaWithClient(nil, client)
 
 		// Create overlapping files
 		createTestLTXFile(t, client, 1, 1, 5)
@@ -1032,7 +1032,7 @@ func TestReplica_ValidateLevel(t *testing.T) {
 
 	t.Run("MultipleErrors", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		replica := litestream.NewReplicaWithClient(nil, client)
+		replica := replicate.NewReplicaWithClient(nil, client)
 
 		// Create files with multiple issues: gap then overlap
 		createTestLTXFile(t, client, 1, 1, 2)
@@ -1068,11 +1068,11 @@ func TestReplica_RestoreV3(t *testing.T) {
 
 		// Create replica client and replica
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		// Restore
 		outputPath := tmpDir + "/restored.db"
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err != nil {
@@ -1101,10 +1101,10 @@ func TestReplica_RestoreV3(t *testing.T) {
 
 		// Create replica and restore
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err != nil {
@@ -1148,11 +1148,11 @@ func TestReplica_RestoreV3(t *testing.T) {
 
 		// Create replica and restore to a timestamp between the two snapshots
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
 		restoreTime := time.Now().Add(-90 * time.Minute) // Between old and new
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 			Timestamp:  restoreTime,
 		})
@@ -1176,13 +1176,13 @@ func TestReplica_RestoreV3(t *testing.T) {
 		}
 
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
-		if !errors.Is(err, litestream.ErrNoSnapshots) {
+		if !errors.Is(err, replicate.ErrNoSnapshots) {
 			t.Fatalf("expected ErrNoSnapshots, got %v", err)
 		}
 	})
@@ -1194,13 +1194,13 @@ func TestReplica_RestoreV3(t *testing.T) {
 
 		// Empty replica directory
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
-		if !errors.Is(err, litestream.ErrNoSnapshots) {
+		if !errors.Is(err, replicate.ErrNoSnapshots) {
 			t.Fatalf("expected ErrNoSnapshots, got %v", err)
 		}
 	})
@@ -1216,7 +1216,7 @@ func TestReplica_RestoreV3(t *testing.T) {
 		}, nil)
 
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		// Create output file that already exists
 		outputPath := t.TempDir() + "/existing.db"
@@ -1224,7 +1224,7 @@ func TestReplica_RestoreV3(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err == nil || !strings.Contains(err.Error(), "already exists") {
@@ -1237,9 +1237,9 @@ func TestReplica_RestoreV3(t *testing.T) {
 
 		// Use mock client that doesn't implement ReplicaClientV3
 		var c mock.ReplicaClient
-		r := litestream.NewReplicaWithClient(nil, &c)
+		r := replicate.NewReplicaWithClient(nil, &c)
 
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: t.TempDir() + "/restored.db",
 		})
 		if err == nil || !strings.Contains(err.Error(), "does not support v0.3.x") {
@@ -1282,10 +1282,10 @@ func TestReplica_RestoreV3(t *testing.T) {
 
 		// Restore without timestamp should pick the newest
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.RestoreV3(ctx, litestream.RestoreOptions{
+		err := r.RestoreV3(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err != nil {
@@ -1318,10 +1318,10 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Create replica and restore with timestamp
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.Restore(ctx, litestream.RestoreOptions{
+		err := r.Restore(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 			Timestamp:  time.Now(), // Any time after snapshot
 		})
@@ -1349,10 +1349,10 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Create replica and restore WITHOUT timestamp - should still use v0.3.x
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.Restore(ctx, litestream.RestoreOptions{
+		err := r.Restore(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 			// No timestamp specified
 		})
@@ -1370,7 +1370,7 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		replicaDir := t.TempDir()
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(db, c)
+		r := replicate.NewReplicaWithClient(db, c)
 
 		// Sync to create LTX files
 		if err := db.Sync(context.Background()); err != nil {
@@ -1393,7 +1393,7 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Restore with timestamp
 		outputPath := t.TempDir() + "/restored.db"
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: outputPath,
 			Timestamp:  time.Now(),
 		})
@@ -1439,10 +1439,10 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Restore with timestamp - should use V3 (more recent)
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(nil, c)
+		r := replicate.NewReplicaWithClient(nil, c)
 
 		outputPath := tmpDir + "/restored.db"
-		err := r.Restore(ctx, litestream.RestoreOptions{
+		err := r.Restore(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 			Timestamp:  time.Now(),
 		})
@@ -1474,7 +1474,7 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Create LTX backup (more recent)
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(db, c)
+		r := replicate.NewReplicaWithClient(db, c)
 
 		if err := db.Sync(context.Background()); err != nil {
 			t.Fatal(err)
@@ -1496,7 +1496,7 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Restore with timestamp - should use LTX (more recent)
 		outputPath := t.TempDir() + "/restored.db"
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: outputPath,
 			Timestamp:  time.Now(),
 		})
@@ -1524,7 +1524,7 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Create LTX backup
 		c := file.NewReplicaClient(replicaDir)
-		r := litestream.NewReplicaWithClient(db, c)
+		r := replicate.NewReplicaWithClient(db, c)
 
 		if err := db.Sync(context.Background()); err != nil {
 			t.Fatal(err)
@@ -1535,7 +1535,7 @@ func TestReplica_Restore_BothFormats(t *testing.T) {
 
 		// Restore without timestamp - should use LTX (default behavior)
 		outputPath := t.TempDir() + "/restored.db"
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: outputPath,
 		})
 		if err != nil {
@@ -1559,7 +1559,7 @@ func createTestLTXSnapshot(t *testing.T) []byte {
 
 	// Set up a replica client so we can create snapshots
 	c := file.NewReplicaClient(replicaDir)
-	db.Replica = litestream.NewReplicaWithClient(db, c)
+	db.Replica = replicate.NewReplicaWithClient(db, c)
 	db.Replica.MonitorEnabled = false
 
 	if err := db.Open(); err != nil {
@@ -1591,7 +1591,7 @@ func createTestLTXSnapshot(t *testing.T) []byte {
 	}
 
 	// Read the snapshot file from replica directory
-	ltxPath := filepath.Join(replicaDir, "ltx", fmt.Sprintf("%d", litestream.SnapshotLevel), "0000000000000001-0000000000000001.ltx")
+	ltxPath := filepath.Join(replicaDir, "ltx", fmt.Sprintf("%d", replicate.SnapshotLevel), "0000000000000001-0000000000000001.ltx")
 	data, err := os.ReadFile(ltxPath)
 	if err != nil {
 		t.Fatal(err)
@@ -1727,7 +1727,7 @@ func TestWriteTXIDFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := litestream.WriteTXIDFile(dbPath, 42); err != nil {
+		if err := replicate.WriteTXIDFile(dbPath, 42); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1744,14 +1744,14 @@ func TestWriteTXIDFile(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test.db")
 
-		if err := litestream.WriteTXIDFile(dbPath, 10); err != nil {
+		if err := replicate.WriteTXIDFile(dbPath, 10); err != nil {
 			t.Fatal(err)
 		}
-		if err := litestream.WriteTXIDFile(dbPath, 20); err != nil {
+		if err := replicate.WriteTXIDFile(dbPath, 20); err != nil {
 			t.Fatal(err)
 		}
 
-		txid, err := litestream.ReadTXIDFile(dbPath)
+		txid, err := replicate.ReadTXIDFile(dbPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1766,7 +1766,7 @@ func TestReadTXIDFile(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "nonexistent.db")
 
-		txid, err := litestream.ReadTXIDFile(dbPath)
+		txid, err := replicate.ReadTXIDFile(dbPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1783,7 +1783,7 @@ func TestReadTXIDFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		txid, err := litestream.ReadTXIDFile(dbPath)
+		txid, err := replicate.ReadTXIDFile(dbPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1800,7 +1800,7 @@ func TestReadTXIDFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, err := litestream.ReadTXIDFile(dbPath)
+		_, err := replicate.ReadTXIDFile(dbPath)
 		if err == nil {
 			t.Fatal("expected error for malformed file")
 		}
@@ -1814,7 +1814,7 @@ func TestReadTXIDFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, err := litestream.ReadTXIDFile(dbPath)
+		_, err := replicate.ReadTXIDFile(dbPath)
 		if err == nil {
 			t.Fatal("expected error for empty file")
 		}
@@ -1826,10 +1826,10 @@ func TestReplica_Restore_Follow_IncompatibleFlags(t *testing.T) {
 	defer testingutil.MustCloseDBs(t, db, sqldb)
 
 	c := file.NewReplicaClient(t.TempDir())
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 
 	t.Run("FollowWithTXID", func(t *testing.T) {
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: t.TempDir() + "/db",
 			Follow:     true,
 			TXID:       1,
@@ -1840,7 +1840,7 @@ func TestReplica_Restore_Follow_IncompatibleFlags(t *testing.T) {
 	})
 
 	t.Run("FollowWithTimestamp", func(t *testing.T) {
-		err := r.Restore(context.Background(), litestream.RestoreOptions{
+		err := r.Restore(context.Background(), replicate.RestoreOptions{
 			OutputPath: t.TempDir() + "/db",
 			Follow:     true,
 			Timestamp:  time.Now(),
@@ -1872,7 +1872,7 @@ func TestReplica_Restore_Follow(t *testing.T) {
 
 	replicaDir := t.TempDir()
 	c := file.NewReplicaClient(replicaDir)
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 
 	if err := r.Sync(ctx); err != nil {
 		t.Fatal(err)
@@ -1893,7 +1893,7 @@ func TestReplica_Restore_Follow(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- r.Restore(followCtx, litestream.RestoreOptions{
+		errCh <- r.Restore(followCtx, replicate.RestoreOptions{
 			OutputPath:     outputPath,
 			Follow:         true,
 			FollowInterval: 50 * time.Millisecond,
@@ -1968,7 +1968,7 @@ func TestReplica_Restore_Follow_ContextCancellation(t *testing.T) {
 
 	replicaDir := t.TempDir()
 	c := file.NewReplicaClient(replicaDir)
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 	if err := r.Sync(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -1984,7 +1984,7 @@ func TestReplica_Restore_Follow_ContextCancellation(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- r.Restore(followCtx, litestream.RestoreOptions{
+		errCh <- r.Restore(followCtx, replicate.RestoreOptions{
 			OutputPath:     outputPath,
 			Follow:         true,
 			FollowInterval: 50 * time.Millisecond,
@@ -2031,7 +2031,7 @@ func TestReplica_Restore_Follow_WriteTXIDFile(t *testing.T) {
 
 	replicaDir := t.TempDir()
 	c := file.NewReplicaClient(replicaDir)
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 	if err := r.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -2048,7 +2048,7 @@ func TestReplica_Restore_Follow_WriteTXIDFile(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- r.Restore(followCtx, litestream.RestoreOptions{
+		errCh <- r.Restore(followCtx, replicate.RestoreOptions{
 			OutputPath:     outputPath,
 			Follow:         true,
 			FollowInterval: 50 * time.Millisecond,
@@ -2077,7 +2077,7 @@ func TestReplica_Restore_Follow_WriteTXIDFile(t *testing.T) {
 		t.Fatalf("txid file not created after initial restore: %v", err)
 	}
 
-	initialTXID, err := litestream.ReadTXIDFile(outputPath)
+	initialTXID, err := replicate.ReadTXIDFile(outputPath)
 	if err != nil {
 		t.Fatalf("failed to read initial txid: %v", err)
 	}
@@ -2100,7 +2100,7 @@ func TestReplica_Restore_Follow_WriteTXIDFile(t *testing.T) {
 	deadline = time.Now().Add(5 * time.Second)
 	var updatedTXID ltx.TXID
 	for time.Now().Before(deadline) {
-		txid, err := litestream.ReadTXIDFile(outputPath)
+		txid, err := replicate.ReadTXIDFile(outputPath)
 		if err == nil && txid > initialTXID {
 			updatedTXID = txid
 			break
@@ -2141,7 +2141,7 @@ func TestReplica_Restore_Follow_CrashRecovery(t *testing.T) {
 
 	replicaDir := t.TempDir()
 	c := file.NewReplicaClient(replicaDir)
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 	if err := r.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -2157,7 +2157,7 @@ func TestReplica_Restore_Follow_CrashRecovery(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- r.Restore(followCtx, litestream.RestoreOptions{
+		errCh <- r.Restore(followCtx, replicate.RestoreOptions{
 			OutputPath:     outputPath,
 			Follow:         true,
 			FollowInterval: 50 * time.Millisecond,
@@ -2173,7 +2173,7 @@ func TestReplica_Restore_Follow_CrashRecovery(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	savedTXID, err := litestream.ReadTXIDFile(outputPath)
+	savedTXID, err := replicate.ReadTXIDFile(outputPath)
 	if err != nil {
 		t.Fatalf("failed to read txid file: %v", err)
 	}
@@ -2217,7 +2217,7 @@ func TestReplica_Restore_Follow_CrashRecovery(t *testing.T) {
 
 	errCh2 := make(chan error, 1)
 	go func() {
-		errCh2 <- r.Restore(followCtx2, litestream.RestoreOptions{
+		errCh2 <- r.Restore(followCtx2, replicate.RestoreOptions{
 			OutputPath:     outputPath,
 			Follow:         true,
 			FollowInterval: 50 * time.Millisecond,
@@ -2258,7 +2258,7 @@ func TestReplica_Restore_Follow_NoTXIDFile(t *testing.T) {
 	defer testingutil.MustCloseDBs(t, db, sqldb)
 
 	c := file.NewReplicaClient(t.TempDir())
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 
 	// Create a database file but no -txid sidecar.
 	outputPath := t.TempDir() + "/existing.db"
@@ -2266,7 +2266,7 @@ func TestReplica_Restore_Follow_NoTXIDFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := r.Restore(context.Background(), litestream.RestoreOptions{
+	err := r.Restore(context.Background(), replicate.RestoreOptions{
 		OutputPath:     outputPath,
 		Follow:         true,
 		FollowInterval: 50 * time.Millisecond,
@@ -2294,7 +2294,7 @@ func TestReplica_Restore_Follow_StaleTXID(t *testing.T) {
 
 	replicaDir := t.TempDir()
 	c := file.NewReplicaClient(replicaDir)
-	r := litestream.NewReplicaWithClient(db, c)
+	r := replicate.NewReplicaWithClient(db, c)
 	if err := r.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -2311,7 +2311,7 @@ func TestReplica_Restore_Follow_StaleTXID(t *testing.T) {
 	if err := os.WriteFile(outputPath, []byte("fake-db-content"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := litestream.WriteTXIDFile(outputPath, 1); err != nil {
+	if err := replicate.WriteTXIDFile(outputPath, 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2338,7 +2338,7 @@ func TestReplica_Restore_Follow_StaleTXID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := r.Restore(ctx, litestream.RestoreOptions{
+	err := r.Restore(ctx, replicate.RestoreOptions{
 		OutputPath:     outputPath,
 		Follow:         true,
 		FollowInterval: 50 * time.Millisecond,

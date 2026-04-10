@@ -34,13 +34,13 @@ import (
 func TestVFS_Simple(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
-	if err := sqlite3vfs.RegisterVFS("litestream", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	if err := db.Open(); err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func TestVFS_Simple(t *testing.T) {
 	}
 	waitForLTXFiles(t, client, 10*time.Second, db.MonitorInterval)
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test.db?vfs=litestream")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test.db?vfs=replicate")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -69,13 +69,13 @@ func TestVFS_Simple(t *testing.T) {
 func TestVFS_Updating(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
-	if err := sqlite3vfs.RegisterVFS("litestream", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 100 * time.Millisecond
 	if err := db.Open(); err != nil {
@@ -94,7 +94,7 @@ func TestVFS_Updating(t *testing.T) {
 	waitForLTXFiles(t, client, 10*time.Second, db.MonitorInterval)
 
 	t.Log("opening vfs")
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test.db?vfs=litestream")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test.db?vfs=replicate")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -121,13 +121,13 @@ func TestVFS_Updating(t *testing.T) {
 func TestVFS_ActiveReadTransaction(t *testing.T) {
 	client := file.NewReplicaClient(t.TempDir())
 	vfs := newVFS(t, client)
-	if err := sqlite3vfs.RegisterVFS("litestream-txn", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate-txn", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 100 * time.Millisecond
 	if err := db.Open(); err != nil {
@@ -162,7 +162,7 @@ func TestVFS_ActiveReadTransaction(t *testing.T) {
 	waitForLTXFiles(t, client, 10*time.Second, db.MonitorInterval)
 
 	t.Log("opening vfs replica")
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test-txn.db?vfs=litestream-txn")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test-txn.db?vfs=replicate-txn")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -249,17 +249,17 @@ func TestVFS_PollsL1Files(t *testing.T) {
 	// Create and populate source database
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 100 * time.Millisecond
 	db.Replica.MonitorEnabled = false
 
 	// Create a store to handle compaction
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: 1 * time.Second},
 	}
-	store := litestream.NewStore([]*litestream.DB{db}, levels)
+	store := replicate.NewStore([]*replicate.DB{db}, levels)
 	store.CompactionMonitorEnabled = false
 
 	if err := store.Open(ctx); err != nil {
@@ -314,13 +314,13 @@ func TestVFS_PollsL1Files(t *testing.T) {
 
 	// Register VFS
 	vfs := newVFS(t, client)
-	if err := sqlite3vfs.RegisterVFS("litestream-l1", vfs); err != nil {
-		t.Fatalf("failed to register litestream vfs: %v", err)
+	if err := sqlite3vfs.RegisterVFS("replicate-l1", vfs); err != nil {
+		t.Fatalf("failed to register replicate vfs: %v", err)
 	}
 
 	// Open database through VFS
 	t.Log("opening vfs")
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test-l1.db?vfs=litestream-l1")
+	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test-l1.db?vfs=replicate-l1")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -358,7 +358,7 @@ func TestVFS_PollsL1Files(t *testing.T) {
 	sqldb1.Close()
 
 	t.Log("reopening vfs to see updates")
-	sqldb1, err = sql.Open("sqlite3", "file:/tmp/test-l1.db?vfs=litestream-l1")
+	sqldb1, err = sql.Open("sqlite3", "file:/tmp/test-l1.db?vfs=replicate-l1")
 	if err != nil {
 		t.Fatalf("failed to reopen database: %v", err)
 	}
@@ -1727,7 +1727,7 @@ func TestVFS_NonContiguousTXIDGapFailsOnOpen(t *testing.T) {
 	}
 
 	fileLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
-	f := litestream.NewVFSFile(client, "gap.db", fileLogger)
+	f := replicate.NewVFSFile(client, "gap.db", fileLogger)
 	f.PollInterval = 25 * time.Millisecond
 
 	if err := f.Open(); err == nil {
@@ -1871,7 +1871,7 @@ func TestVFS_PooledWriteNoFalseConflict(t *testing.T) {
 	const totalWrites = 20
 	for i := 1; i <= totalWrites; i++ {
 		if _, err := sqldb.Exec("INSERT INTO t (id, value) VALUES (?, ?)", i, fmt.Sprintf("row-%d", i)); err != nil {
-			if strings.Contains(err.Error(), "conflict") || errors.Is(err, litestream.ErrConflict) {
+			if strings.Contains(err.Error(), "conflict") || errors.Is(err, replicate.ErrConflict) {
 				t.Fatalf("false ErrConflict on write %d: %v", i, err)
 			}
 			t.Fatalf("write %d failed: %v", i, err)
@@ -1928,7 +1928,7 @@ func TestVFS_PooledWriteStress(t *testing.T) {
 	const totalWrites = 50
 	for i := 0; i < totalWrites; i++ {
 		if _, err := sqldb.Exec("INSERT INTO t (value) VALUES (?)", fmt.Sprintf("row-%d", i)); err != nil {
-			if strings.Contains(err.Error(), "conflict") || errors.Is(err, litestream.ErrConflict) {
+			if strings.Contains(err.Error(), "conflict") || errors.Is(err, replicate.ErrConflict) {
 				t.Fatalf("false ErrConflict on write %d: %v", i, err)
 			}
 			t.Fatalf("write %d failed: %v", i, err)
@@ -1950,14 +1950,14 @@ func TestVFS_PooledWriteStress(t *testing.T) {
 	}
 }
 
-func newVFS(tb testing.TB, client litestream.ReplicaClient) *testVFS {
+func newVFS(tb testing.TB, client replicate.ReplicaClient) *testVFS {
 	tb.Helper()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
 
-	base := litestream.NewVFS(client, logger)
+	base := replicate.NewVFS(client, logger)
 	base.PollInterval = 100 * time.Millisecond
 	return &testVFS{
 		VFS:      base,
@@ -1966,7 +1966,7 @@ func newVFS(tb testing.TB, client litestream.ReplicaClient) *testVFS {
 }
 
 type testVFS struct {
-	*litestream.VFS
+	*replicate.VFS
 
 	mu       sync.Mutex
 	failures map[string][]error
@@ -2028,18 +2028,18 @@ func (f *injectingFile) FileControl(op int, pragmaName string, pragmaValue *stri
 
 func registerTestVFS(tb testing.TB, vfs sqlite3vfs.VFS) string {
 	tb.Helper()
-	name := fmt.Sprintf("litestream-%s-%d", strings.ToLower(tb.Name()), time.Now().UnixNano())
+	name := fmt.Sprintf("replicate-%s-%d", strings.ToLower(tb.Name()), time.Now().UnixNano())
 	if err := sqlite3vfs.RegisterVFS(name, vfs); err != nil {
-		tb.Fatalf("failed to register litestream vfs %s: %v", name, err)
+		tb.Fatalf("failed to register replicate vfs %s: %v", name, err)
 	}
 	return name
 }
 
-func openReplicatedPrimary(tb testing.TB, client litestream.ReplicaClient, monitorInterval, syncInterval time.Duration) (*litestream.DB, *sql.DB) {
+func openReplicatedPrimary(tb testing.TB, client replicate.ReplicaClient, monitorInterval, syncInterval time.Duration) (*replicate.DB, *sql.DB) {
 	tb.Helper()
 	db := testingutil.NewDB(tb, filepath.Join(tb.TempDir(), "primary.db"))
 	db.MonitorInterval = monitorInterval
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = syncInterval
 	if err := db.Open(); err != nil {
@@ -2050,7 +2050,7 @@ func openReplicatedPrimary(tb testing.TB, client litestream.ReplicaClient, monit
 	return db, sqldb
 }
 
-func forceReplicaSync(tb testing.TB, db *litestream.DB) {
+func forceReplicaSync(tb testing.TB, db *replicate.DB) {
 	tb.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -2261,7 +2261,7 @@ func writeSinglePageLTXFile(tb testing.TB, client *file.ReplicaClient, txid ltx.
 }
 
 type latencyReplicaClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	delay time.Duration
 }
 
@@ -2276,7 +2276,7 @@ func (c *latencyReplicaClient) LTXFiles(ctx context.Context, level int, seek ltx
 }
 
 type eventualConsistencyClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	calls atomic.Int32
 }
 
@@ -2288,12 +2288,12 @@ func (c *eventualConsistencyClient) LTXFiles(ctx context.Context, level int, see
 }
 
 type observingReplicaClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	ltxCalls atomic.Int64
 }
 
 type fdLimitedReplicaClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	limit   int32
 	open    atomic.Int32
 	maxOpen atomic.Int32
@@ -2325,7 +2325,7 @@ func (c *observingReplicaClient) LTXFiles(ctx context.Context, level int, seek l
 }
 
 type flakyLTXClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	failNext atomic.Bool
 	failures atomic.Int64
 }
@@ -2339,7 +2339,7 @@ func (c *flakyLTXClient) LTXFiles(ctx context.Context, level int, seek ltx.TXID,
 }
 
 type oomPageIndexClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	failNext  atomic.Bool
 	triggered atomic.Bool
 }
@@ -2353,7 +2353,7 @@ func (c *oomPageIndexClient) OpenLTXFile(ctx context.Context, level int, minTXID
 }
 
 type corruptingPageIndexClient struct {
-	litestream.ReplicaClient
+	replicate.ReplicaClient
 	corruptNext atomic.Bool
 	triggered   atomic.Bool
 }
@@ -2396,7 +2396,7 @@ func (h *hookedReadCloser) Close() error {
 }
 
 // waitForLTXFiles waits until at least one LTX file is available in the replica client.
-func waitForLTXFiles(t *testing.T, client litestream.ReplicaClient, timeout, tick time.Duration) {
+func waitForLTXFiles(t *testing.T, client replicate.ReplicaClient, timeout, tick time.Duration) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		itr, err := client.LTXFiles(context.Background(), 0, 0, false)

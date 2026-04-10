@@ -1,7 +1,7 @@
 //go:build vfs
 // +build vfs
 
-package litestream_test
+package replicate_test
 
 import (
 	"context"
@@ -24,17 +24,17 @@ func TestVFSFile_Compact(t *testing.T) {
 		createTestLTXFile(t, client, 0, 3, 3)
 
 		// Create VFS with compaction enabled
-		vfs := litestream.NewVFS(client, slog.Default())
+		vfs := replicate.NewVFS(client, slog.Default())
 		vfs.WriteEnabled = true
 		vfs.CompactionEnabled = true
 
 		// Create VFSFile directly to test Compact method
-		f := litestream.NewVFSFile(client, "test.db", slog.Default())
+		f := replicate.NewVFSFile(client, "test.db", slog.Default())
 		f.PollInterval = time.Second
-		f.CacheSize = litestream.DefaultCacheSize
+		f.CacheSize = replicate.DefaultCacheSize
 
 		// Initialize the compactor manually
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Compact L0 to L1
 		info, err := compactor.Compact(context.Background(), 1)
@@ -60,7 +60,7 @@ func TestVFSFile_Snapshot(t *testing.T) {
 		createTestLTXFile(t, client, 0, 2, 2)
 		createTestLTXFile(t, client, 0, 3, 3)
 
-		compactor := litestream.NewCompactor(client, slog.Default())
+		compactor := replicate.NewCompactor(client, slog.Default())
 
 		// Compact L0 to L1
 		info, err := compactor.Compact(context.Background(), 1)
@@ -100,7 +100,7 @@ func TestVFSFile_Snapshot(t *testing.T) {
 }
 
 func TestDefaultCompactionLevels(t *testing.T) {
-	levels := litestream.DefaultCompactionLevels
+	levels := replicate.DefaultCompactionLevels
 	if len(levels) != 4 {
 		t.Fatalf("DefaultCompactionLevels length=%d, want 4", len(levels))
 	}
@@ -146,7 +146,7 @@ func TestDefaultCompactionLevels(t *testing.T) {
 func TestVFS_CompactionConfig(t *testing.T) {
 	t.Run("DefaultConfig", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		vfs := litestream.NewVFS(client, slog.Default())
+		vfs := replicate.NewVFS(client, slog.Default())
 
 		// Default should have compaction disabled
 		if vfs.CompactionEnabled {
@@ -162,10 +162,10 @@ func TestVFS_CompactionConfig(t *testing.T) {
 
 	t.Run("WithCompactionConfig", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
-		vfs := litestream.NewVFS(client, slog.Default())
+		vfs := replicate.NewVFS(client, slog.Default())
 		vfs.WriteEnabled = true
 		vfs.CompactionEnabled = true
-		vfs.CompactionLevels = litestream.CompactionLevels{
+		vfs.CompactionLevels = replicate.CompactionLevels{
 			{Level: 0, Interval: 0},
 			{Level: 1, Interval: time.Minute},
 		}

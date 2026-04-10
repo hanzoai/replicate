@@ -1,4 +1,4 @@
-package litestream
+package replicate
 
 import (
 	"context"
@@ -25,7 +25,7 @@ type Compactor struct {
 	// contiguous TXID ranges after each compaction. Disabled by default.
 	VerifyCompaction bool
 
-	// RetentionEnabled controls whether Litestream actively deletes old files
+	// RetentionEnabled controls whether Replicate actively deletes old files
 	// during retention enforcement. When false, cloud provider lifecycle
 	// policies handle retention instead. Local file cleanup still occurs.
 	RetentionEnabled bool

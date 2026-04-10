@@ -217,7 +217,7 @@ func closeTestDatabases(dbs []*sql.DB) {
 	}
 }
 
-func startDirectoryMonitor(t *testing.T, dbDir, replicaDir string) (*litestream.Store, []*DirectoryMonitor) {
+func startDirectoryMonitor(t *testing.T, dbDir, replicaDir string) (*replicate.Store, []*DirectoryMonitor) {
 	t.Helper()
 
 	syncInterval := time.Second
@@ -240,7 +240,7 @@ func startDirectoryMonitor(t *testing.T, dbDir, replicaDir string) (*litestream.
 		t.Fatalf("Failed to create DBs from directory config: %v", err)
 	}
 
-	store := litestream.NewStore(dbs, litestream.DefaultCompactionLevels)
+	store := replicate.NewStore(dbs, replicate.DefaultCompactionLevels)
 	if err := store.Open(context.Background()); err != nil {
 		t.Fatalf("Failed to open store: %v", err)
 	}
@@ -254,14 +254,14 @@ func startDirectoryMonitor(t *testing.T, dbDir, replicaDir string) (*litestream.
 	return store, []*DirectoryMonitor{monitor}
 }
 
-func stopDirectoryMonitor(store *litestream.Store, monitors []*DirectoryMonitor) {
+func stopDirectoryMonitor(store *replicate.Store, monitors []*DirectoryMonitor) {
 	for _, m := range monitors {
 		m.Close()
 	}
 	store.Close(context.Background())
 }
 
-func waitForDBCount(ctx context.Context, store *litestream.Store, expected int) error {
+func waitForDBCount(ctx context.Context, store *replicate.Store, expected int) error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 

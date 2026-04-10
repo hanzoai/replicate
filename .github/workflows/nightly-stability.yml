@@ -55,8 +55,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Determine duration
         id: config
@@ -85,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ltx-behavioral-${{ matrix.profile }}
-          path: /tmp/litestream-ltx-behavior-*/
+          path: /tmp/replicate-ltx-behavior-*/
           retention-days: 14
 
   ltx-snapshot-regression:
@@ -101,8 +101,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Run snapshot regression test
         run: |
@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ltx-snapshot-regression
-          path: /tmp/litestream-ltx-behavior-*/
+          path: /tmp/replicate-ltx-behavior-*/
           retention-days: 14
 
   minio-soak:
@@ -134,8 +134,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Determine duration
         id: config
@@ -164,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: minio-soak-results
-          path: /tmp/litestream-minio-soak-*/
+          path: /tmp/replicate-minio-soak-*/
           retention-days: 14
 
   comprehensive-soak:
@@ -180,8 +180,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Determine duration
         id: config
@@ -209,7 +209,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: comprehensive-soak-results
-          path: /tmp/litestream-comprehensive-soak-*/
+          path: /tmp/replicate-comprehensive-soak-*/
           retention-days: 14
 
   notify-on-failure:

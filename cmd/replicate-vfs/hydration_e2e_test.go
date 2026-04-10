@@ -23,7 +23,7 @@ import (
 
 // TestHydration_E2E_SQLiteCLI tests hydration environment variables via the SQLite CLI.
 // This test builds the VFS extension and uses the actual sqlite3 CLI to verify
-// that LITESTREAM_HYDRATION_ENABLED and LITESTREAM_HYDRATION_PATH work correctly.
+// that REPLICATE_HYDRATION_ENABLED and REPLICATE_HYDRATION_PATH work correctly.
 func TestHydration_E2E_SQLiteCLI(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("skipping: test only runs on darwin or linux")
@@ -47,10 +47,10 @@ func TestHydration_E2E_SQLiteCLI(t *testing.T) {
 
 	// Run sqlite3 with hydration enabled
 	env := []string{
-		"LITESTREAM_REPLICA_URL=file://" + replicaDir,
-		"LITESTREAM_HYDRATION_ENABLED=true",
-		"LITESTREAM_HYDRATION_PATH=" + hydrationPath,
-		"LITESTREAM_LOG_LEVEL=DEBUG",
+		"REPLICATE_REPLICA_URL=file://" + replicaDir,
+		"REPLICATE_HYDRATION_ENABLED=true",
+		"REPLICATE_HYDRATION_PATH=" + hydrationPath,
+		"REPLICATE_LOG_LEVEL=DEBUG",
 	}
 
 	// Query via the VFS
@@ -80,11 +80,11 @@ func TestHydration_E2E_SQLiteCLI_TempFile(t *testing.T) {
 	client := file.NewReplicaClient(replicaDir)
 	setupTestReplica(t, client)
 
-	// Run without LITESTREAM_HYDRATION_PATH - should use temp file
+	// Run without REPLICATE_HYDRATION_PATH - should use temp file
 	env := []string{
-		"LITESTREAM_REPLICA_URL=file://" + replicaDir,
-		"LITESTREAM_HYDRATION_ENABLED=true",
-		"LITESTREAM_LOG_LEVEL=DEBUG",
+		"REPLICATE_REPLICA_URL=file://" + replicaDir,
+		"REPLICATE_HYDRATION_ENABLED=true",
+		"REPLICATE_LOG_LEVEL=DEBUG",
 	}
 
 	output := runSQLiteCLI(t, extPath, env, "SELECT COUNT(*) FROM users;")
@@ -109,11 +109,11 @@ func TestHydration_E2E_SQLiteCLI_Disabled(t *testing.T) {
 
 	hydrationPath := filepath.Join(t.TempDir(), "should-not-exist.db")
 
-	// Run without LITESTREAM_HYDRATION_ENABLED
+	// Run without REPLICATE_HYDRATION_ENABLED
 	env := []string{
-		"LITESTREAM_REPLICA_URL=file://" + replicaDir,
-		"LITESTREAM_HYDRATION_PATH=" + hydrationPath,
-		"LITESTREAM_LOG_LEVEL=DEBUG",
+		"REPLICATE_REPLICA_URL=file://" + replicaDir,
+		"REPLICATE_HYDRATION_PATH=" + hydrationPath,
+		"REPLICATE_LOG_LEVEL=DEBUG",
 	}
 
 	output := runSQLiteCLI(t, extPath, env, "SELECT name FROM users WHERE id = 1;")
@@ -143,10 +143,10 @@ func TestHydration_E2E_SQLiteCLI_MultipleQueries(t *testing.T) {
 	hydrationPath := filepath.Join(t.TempDir(), "hydrated.db")
 
 	env := []string{
-		"LITESTREAM_REPLICA_URL=file://" + replicaDir,
-		"LITESTREAM_HYDRATION_ENABLED=true",
-		"LITESTREAM_HYDRATION_PATH=" + hydrationPath,
-		"LITESTREAM_LOG_LEVEL=DEBUG",
+		"REPLICATE_REPLICA_URL=file://" + replicaDir,
+		"REPLICATE_HYDRATION_ENABLED=true",
+		"REPLICATE_HYDRATION_PATH=" + hydrationPath,
+		"REPLICATE_LOG_LEVEL=DEBUG",
 	}
 
 	// Run multiple queries in single session
@@ -175,9 +175,9 @@ func buildVFSExtension(t *testing.T) string {
 	var extName string
 	switch runtime.GOOS {
 	case "darwin":
-		extName = "litestream-vfs.dylib"
+		extName = "replicate-vfs.dylib"
 	case "linux":
-		extName = "litestream-vfs.so"
+		extName = "replicate-vfs.so"
 	default:
 		t.Fatalf("unsupported OS: %s", runtime.GOOS)
 	}
@@ -198,18 +198,18 @@ func buildVFSExtension(t *testing.T) string {
 	case "darwin":
 		if runtime.GOARCH == "arm64" {
 			makeTarget = "vfs-darwin-arm64"
-			extPath = filepath.Join(projectRoot, "dist", "litestream-vfs-darwin-arm64.dylib")
+			extPath = filepath.Join(projectRoot, "dist", "replicate-vfs-darwin-arm64.dylib")
 		} else {
 			makeTarget = "vfs-darwin-amd64"
-			extPath = filepath.Join(projectRoot, "dist", "litestream-vfs-darwin-amd64.dylib")
+			extPath = filepath.Join(projectRoot, "dist", "replicate-vfs-darwin-amd64.dylib")
 		}
 	case "linux":
 		if runtime.GOARCH == "arm64" {
 			makeTarget = "vfs-linux-arm64"
-			extPath = filepath.Join(projectRoot, "dist", "litestream-vfs-linux-arm64.so")
+			extPath = filepath.Join(projectRoot, "dist", "replicate-vfs-linux-arm64.so")
 		} else {
 			makeTarget = "vfs-linux-amd64"
-			extPath = filepath.Join(projectRoot, "dist", "litestream-vfs-linux-amd64.so")
+			extPath = filepath.Join(projectRoot, "dist", "replicate-vfs-linux-amd64.so")
 		}
 	}
 
@@ -276,13 +276,13 @@ func runSQLiteCLI(t *testing.T, extPath string, env []string, query string) stri
 }
 
 // setupTestReplica creates a file replica with test data.
-func setupTestReplica(t *testing.T, client litestream.ReplicaClient) {
+func setupTestReplica(t *testing.T, client replicate.ReplicaClient) {
 	t.Helper()
 
 	dbDir := t.TempDir()
 	db := testingutil.NewDB(t, filepath.Join(dbDir, "source.db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 100 * time.Millisecond
 	require.NoError(t, db.Open())
@@ -302,13 +302,13 @@ func setupTestReplica(t *testing.T, client litestream.ReplicaClient) {
 }
 
 // setupTestReplicaWithMoreData creates a file replica with more test data.
-func setupTestReplicaWithMoreData(t *testing.T, client litestream.ReplicaClient) {
+func setupTestReplicaWithMoreData(t *testing.T, client replicate.ReplicaClient) {
 	t.Helper()
 
 	dbDir := t.TempDir()
 	db := testingutil.NewDB(t, filepath.Join(dbDir, "source.db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 100 * time.Millisecond
 	require.NoError(t, db.Open())

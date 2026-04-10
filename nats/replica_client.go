@@ -24,16 +24,16 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("nats", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("nats", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
 const ReplicaClientType = "nats"
 
 // HeaderKeyTimestamp is the header key for storing LTX file timestamps in NATS object headers.
-const HeaderKeyTimestamp = "Litestream-Timestamp"
+const HeaderKeyTimestamp = "Replicate-Timestamp"
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files to NATS JetStream Object Store.
 type ReplicaClient struct {
@@ -62,7 +62,7 @@ type ReplicaClient struct {
 	ClientKey  string   // Client key file path
 
 	// Note: Bucket configuration (replicas, storage, TTL, etc.) should be
-	// managed externally via NATS CLI or API, not by Litestream
+	// managed externally via NATS CLI or API, not by Replicate
 
 	// Connection options
 	MaxReconnects    int                          // Maximum reconnection attempts (-1 for unlimited)
@@ -96,7 +96,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
 // URL format: nats://[user:pass@]host[:port]/bucket
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	client := NewReplicaClient()
 
 	// Reconstruct URL without bucket path
@@ -241,7 +241,7 @@ func (c *ReplicaClient) Close() error {
 
 // ltxPath returns the object path for an LTX file.
 func (c *ReplicaClient) ltxPath(level int, minTXID, maxTXID ltx.TXID) string {
-	return litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	return replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 }
 
 // parseLTXPath parses an LTX object path and returns level, minTXID, and maxTXID.
@@ -292,7 +292,7 @@ func (c *ReplicaClient) LTXFiles(ctx context.Context, level int, seek ltx.TXID, 
 		}
 	}
 
-	prefix := litestream.LTXLevelDir(c.Path, level) + "/"
+	prefix := replicate.LTXLevelDir(c.Path, level) + "/"
 	fileInfos := make([]*ltx.FileInfo, 0, len(objectList))
 
 	for _, objInfo := range objectList {

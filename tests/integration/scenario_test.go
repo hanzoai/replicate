@@ -21,19 +21,19 @@ func TestFreshStart(t *testing.T) {
 	RequireBinaries(t)
 
 	t.Log("Testing: Starting replication with a fresh (empty) database")
-	t.Log("This tests if Litestream works correctly when it creates the database from scratch")
+	t.Log("This tests if Replicate works correctly when it creates the database from scratch")
 
 	db := SetupTestDB(t, "fresh-start")
 	defer db.Cleanup()
 
-	t.Log("[1] Starting Litestream with non-existent database...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[1] Starting Replicate with non-existent database...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(2 * time.Second)
 
-	t.Log("[2] Creating database while Litestream is running...")
+	t.Log("[2] Creating database while Replicate is running...")
 	sqlDB, err := sql.Open("sqlite3", db.Path)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
@@ -54,13 +54,13 @@ func TestFreshStart(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 
-	t.Log("[3] Checking if Litestream detected the database...")
-	log, err := db.GetLitestreamLog()
+	t.Log("[3] Checking if Replicate detected the database...")
+	log, err := db.GetReplicateLog()
 	if err != nil {
 		t.Fatalf("Failed to read log: %v", err)
 	}
 
-	t.Logf("Litestream log snippet:\n%s", log[:min(len(log), 500)])
+	t.Logf("Replicate log snippet:\n%s", log[:min(len(log), 500)])
 
 	t.Log("[4] Adding data to test replication...")
 	sqlDB, err = sql.Open("sqlite3", db.Path)
@@ -104,7 +104,7 @@ func TestFreshStart(t *testing.T) {
 
 	t.Logf("✓ Replica created with %d LTX files", fileCount)
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[7] Testing restore...")
@@ -170,14 +170,14 @@ func TestDatabaseIntegrity(t *testing.T) {
 
 	t.Log("✓ Data populated (10 users, 50 posts, 150 comments)")
 
-	t.Log("[3] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[3] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(10 * time.Second)
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[4] Checking integrity of original database...")
@@ -267,9 +267,9 @@ func TestDatabaseDeletion(t *testing.T) {
 
 	t.Log("✓ Created table with 100 rows")
 
-	t.Log("[2] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[2] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(5 * time.Second)
@@ -286,15 +286,15 @@ func TestDatabaseDeletion(t *testing.T) {
 
 	t.Log("✓ Database deleted")
 
-	t.Log("[4] Checking Litestream behavior...")
+	t.Log("[4] Checking Replicate behavior...")
 	errors, err := db.CheckForErrors()
 	if err != nil {
 		t.Fatalf("Failed to check errors: %v", err)
 	}
 
-	t.Logf("Litestream reported %d error messages (expected after database deletion)", len(errors))
+	t.Logf("Replicate reported %d error messages (expected after database deletion)", len(errors))
 
-	db.StopLitestream()
+	db.StopReplicate()
 
 	t.Log("[5] Verifying replica is still intact...")
 	finalFileCount, err := db.GetReplicaFileCount()
@@ -330,8 +330,8 @@ func TestDatabaseDeletion(t *testing.T) {
 	t.Log("TEST PASSED: Replica survives source database deletion")
 }
 
-// TestReplicaFailover was removed because Litestream no longer supports
-// multiple replicas on a single database (see cmd/litestream/main.go).
+// TestReplicaFailover was removed because Replicate no longer supports
+// multiple replicas on a single database (see cmd/replicate/main.go).
 // The bash script test-replica-failover.sh was also non-functional.
 
 func min(a, b int) int {

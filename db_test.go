@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"context"
@@ -36,13 +36,13 @@ func TestDB_WALPath(t *testing.T) {
 func TestDB_MetaPath(t *testing.T) {
 	t.Run("Absolute", func(t *testing.T) {
 		db := testingutil.NewDB(t, "/tmp/db")
-		if got, want := db.MetaPath(), `/tmp/.db-litestream`; got != want {
+		if got, want := db.MetaPath(), `/tmp/.db-replicate`; got != want {
 			t.Fatalf("MetaPath()=%v, want %v", got, want)
 		}
 	})
 	t.Run("Relative", func(t *testing.T) {
 		db := testingutil.NewDB(t, "db")
-		if got, want := db.MetaPath(), `.db-litestream`; got != want {
+		if got, want := db.MetaPath(), `.db-replicate`; got != want {
 			t.Fatalf("MetaPath()=%v, want %v", got, want)
 		}
 	})
@@ -88,7 +88,7 @@ func TestDB_CRC64(t *testing.T) {
 		t.Log("checkpointing database")
 
 		// Checkpoint change into database. Checksum should change.
-		if err := db.Checkpoint(context.Background(), litestream.CheckpointModeTruncate); err != nil {
+		if err := db.Checkpoint(context.Background(), replicate.CheckpointModeTruncate); err != nil {
 			t.Fatal(err)
 		}
 
@@ -194,7 +194,7 @@ func TestDB_Sync(t *testing.T) {
 		}
 
 		// Checkpoint & fully close which should close WAL file.
-		if err := db.Checkpoint(context.Background(), litestream.CheckpointModeTruncate); err != nil {
+		if err := db.Checkpoint(context.Background(), replicate.CheckpointModeTruncate); err != nil {
 			t.Fatal(err)
 		}
 
@@ -485,7 +485,7 @@ func TestDB_Compact(t *testing.T) {
 	})
 }
 
-func walPageCountForTest(tb testing.TB, db *litestream.DB) int64 {
+func walPageCountForTest(tb testing.TB, db *replicate.DB) int64 {
 	tb.Helper()
 
 	fi, err := os.Stat(db.WALPath())
@@ -497,12 +497,12 @@ func walPageCountForTest(tb testing.TB, db *litestream.DB) int64 {
 	}
 
 	pageSize := db.PageSize()
-	if pageSize <= 0 || fi.Size() <= litestream.WALHeaderSize {
+	if pageSize <= 0 || fi.Size() <= replicate.WALHeaderSize {
 		return 0
 	}
 
-	frameSize := int64(litestream.WALFrameHeaderSize + pageSize)
-	return (fi.Size() - litestream.WALHeaderSize) / frameSize
+	frameSize := int64(replicate.WALFrameHeaderSize + pageSize)
+	return (fi.Size() - replicate.WALHeaderSize) / frameSize
 }
 
 func TestDB_Snapshot(t *testing.T) {
@@ -536,7 +536,7 @@ func TestDB_Snapshot(t *testing.T) {
 	}
 
 	// Fetch remote LTX snapshot file and ensure it matches the checksum of the local database.
-	rc, err := db.Replica.Client.OpenLTXFile(t.Context(), litestream.SnapshotLevel, 1, 2, 0, 0)
+	rc, err := db.Replica.Client.OpenLTXFile(t.Context(), replicate.SnapshotLevel, 1, 2, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,7 +578,7 @@ func TestDB_EnforceRetention(t *testing.T) {
 	}
 
 	// Get list of snapshots before retention
-	itr, err := db.Replica.Client.LTXFiles(t.Context(), litestream.SnapshotLevel, 0, false)
+	itr, err := db.Replica.Client.LTXFiles(t.Context(), replicate.SnapshotLevel, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +601,7 @@ func TestDB_EnforceRetention(t *testing.T) {
 	}
 
 	// Verify snapshots after retention
-	itr, err = db.Replica.Client.LTXFiles(t.Context(), litestream.SnapshotLevel, 0, false)
+	itr, err = db.Replica.Client.LTXFiles(t.Context(), replicate.SnapshotLevel, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +652,7 @@ func TestDB_EnforceSnapshotRetention_RetentionDisabled(t *testing.T) {
 	// Count snapshots before retention.
 	countFiles := func() int {
 		t.Helper()
-		itr, err := db.Replica.Client.LTXFiles(t.Context(), litestream.SnapshotLevel, 0, false)
+		itr, err := db.Replica.Client.LTXFiles(t.Context(), replicate.SnapshotLevel, 0, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -730,8 +730,8 @@ func TestDB_EnforceL0RetentionByTime_RetentionDisabled(t *testing.T) {
 	}
 
 	// Compact L0 to L1 so files become eligible for L0 retention.
-	store := litestream.NewStore([]*litestream.DB{db}, litestream.DefaultCompactionLevels)
-	if _, err := store.CompactDB(t.Context(), db, &litestream.CompactionLevel{Level: 1, Interval: time.Nanosecond}); err != nil {
+	store := replicate.NewStore([]*replicate.DB{db}, replicate.DefaultCompactionLevels)
+	if _, err := store.CompactDB(t.Context(), db, &replicate.CompactionLevel{Level: 1, Interval: time.Nanosecond}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -839,7 +839,7 @@ func TestCompaction_PreservesLastTimestamp(t *testing.T) {
 	db.ShutdownSyncTimeout = 0
 	replicaPath := filepath.Join(dir, "replica")
 	client := file.NewReplicaClient(replicaPath)
-	db.Replica = litestream.NewReplicaWithClient(db, client)
+	db.Replica = replicate.NewReplicaWithClient(db, client)
 	db.Replica.MonitorEnabled = false
 	if err := db.Open(); err != nil {
 		t.Fatal(err)
@@ -893,11 +893,11 @@ func TestCompaction_PreservesLastTimestamp(t *testing.T) {
 	t.Logf("Found %d L0 files, last timestamp: %v", len(l0Files), lastTime)
 
 	// Perform compaction from L0 to L1
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: time.Second},
 	}
-	store := litestream.NewStore([]*litestream.DB{db}, levels)
+	store := replicate.NewStore([]*replicate.DB{db}, levels)
 	store.CompactionMonitorEnabled = false
 
 	if err := store.Open(ctx); err != nil {
@@ -953,7 +953,7 @@ func TestDB_EnforceRetentionByTXID_LocalCleanup(t *testing.T) {
 	db.ShutdownSyncTimeout = 0
 	replicaPath := filepath.Join(dir, "replica")
 	client := file.NewReplicaClient(replicaPath)
-	db.Replica = litestream.NewReplicaWithClient(db, client)
+	db.Replica = replicate.NewReplicaWithClient(db, client)
 	db.Replica.MonitorEnabled = false
 	if err := db.Open(); err != nil {
 		t.Fatal(err)
@@ -1048,7 +1048,7 @@ func TestDB_EnforceL0RetentionByTime(t *testing.T) {
 	db.ShutdownSyncTimeout = 0
 	replicaPath := filepath.Join(dir, "replica")
 	client := file.NewReplicaClient(replicaPath)
-	db.Replica = litestream.NewReplicaWithClient(db, client)
+	db.Replica = replicate.NewReplicaWithClient(db, client)
 	db.Replica.MonitorEnabled = false
 	if err := db.Open(); err != nil {
 		t.Fatal(err)
@@ -1239,7 +1239,7 @@ func TestDB_NoLTXFilesOnIdleSync(t *testing.T) {
 	// Wait for checkpoint interval to pass
 	time.Sleep(10 * time.Millisecond)
 
-	// Sync again to trigger checkpoint (this will write to _litestream_seq)
+	// Sync again to trigger checkpoint (this will write to _replicate_seq)
 	if err := db.Sync(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -1273,7 +1273,7 @@ func TestDB_NoLTXFilesOnIdleSync(t *testing.T) {
 	t.Logf("TXID after idle syncs: %d", posAfterIdle.TXID)
 
 	// The TXID should not have advanced more than 1 from the checkpoint
-	// (accounting for the checkpoint's own _litestream_seq write)
+	// (accounting for the checkpoint's own _replicate_seq write)
 	if posAfterIdle.TXID > posAfterCheckpoint.TXID+1 {
 		t.Fatalf("expected TXID to stay at or below %d, got %d (bug: LTX files created without changes)",
 			posAfterCheckpoint.TXID+1, posAfterIdle.TXID)
@@ -1352,7 +1352,7 @@ func TestDB_DelayedCheckpointAfterWrite(t *testing.T) {
 
 func TestDB_SyncStatus(t *testing.T) {
 	t.Run("NoReplica", func(t *testing.T) {
-		db := litestream.NewDB(filepath.Join(t.TempDir(), "db"))
+		db := replicate.NewDB(filepath.Join(t.TempDir(), "db"))
 		db.Replica = nil
 		if _, err := db.SyncStatus(context.Background()); err == nil {
 			t.Fatal("expected error")
@@ -1461,13 +1461,13 @@ func TestDB_SyncStatus(t *testing.T) {
 	})
 
 	t.Run("CancelledContext", func(t *testing.T) {
-		db := litestream.NewDB(filepath.Join(t.TempDir(), "db"))
+		db := replicate.NewDB(filepath.Join(t.TempDir(), "db"))
 		client := &mock.ReplicaClient{
 			LTXFilesFunc: func(ctx context.Context, level int, seek ltx.TXID, useMetadata bool) (ltx.FileIterator, error) {
 				return nil, ctx.Err()
 			},
 		}
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -1484,7 +1484,7 @@ func TestDB_SyncStatus(t *testing.T) {
 
 func TestDB_SyncAndWait(t *testing.T) {
 	t.Run("NoReplica", func(t *testing.T) {
-		db := litestream.NewDB(filepath.Join(t.TempDir(), "db"))
+		db := replicate.NewDB(filepath.Join(t.TempDir(), "db"))
 		db.Replica = nil
 		if err := db.SyncAndWait(context.Background()); err == nil {
 			t.Fatal("expected error")
@@ -1518,7 +1518,7 @@ func TestDB_SyncAndWait(t *testing.T) {
 
 func TestDB_EnsureExists(t *testing.T) {
 	t.Run("NoReplica", func(t *testing.T) {
-		db := litestream.NewDB(filepath.Join(t.TempDir(), "db"))
+		db := replicate.NewDB(filepath.Join(t.TempDir(), "db"))
 		db.Replica = nil
 		if err := db.EnsureExists(context.Background()); err == nil {
 			t.Fatal("expected error")
@@ -1533,9 +1533,9 @@ func TestDB_EnsureExists(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		db := litestream.NewDB(dbPath)
+		db := replicate.NewDB(dbPath)
 		client := file.NewReplicaClient(filepath.Join(dir, "replica"))
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 
 		if err := db.EnsureExists(context.Background()); err != nil {
 			t.Fatal(err)
@@ -1556,7 +1556,7 @@ func TestDB_EnsureExists(t *testing.T) {
 
 		db := testingutil.NewDB(t, dbPath)
 		client := file.NewReplicaClient(filepath.Join(dir, "replica"))
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 
 		if err := db.EnsureExists(context.Background()); err != nil {
 			t.Fatalf("expected nil error for no backup, got %v", err)
@@ -1573,7 +1573,7 @@ func TestDB_EnsureExists(t *testing.T) {
 
 		db := testingutil.NewDB(t, dbPath)
 		client := file.NewReplicaClient(filepath.Join(dir, "replica"))
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 
 		if err := db.EnsureExists(context.Background()); err != nil {
 			t.Fatalf("expected nil error, got %v", err)
@@ -1598,7 +1598,7 @@ func TestDB_EnsureExists(t *testing.T) {
 		db.MonitorInterval = 0
 		db.ShutdownSyncTimeout = 0
 		client := file.NewReplicaClient(replicaPath)
-		replica := litestream.NewReplicaWithClient(db, client)
+		replica := replicate.NewReplicaWithClient(db, client)
 		replica.MonitorEnabled = false
 		db.Replica = replica
 
@@ -1633,7 +1633,7 @@ func TestDB_EnsureExists(t *testing.T) {
 
 		db2 := testingutil.NewDB(t, dbPath)
 		client2 := file.NewReplicaClient(replicaPath)
-		db2.Replica = litestream.NewReplicaWithClient(db2, client2)
+		db2.Replica = replicate.NewReplicaWithClient(db2, client2)
 
 		if err := db2.EnsureExists(ctx); err != nil {
 			t.Fatalf("EnsureExists: %v", err)

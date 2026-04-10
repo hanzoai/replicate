@@ -30,8 +30,8 @@ func (c *LTXCommand) Run(ctx context.Context, args []string) (err error) {
 		return fmt.Errorf("too many arguments")
 	}
 
-	var r *litestream.Replica
-	if litestream.IsURL(fs.Arg(0)) {
+	var r *replicate.Replica
+	if replicate.IsURL(fs.Arg(0)) {
 		if *configPath != "" {
 			return fmt.Errorf("cannot specify a replica URL and the -config flag")
 		}
@@ -78,7 +78,7 @@ func (c *LTXCommand) Run(ctx context.Context, args []string) (err error) {
 	// Determine which levels to iterate.
 	var levels []int
 	if int(level) == levelAll {
-		for lvl := 0; lvl <= litestream.SnapshotLevel; lvl++ {
+		for lvl := 0; lvl <= replicate.SnapshotLevel; lvl++ {
 			levels = append(levels, lvl)
 		}
 	} else {
@@ -137,19 +137,19 @@ Arguments:
 Examples:
 
 	# List all LTX files for a database.
-	$ litestream ltx /path/to/db
+	$ replicate ltx /path/to/db
 
 	# List all LTX files on S3
-	$ litestream ltx -replica s3 /path/to/db
+	$ replicate ltx -replica s3 /path/to/db
 
 	# List all LTX files for replica URL.
-	$ litestream ltx s3://mybkt/db
+	$ replicate ltx s3://mybkt/db
 
 	# List LTX files at snapshot level (level 9).
-	$ litestream ltx -level 9 /path/to/db
+	$ replicate ltx -level 9 /path/to/db
 
 	# List LTX files across all compaction levels.
-	$ litestream ltx -level all /path/to/db
+	$ replicate ltx -level all /path/to/db
 
 `[1:],
 		DefaultConfigPath(),

@@ -1,4 +1,4 @@
-Analyze LTX file issues in Litestream. This command helps diagnose problems with LTX files, including corruption, missing files, and consistency issues.
+Analyze LTX file issues in Replicate. This command helps diagnose problems with LTX files, including corruption, missing files, and consistency issues.
 
 First, understand the context:
 - What error messages are being reported?
@@ -31,19 +31,19 @@ Common issues to look for:
 
 Use the testing harness to reproduce:
 ```bash
-./bin/litestream-test validate -source-db test.db -replica-url [URL]
+./bin/replicate-test validate -source-db test.db -replica-url [URL]
 ```
 
 ## Recovery Options
 
 When analysis reveals corrupted or missing LTX files, two recovery mechanisms are available:
 
-**Manual recovery** with `litestream reset`:
+**Manual recovery** with `replicate reset`:
 ```bash
-litestream reset /path/to/database.db
+replicate reset /path/to/database.db
 ```
 Clears local LTX state from the metadata directory. The database file is not modified.
-Next sync creates a fresh snapshot. See `cmd/litestream/reset.go` for implementation.
+Next sync creates a fresh snapshot. See `cmd/replicate/reset.go` for implementation.
 
 **Automatic recovery** with `auto-recover` config:
 ```yaml
@@ -53,5 +53,5 @@ dbs:
       - url: s3://bucket/path
         auto-recover: true
 ```
-When enabled, Litestream automatically resets local state when LTX errors are detected
+When enabled, Replicate automatically resets local state when LTX errors are detected
 during sync. Disabled by default. See `replica.go` (auto-recover logic) for implementation.

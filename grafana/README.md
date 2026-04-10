@@ -1,20 +1,20 @@
-# Litestream Grafana Dashboard
+# Replicate Grafana Dashboard
 
-This directory contains a Grafana dashboard for monitoring Litestream metrics.
+This directory contains a Grafana dashboard for monitoring Replicate metrics.
 
 ## Prerequisites
 
-1. Litestream configured with metrics endpoint enabled in `litestream.yml`:
+1. Replicate configured with metrics endpoint enabled in `replicate.yml`:
 
    ```yaml
    addr: ":9090"
    ```
 
-2. Prometheus configured to scrape Litestream metrics:
+2. Prometheus configured to scrape Replicate metrics:
 
    ```yaml
    scrape_configs:
-     - job_name: 'litestream'
+     - job_name: 'replicate'
        static_configs:
          - targets: ['localhost:9090']
    ```
@@ -24,7 +24,7 @@ This directory contains a Grafana dashboard for monitoring Litestream metrics.
 ## Installation
 
 1. Open Grafana and navigate to **Dashboards** → **Import**
-2. Upload the `litestream-dashboard.json` file or paste its contents
+2. Upload the `replicate-dashboard.json` file or paste its contents
 3. Select your Prometheus data source
 4. Click **Import**
 
@@ -47,9 +47,9 @@ The dashboard monitors the following key metrics:
 The dashboard uses template variables:
 
 - `datasource`: Select your Prometheus data source
-- `job`: Select the Prometheus job name (defaults to "litestream")
+- `job`: Select the Prometheus job name (defaults to "replicate")
 
 ## Support
 
 For issues or improvements to this dashboard, please open an issue at:
-<https://github.com/benbjohnson/litestream/issues>
+<https://github.com/benbjohnson/replicate/issues>

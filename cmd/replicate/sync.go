@@ -50,7 +50,7 @@ func (c *SyncCommand) Run(ctx context.Context, args []string) error {
 		},
 	}
 
-	req := litestream.SyncRequest{
+	req := replicate.SyncRequest{
 		Path:    dbPath,
 		Wait:    *wait,
 		Timeout: *timeout,
@@ -72,14 +72,14 @@ func (c *SyncCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("sync failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("sync failed: %s", string(body))
 	}
 
-	var result litestream.SyncResponse
+	var result replicate.SyncResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -96,7 +96,7 @@ func (c *SyncCommand) Run(ctx context.Context, args []string) error {
 // Usage prints the help text for the sync command.
 func (c *SyncCommand) Usage() {
 	fmt.Println(`
-usage: litestream sync [OPTIONS] DB_PATH
+usage: replicate sync [OPTIONS] DB_PATH
 
 Force an immediate sync for a database.
 

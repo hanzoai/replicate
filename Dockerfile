@@ -3,12 +3,12 @@ FROM golang:1.25 AS builder
 # Install build dependencies for VFS extension
 RUN apt-get update && apt-get install -y gcc libc6-dev && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /src/litestream
+WORKDIR /src/replicate
 COPY . .
 
 ARG REPLICATE_VERSION=latest
 
-# Build litestream binary
+# Build replicate binary
 RUN --mount=type=cache,target=/root/.cache/go-build \
 	--mount=type=cache,target=/go/pkg \
 	go build -ldflags "-s -w -X 'main.Version=${REPLICATE_VERSION}' -extldflags '-static'" -tags osusergo,netgo,sqlite_omit_load_extension -o /usr/local/bin/replicate ./cmd/replicate
@@ -51,7 +51,7 @@ RUN apt-get update && \
 	rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/bin/replicate /usr/local/bin/replicate
-COPY --from=builder /src/litestream/dist/replicate-vfs.so /usr/local/lib/replicate-vfs.so
+COPY --from=builder /src/replicate/dist/replicate-vfs.so /usr/local/lib/replicate-vfs.so
 
 ENTRYPOINT ["/usr/local/bin/replicate"]
 CMD []

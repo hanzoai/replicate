@@ -37,7 +37,7 @@ func TestRestore_S3ConnectionDrop(t *testing.T) {
 	toxiproxyName, toxiproxyAPIPort, toxiproxyProxyPort := startToxiproxyContainer(t, networkName)
 	defer stopDockerContainer(toxiproxyName)
 
-	bucket := fmt.Sprintf("litestream-test-%d", time.Now().UnixNano())
+	bucket := fmt.Sprintf("replicate-test-%d", time.Now().UnixNano())
 	createMinioBucket(t, networkName, minioName, bucket)
 
 	proxyEndpoint := fmt.Sprintf("http://localhost:%s", toxiproxyProxyPort)
@@ -60,8 +60,8 @@ func TestRestore_S3ConnectionDrop(t *testing.T) {
 
 	configPath := writeS3Config(t, db.Path, replicaURL, proxyEndpoint)
 	db.ReplicaURL = replicaURL
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
 
 	time.Sleep(5 * time.Second)
@@ -72,8 +72,8 @@ func TestRestore_S3ConnectionDrop(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	if err := db.StopLitestream(); err != nil {
-		t.Fatalf("stop litestream: %v", err)
+	if err := db.StopReplicate(); err != nil {
+		t.Fatalf("stop replicate: %v", err)
 	}
 
 	restorePath := filepath.Join(db.TempDir, "restored.db")
@@ -98,7 +98,7 @@ func TestRestore_S3ConnectionDrop(t *testing.T) {
 
 func startDockerNetwork(t *testing.T) string {
 	t.Helper()
-	name := fmt.Sprintf("litestream-net-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("replicate-net-%d", time.Now().UnixNano())
 	runDockerCommand(t, "network", "create", name)
 	return name
 }
@@ -112,7 +112,7 @@ func removeDockerNetwork(name string) {
 
 func startMinioContainerForProxy(t *testing.T, networkName string) string {
 	t.Helper()
-	name := fmt.Sprintf("litestream-minio-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("replicate-minio-%d", time.Now().UnixNano())
 	exec.Command("docker", "rm", "-f", name).Run()
 
 	runDockerCommand(t, "run", "-d",
@@ -129,10 +129,10 @@ func startMinioContainerForProxy(t *testing.T, networkName string) string {
 
 func startToxiproxyContainer(t *testing.T, networkName string) (string, string, string) {
 	t.Helper()
-	name := fmt.Sprintf("litestream-toxiproxy-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("replicate-toxiproxy-%d", time.Now().UnixNano())
 	exec.Command("docker", "rm", "-f", name).Run()
 
-	image := os.Getenv("LITESTREAM_TOXIPROXY_IMAGE")
+	image := os.Getenv("REPLICATE_TOXIPROXY_IMAGE")
 	if image == "" {
 		image = "ghcr.io/shopify/toxiproxy:2.5.0"
 	}
@@ -175,7 +175,7 @@ func createMinioBucket(t *testing.T, networkName, minioName, bucket string) {
 
 func writeS3Config(t *testing.T, dbPath, replicaURL, endpoint string) string {
 	t.Helper()
-	configPath := filepath.Join(filepath.Dir(dbPath), "litestream-s3-drop.yml")
+	configPath := filepath.Join(filepath.Dir(dbPath), "replicate-s3-drop.yml")
 	config := fmt.Sprintf(`access-key-id: minioadmin
 secret-access-key: minioadmin
 

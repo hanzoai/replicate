@@ -1,4 +1,4 @@
-package litestream
+package replicate
 
 import (
 	"context"
@@ -110,7 +110,7 @@ type Store struct {
 	// If true, verify TXID consistency at destination level after each compaction.
 	VerifyCompaction bool
 
-	// RetentionEnabled controls whether Litestream actively deletes old files
+	// RetentionEnabled controls whether Replicate actively deletes old files
 	// during retention enforcement. When false, cloud provider lifecycle
 	// policies handle retention instead. Local file cleanup still occurs.
 	RetentionEnabled bool
@@ -591,7 +591,7 @@ func (s *Store) monitorCompactionLevel(ctx context.Context, lvl *CompactionLevel
 					"level", lvl.Level,
 					"dbs", notReadyDBs,
 					"timeout", DefaultDBInitTimeout,
-					"hint", "database may have corrupted local state or blocked transactions; try removing -litestream directory and restarting")
+					"hint", "database may have corrupted local state or blocked transactions; try removing -replicate directory and restarting")
 			}
 			retryDeadline = time.Time{}
 		}

@@ -1,4 +1,4 @@
-Trace the complete replication flow in Litestream. This command helps understand how changes flow from SQLite through to storage backends.
+Trace the complete replication flow in Replicate. This command helps understand how changes flow from SQLite through to storage backends.
 
 Follow the replication path step by step:
 
@@ -79,10 +79,10 @@ func (c *S3Client) WriteLTXFile(ctx context.Context, level int, minTXID, maxTXID
 6. **Checkpoint when thresholds are hit**:
 ```go
 if walPageCount > db.MinCheckpointPageN {
-    db.Checkpoint(ctx, litestream.CheckpointModePassive)
+    db.Checkpoint(ctx, replicate.CheckpointModePassive)
 }
 if walPageCount > db.TruncatePageN {
-    db.Checkpoint(ctx, litestream.CheckpointModeTruncate)
+    db.Checkpoint(ctx, replicate.CheckpointModeTruncate)
 }
 ```
 
@@ -121,7 +121,7 @@ Common bottlenecks:
 Test replication flow:
 ```bash
 # Start replication with verbose logging
-litestream replicate -v
+replicate replicate -v
 
 # In another terminal, write to database
 sqlite3 test.db "INSERT INTO test VALUES (1, 'data');"
@@ -139,6 +139,6 @@ Verify replication:
 aws s3 ls s3://bucket/path/ltx/0000/
 
 # Restore and verify
-litestream restore -o restored.db s3://bucket/path
+replicate restore -o restored.db s3://bucket/path
 sqlite3 restored.db "SELECT * FROM test;"
 ```

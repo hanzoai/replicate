@@ -48,7 +48,7 @@ func TestMinIOSoak(t *testing.T) {
 	}
 
 	t.Logf("================================================")
-	t.Logf("Litestream MinIO S3 Soak Test")
+	t.Logf("Replicate MinIO S3 Soak Test")
 	t.Logf("================================================")
 	t.Logf("Duration: %v", duration)
 	t.Logf("Start time: %s", time.Now().Format(time.RFC3339))
@@ -64,7 +64,7 @@ func TestMinIOSoak(t *testing.T) {
 	t.Log("")
 
 	// Create MinIO bucket
-	bucket := "litestream-test"
+	bucket := "replicate-test"
 	CreateMinIOBucket(t, containerID, bucket)
 	t.Log("")
 
@@ -86,10 +86,10 @@ func TestMinIOSoak(t *testing.T) {
 	t.Log("")
 
 	// Create S3 configuration for MinIO
-	s3Path := fmt.Sprintf("litestream-test-%d", time.Now().Unix())
+	s3Path := fmt.Sprintf("replicate-test-%d", time.Now().Unix())
 	s3URL := fmt.Sprintf("s3://%s/%s", bucket, s3Path)
 	db.ReplicaURL = s3URL
-	t.Log("Creating Litestream configuration for MinIO S3...")
+	t.Log("Creating Replicate configuration for MinIO S3...")
 	s3Config := &S3Config{
 		Endpoint:       endpoint,
 		AccessKey:      "minioadmin",
@@ -104,12 +104,12 @@ func TestMinIOSoak(t *testing.T) {
 	t.Logf("  S3 URL: %s", s3URL)
 	t.Log("")
 
-	// Start Litestream
-	t.Log("Starting Litestream with MinIO backend...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	// Start Replicate
+	t.Log("Starting Replicate with MinIO backend...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
-	t.Logf("✓ Litestream running (PID: %d)", db.LitestreamPID)
+	t.Logf("✓ Replicate running (PID: %d)", db.ReplicatePID)
 	t.Log("")
 
 	// Start load generator
@@ -158,8 +158,8 @@ func TestMinIOSoak(t *testing.T) {
 
 	logMetrics := func() {
 		logMinIOMetrics(t, db, containerID, bucket)
-		if db.LitestreamCmd != nil && db.LitestreamCmd.ProcessState != nil {
-			t.Error("✗ Litestream stopped unexpectedly!")
+		if db.ReplicateCmd != nil && db.ReplicateCmd.ProcessState != nil {
+			t.Error("✗ Replicate stopped unexpectedly!")
 			if testInfo.cancel != nil {
 				testInfo.cancel()
 			}
@@ -183,10 +183,10 @@ func TestMinIOSoak(t *testing.T) {
 	t.Log("================================================")
 	t.Log("")
 
-	// Stop Litestream
-	t.Log("Stopping Litestream...")
-	if err := db.StopLitestream(); err != nil {
-		t.Logf("Warning: Failed to stop Litestream cleanly: %v", err)
+	// Stop Replicate
+	t.Log("Stopping Replicate...")
+	if err := db.StopReplicate(); err != nil {
+		t.Logf("Warning: Failed to stop Replicate cleanly: %v", err)
 	}
 
 	// Final statistics
@@ -289,7 +289,7 @@ func TestMinIOSoak(t *testing.T) {
 		}
 		t.Log("")
 		t.Log("Review the logs for details:")
-		logPath, _ := db.GetLitestreamLog()
+		logPath, _ := db.GetReplicateLog()
 		t.Logf("  %s", logPath)
 		t.Fail()
 	}

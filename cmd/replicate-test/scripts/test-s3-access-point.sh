@@ -2,7 +2,7 @@
 set -e
 
 # Test S3 Access Point ARN support (Issue #923)
-# This script tests that Litestream can replicate to S3 using Access Point ARNs
+# This script tests that Replicate can replicate to S3 using Access Point ARNs
 # without requiring manual endpoint configuration.
 
 echo "=========================================="
@@ -16,26 +16,26 @@ echo ""
 # Configuration
 DB="/tmp/access-point-test.db"
 RESTORED_DB="/tmp/access-point-restored.db"
-LITESTREAM="./bin/litestream"
+REPLICATE="./bin/replicate"
 LOG="/tmp/access-point-test.log"
 CONFIG="/tmp/access-point-config.yml"
 
 # S3 Access Point Configuration
 # The ARN format: arn:aws:s3:REGION:ACCOUNT_ID:accesspoint/ACCESS_POINT_NAME
-S3_ACCESS_POINT_ARN="${LITESTREAM_S3_ACCESS_POINT_ARN:-}"
-S3_PREFIX="${LITESTREAM_S3_PREFIX:-litestream-access-point-test}"
-S3_REGION="${LITESTREAM_S3_REGION:-}"
+S3_ACCESS_POINT_ARN="${REPLICATE_S3_ACCESS_POINT_ARN:-}"
+S3_PREFIX="${REPLICATE_S3_PREFIX:-replicate-access-point-test}"
+S3_REGION="${REPLICATE_S3_REGION:-}"
 
 # Check prerequisites
 check_prerequisites() {
     echo "[Prerequisites]"
 
-    if [ ! -f "$LITESTREAM" ]; then
-        echo "❌ Litestream binary not found at $LITESTREAM"
-        echo "   Run: go build -o bin/litestream ./cmd/litestream"
+    if [ ! -f "$REPLICATE" ]; then
+        echo "❌ Replicate binary not found at $REPLICATE"
+        echo "   Run: go build -o bin/replicate ./cmd/replicate"
         exit 1
     fi
-    echo "  ✓ Litestream binary found"
+    echo "  ✓ Replicate binary found"
 
     if ! command -v sqlite3 &> /dev/null; then
         echo "❌ sqlite3 not found"
@@ -49,9 +49,9 @@ check_prerequisites() {
         echo ""
         echo "Please set the following environment variables:"
         echo ""
-        echo "  export LITESTREAM_S3_ACCESS_POINT_ARN='arn:aws:s3:REGION:ACCOUNT:accesspoint/NAME'"
-        echo "  export LITESTREAM_S3_REGION='us-east-1'  # Optional, extracted from ARN"
-        echo "  export LITESTREAM_S3_PREFIX='test-prefix'  # Optional"
+        echo "  export REPLICATE_S3_ACCESS_POINT_ARN='arn:aws:s3:REGION:ACCOUNT:accesspoint/NAME'"
+        echo "  export REPLICATE_S3_REGION='us-east-1'  # Optional, extracted from ARN"
+        echo "  export REPLICATE_S3_PREFIX='test-prefix'  # Optional"
         echo ""
         echo "You also need AWS credentials configured via:"
         echo "  - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)"
@@ -59,8 +59,8 @@ check_prerequisites() {
         echo "  - IAM role (if running on AWS)"
         echo ""
         echo "Example:"
-        echo "  export LITESTREAM_S3_ACCESS_POINT_ARN='arn:aws:s3:us-east-2:123456789012:accesspoint/my-access-point'"
-        echo "  ./cmd/litestream-test/scripts/test-s3-access-point.sh"
+        echo "  export REPLICATE_S3_ACCESS_POINT_ARN='arn:aws:s3:us-east-2:123456789012:accesspoint/my-access-point'"
+        echo "  ./cmd/replicate-test/scripts/test-s3-access-point.sh"
         echo ""
         exit 1
     fi
@@ -85,7 +85,7 @@ check_prerequisites() {
 cleanup() {
     echo ""
     echo "[Cleanup]"
-    pkill -f "litestream replicate.*access-point-test" 2>/dev/null || true
+    pkill -f "replicate replicate.*access-point-test" 2>/dev/null || true
     rm -f "$DB"* "$RESTORED_DB"* "$LOG" "$CONFIG"
     echo "  ✓ Cleaned up test artifacts"
 }
@@ -135,23 +135,23 @@ cat "$CONFIG" | sed 's/^/    /'
 echo ""
 
 echo "[3] Starting replication..."
-$LITESTREAM replicate -config "$CONFIG" > "$LOG" 2>&1 &
+$REPLICATE replicate -config "$CONFIG" > "$LOG" 2>&1 &
 REPL_PID=$!
-echo "  ✓ Litestream started (PID: $REPL_PID)"
+echo "  ✓ Replicate started (PID: $REPL_PID)"
 
 # Wait for initial sync
 echo "[4] Waiting for initial sync (10 seconds)..."
 sleep 10
 
-# Check if Litestream is still running
+# Check if Replicate is still running
 if ! kill -0 $REPL_PID 2>/dev/null; then
-    echo "❌ Litestream exited unexpectedly!"
+    echo "❌ Replicate exited unexpectedly!"
     echo ""
     echo "Log output:"
     cat "$LOG" | sed 's/^/    /'
     exit 1
 fi
-echo "  ✓ Litestream still running"
+echo "  ✓ Replicate still running"
 
 echo "[5] Adding more data..."
 sqlite3 "$DB" <<EOF
@@ -167,7 +167,7 @@ sleep 5
 echo "[7] Stopping replication..."
 kill $REPL_PID 2>/dev/null || true
 wait $REPL_PID 2>/dev/null || true
-echo "  ✓ Litestream stopped"
+echo "  ✓ Replicate stopped"
 
 # Check for errors in log
 echo "[8] Checking for errors in log..."
@@ -193,7 +193,7 @@ echo "[1] Restoring database from Access Point..."
 RESTORE_URL="s3://${S3_ACCESS_POINT_ARN}/${S3_PREFIX}"
 echo "  Restore URL: $RESTORE_URL"
 
-if ! $LITESTREAM restore -o "$RESTORED_DB" "$RESTORE_URL" 2>&1; then
+if ! $REPLICATE restore -o "$RESTORED_DB" "$RESTORE_URL" 2>&1; then
     echo "❌ Restore failed!"
     exit 1
 fi
