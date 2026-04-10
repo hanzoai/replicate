@@ -21,7 +21,7 @@ func RequireDocker(t *testing.T) {
 func StartMinioTestContainer(t *testing.T) (string, string) {
 	t.Helper()
 
-	name := fmt.Sprintf("litestream-minio-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("replicate-minio-%d", time.Now().UnixNano())
 	exec.Command("docker", "rm", "-f", name).Run()
 
 	args := []string{

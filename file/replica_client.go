@@ -19,20 +19,20 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("file", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("file", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
 const ReplicaClientType = "file"
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
-var _ litestream.ReplicaClientV3 = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClientV3 = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files to disk.
 type ReplicaClient struct {
 	path string // destination path
 
-	Replica *litestream.Replica
+	Replica *replicate.Replica
 	logger  *slog.Logger
 }
 
@@ -50,7 +50,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	// For file URLs, the path is the full path
 	if urlPath == "" {
 		return nil, fmt.Errorf("file replica path required")
@@ -59,7 +59,7 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 }
 
 // db returns the database, if available.
-func (c *ReplicaClient) db() *litestream.DB {
+func (c *ReplicaClient) db() *replicate.DB {
 	if c.Replica == nil {
 		return nil
 	}
@@ -83,12 +83,12 @@ func (c *ReplicaClient) Path() string {
 
 // LTXLevelDir returns the path to a given level.
 func (c *ReplicaClient) LTXLevelDir(level int) string {
-	return filepath.FromSlash(litestream.LTXLevelDir(c.path, level))
+	return filepath.FromSlash(replicate.LTXLevelDir(c.path, level))
 }
 
 // LTXFilePath returns the path to an LTX file.
 func (c *ReplicaClient) LTXFilePath(level int, minTXID, maxTXID ltx.TXID) string {
-	return filepath.FromSlash(litestream.LTXFilePath(c.path, level, minTXID, maxTXID))
+	return filepath.FromSlash(replicate.LTXFilePath(c.path, level, minTXID, maxTXID))
 }
 
 // LTXFiles returns an iterator over all LTX files on the replica for the given level.
@@ -136,7 +136,7 @@ func (c *ReplicaClient) OpenLTXFile(ctx context.Context, level int, minTXID, max
 	path := c.LTXFilePath(level, minTXID, maxTXID)
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, litestream.NewLTXError("open", path, level, uint64(minTXID), uint64(maxTXID), err)
+		return nil, replicate.NewLTXError("open", path, level, uint64(minTXID), uint64(maxTXID), err)
 	}
 
 	if offset > 0 {
@@ -257,7 +257,7 @@ func (c *ReplicaClient) DeleteAll(ctx context.Context) error {
 
 // GenerationsV3 returns a list of v0.3.x generation IDs in the replica.
 func (c *ReplicaClient) GenerationsV3(ctx context.Context) ([]string, error) {
-	genPath := filepath.Join(c.path, litestream.GenerationsDirV3)
+	genPath := filepath.Join(c.path, replicate.GenerationsDirV3)
 	entries, err := os.ReadDir(genPath)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -267,7 +267,7 @@ func (c *ReplicaClient) GenerationsV3(ctx context.Context) ([]string, error) {
 
 	var generations []string
 	for _, entry := range entries {
-		if entry.IsDir() && litestream.IsGenerationIDV3(entry.Name()) {
+		if entry.IsDir() && replicate.IsGenerationIDV3(entry.Name()) {
 			generations = append(generations, entry.Name())
 		}
 	}
@@ -276,8 +276,8 @@ func (c *ReplicaClient) GenerationsV3(ctx context.Context) ([]string, error) {
 }
 
 // SnapshotsV3 returns snapshots for a generation, sorted by index.
-func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]litestream.SnapshotInfoV3, error) {
-	snapshotsPath := filepath.Join(c.path, litestream.GenerationsDirV3, generation, litestream.SnapshotsDirV3)
+func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]replicate.SnapshotInfoV3, error) {
+	snapshotsPath := filepath.Join(c.path, replicate.GenerationsDirV3, generation, replicate.SnapshotsDirV3)
 	entries, err := os.ReadDir(snapshotsPath)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -285,12 +285,12 @@ func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]l
 		return nil, err
 	}
 
-	var snapshots []litestream.SnapshotInfoV3
+	var snapshots []replicate.SnapshotInfoV3
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
-		index, err := litestream.ParseSnapshotFilenameV3(entry.Name())
+		index, err := replicate.ParseSnapshotFilenameV3(entry.Name())
 		if err != nil {
 			continue // skip invalid filenames
 		}
@@ -298,22 +298,22 @@ func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]l
 		if err != nil {
 			return nil, err
 		}
-		snapshots = append(snapshots, litestream.SnapshotInfoV3{
+		snapshots = append(snapshots, replicate.SnapshotInfoV3{
 			Generation: generation,
 			Index:      index,
 			Size:       info.Size(),
 			CreatedAt:  info.ModTime(),
 		})
 	}
-	slices.SortFunc(snapshots, func(a, b litestream.SnapshotInfoV3) int {
+	slices.SortFunc(snapshots, func(a, b replicate.SnapshotInfoV3) int {
 		return a.Index - b.Index
 	})
 	return snapshots, nil
 }
 
 // WALSegmentsV3 returns WAL segments for a generation, sorted by index then offset.
-func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([]litestream.WALSegmentInfoV3, error) {
-	walPath := filepath.Join(c.path, litestream.GenerationsDirV3, generation, litestream.WALDirV3)
+func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([]replicate.WALSegmentInfoV3, error) {
+	walPath := filepath.Join(c.path, replicate.GenerationsDirV3, generation, replicate.WALDirV3)
 	entries, err := os.ReadDir(walPath)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -321,12 +321,12 @@ func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([
 		return nil, err
 	}
 
-	var segments []litestream.WALSegmentInfoV3
+	var segments []replicate.WALSegmentInfoV3
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
-		index, offset, err := litestream.ParseWALSegmentFilenameV3(entry.Name())
+		index, offset, err := replicate.ParseWALSegmentFilenameV3(entry.Name())
 		if err != nil {
 			continue // skip invalid filenames
 		}
@@ -334,7 +334,7 @@ func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([
 		if err != nil {
 			return nil, err
 		}
-		segments = append(segments, litestream.WALSegmentInfoV3{
+		segments = append(segments, replicate.WALSegmentInfoV3{
 			Generation: generation,
 			Index:      index,
 			Offset:     offset,
@@ -342,7 +342,7 @@ func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([
 			CreatedAt:  info.ModTime(),
 		})
 	}
-	slices.SortFunc(segments, func(a, b litestream.WALSegmentInfoV3) int {
+	slices.SortFunc(segments, func(a, b replicate.WALSegmentInfoV3) int {
 		if a.Index != b.Index {
 			return a.Index - b.Index
 		}
@@ -354,7 +354,7 @@ func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([
 // OpenSnapshotV3 opens a v0.3.x snapshot file for reading.
 // The returned reader provides LZ4-decompressed data.
 func (c *ReplicaClient) OpenSnapshotV3(ctx context.Context, generation string, index int) (io.ReadCloser, error) {
-	path := filepath.Join(c.path, litestream.GenerationsDirV3, generation, litestream.SnapshotsDirV3, litestream.FormatSnapshotFilenameV3(index))
+	path := filepath.Join(c.path, replicate.GenerationsDirV3, generation, replicate.SnapshotsDirV3, replicate.FormatSnapshotFilenameV3(index))
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func (c *ReplicaClient) OpenSnapshotV3(ctx context.Context, generation string, i
 // OpenWALSegmentV3 opens a v0.3.x WAL segment file for reading.
 // The returned reader provides LZ4-decompressed data.
 func (c *ReplicaClient) OpenWALSegmentV3(ctx context.Context, generation string, index int, offset int64) (io.ReadCloser, error) {
-	path := filepath.Join(c.path, litestream.GenerationsDirV3, generation, litestream.WALDirV3, litestream.FormatWALSegmentFilenameV3(index, offset))
+	path := filepath.Join(c.path, replicate.GenerationsDirV3, generation, replicate.WALDirV3, replicate.FormatWALSegmentFilenameV3(index, offset))
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

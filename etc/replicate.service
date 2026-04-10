@@ -1,0 +1,9 @@
+[Unit]
+Description=Replicate
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/replicate replicate
+
+[Install]
+WantedBy=multi-user.target

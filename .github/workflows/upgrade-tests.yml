@@ -24,28 +24,28 @@ jobs:
         with:
           go-version-file: "go.mod"
 
-      - name: Download Litestream v0.3.13
+      - name: Download Replicate v0.3.13
         run: |
-          mkdir -p /tmp/litestream-v3
-          gh release download v0.3.13 --repo benbjohnson/litestream --pattern 'litestream-v0.3.13-linux-amd64.tar.gz' --dir /tmp
-          tar -xzf /tmp/litestream-v0.3.13-linux-amd64.tar.gz -C /tmp/litestream-v3
-          chmod +x /tmp/litestream-v3/litestream
-          /tmp/litestream-v3/litestream version
+          mkdir -p /tmp/replicate-v3
+          gh release download v0.3.13 --repo benbjohnson/replicate --pattern 'replicate-v0.3.13-linux-amd64.tar.gz' --dir /tmp
+          tar -xzf /tmp/replicate-v0.3.13-linux-amd64.tar.gz -C /tmp/replicate-v3
+          chmod +x /tmp/replicate-v3/replicate
+          /tmp/replicate-v3/replicate version
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Build current binaries
-        run: go build -o bin/litestream ./cmd/litestream && go build -o bin/litestream-test ./cmd/litestream-test
+        run: go build -o bin/replicate ./cmd/replicate && go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Run upgrade integration tests
         run: go test -v -tags=integration -timeout=10m ./tests/integration/... -run=TestUpgrade
         env:
           CGO_ENABLED: "1"
-          LITESTREAM_V3_BIN: /tmp/litestream-v3/litestream
+          REPLICATE_V3_BIN: /tmp/replicate-v3/replicate
 
       - name: Upload test logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: upgrade-test-logs
-          path: /tmp/litestream-*/*.log
+          path: /tmp/replicate-*/*.log

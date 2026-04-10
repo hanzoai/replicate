@@ -1,5 +1,5 @@
 .DS_Store
-/src/litestream-vfs.h
+/src/replicate-vfs.h
 /dist
 .vscode
 .sprite
@@ -27,5 +27,4 @@ CLAUDE.local.md
 packages/python/dist/
 packages/python/build/
 packages/python/*.egg-info/
-/litestream
 /replicate

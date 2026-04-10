@@ -4,46 +4,46 @@
 # Ensures we're using local builds, not system-installed versions
 
 echo "=========================================="
-echo "Litestream Test Environment Verification"
+echo "Replicate Test Environment Verification"
 echo "=========================================="
 echo ""
 
-# Check for local Litestream build
-echo "Checking for local Litestream build..."
-if [ -f "./bin/litestream" ]; then
-    echo "✓ Local litestream found: ./bin/litestream"
-    echo "  Version: $($./bin/litestream version)"
-    echo "  Size: $(ls -lh ./bin/litestream | awk '{print $5}')"
-    echo "  Modified: $(ls -la ./bin/litestream | awk '{print $6, $7, $8}')"
+# Check for local Replicate build
+echo "Checking for local Replicate build..."
+if [ -f "./bin/replicate" ]; then
+    echo "✓ Local replicate found: ./bin/replicate"
+    echo "  Version: $($./bin/replicate version)"
+    echo "  Size: $(ls -lh ./bin/replicate | awk '{print $5}')"
+    echo "  Modified: $(ls -la ./bin/replicate | awk '{print $6, $7, $8}')"
 else
-    echo "✗ Local litestream NOT found at ./bin/litestream"
-    echo "  Please build: go build -o bin/litestream ./cmd/litestream"
+    echo "✗ Local replicate NOT found at ./bin/replicate"
+    echo "  Please build: go build -o bin/replicate ./cmd/replicate"
     exit 1
 fi
 
-# Check for system Litestream (should NOT be used)
+# Check for system Replicate (should NOT be used)
 echo ""
-echo "Checking for system Litestream..."
-if command -v litestream &> /dev/null; then
-    SYSTEM_LITESTREAM=$(which litestream)
-    echo "⚠ System litestream found at: $SYSTEM_LITESTREAM"
-    echo "  Version: $(litestream version 2>&1 || echo "unknown")"
+echo "Checking for system Replicate..."
+if command -v replicate &> /dev/null; then
+    SYSTEM_REPLICATE=$(which replicate)
+    echo "⚠ System replicate found at: $SYSTEM_REPLICATE"
+    echo "  Version: $(replicate version 2>&1 || echo "unknown")"
     echo "  WARNING: Tests should NOT use this version!"
-    echo "  All test scripts use ./bin/litestream explicitly"
+    echo "  All test scripts use ./bin/replicate explicitly"
 else
-    echo "✓ No system litestream found (good - avoids confusion)"
+    echo "✓ No system replicate found (good - avoids confusion)"
 fi
 
-# Check for litestream-test binary
+# Check for replicate-test binary
 echo ""
-echo "Checking for litestream-test binary..."
-if [ -f "./bin/litestream-test" ]; then
-    echo "✓ Local litestream-test found: ./bin/litestream-test"
-    echo "  Size: $(ls -lh ./bin/litestream-test | awk '{print $5}')"
-    echo "  Modified: $(ls -la ./bin/litestream-test | awk '{print $6, $7, $8}')"
+echo "Checking for replicate-test binary..."
+if [ -f "./bin/replicate-test" ]; then
+    echo "✓ Local replicate-test found: ./bin/replicate-test"
+    echo "  Size: $(ls -lh ./bin/replicate-test | awk '{print $5}')"
+    echo "  Modified: $(ls -la ./bin/replicate-test | awk '{print $6, $7, $8}')"
 else
-    echo "✗ litestream-test NOT found at ./bin/litestream-test"
-    echo "  Please build: go build -o bin/litestream-test ./cmd/litestream-test"
+    echo "✗ replicate-test NOT found at ./bin/replicate-test"
+    echo "  Please build: go build -o bin/replicate-test ./cmd/replicate-test"
     exit 1
 fi
 
@@ -59,11 +59,11 @@ SCRIPTS=(
 ALL_GOOD=true
 for script in "${SCRIPTS[@]}"; do
     if [ -f "$script" ]; then
-        if grep -q 'LITESTREAM="./bin/litestream"' "$script"; then
+        if grep -q 'REPLICATE="./bin/replicate"' "$script"; then
             echo "✓ $script uses local build"
         else
             echo "✗ $script may not use local build!"
-            grep "LITESTREAM=" "$script" | head -2
+            grep "REPLICATE=" "$script" | head -2
             ALL_GOOD=false
         fi
     else
@@ -83,7 +83,7 @@ fi
 # Summary
 echo ""
 echo "=========================================="
-if [ "$ALL_GOOD" = true ] && [ -f "./bin/litestream" ] && [ -f "./bin/litestream-test" ]; then
+if [ "$ALL_GOOD" = true ] && [ -f "./bin/replicate" ] && [ -f "./bin/replicate-test" ]; then
     echo "✅ Test environment is properly configured!"
     echo ""
     echo "You can run tests with:"
@@ -94,8 +94,8 @@ else
     echo "❌ Test environment needs setup"
     echo ""
     echo "Required steps:"
-    [ ! -f "./bin/litestream" ] && echo "  1. Build litestream: go build -o bin/litestream ./cmd/litestream"
-    [ ! -f "./bin/litestream-test" ] && echo "  2. Build test harness: go build -o bin/litestream-test ./cmd/litestream-test"
+    [ ! -f "./bin/replicate" ] && echo "  1. Build replicate: go build -o bin/replicate ./cmd/replicate"
+    [ ! -f "./bin/replicate-test" ] && echo "  2. Build test harness: go build -o bin/replicate-test ./cmd/replicate-test"
     exit 1
 fi
 echo "=========================================="

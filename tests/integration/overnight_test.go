@@ -38,9 +38,9 @@ func TestOvernightFile(t *testing.T) {
 
 	t.Log("✓ Database populated to 100MB")
 
-	t.Log("[2] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[2] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(10 * time.Second)
@@ -109,7 +109,7 @@ func TestOvernightFile(t *testing.T) {
 		t.Log("✓ No errors detected")
 	}
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[6] Testing final restore...")
@@ -155,9 +155,9 @@ func TestOvernightComprehensive(t *testing.T) {
 
 	t.Log("✓ Database populated to 500MB")
 
-	t.Log("[2] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[2] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(10 * time.Second)
@@ -198,7 +198,7 @@ func TestOvernightComprehensive(t *testing.T) {
 
 	time.Sleep(2 * time.Minute)
 
-	db.StopLitestream()
+	db.StopReplicate()
 
 	t.Log("[4] Final validation...")
 	restoredPath := filepath.Join(db.TempDir, "comprehensive-restored.db")

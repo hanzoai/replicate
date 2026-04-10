@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Litestream
+about: Suggest an idea for Replicate
 title: ''
 labels: enhancement
 assignees: ''

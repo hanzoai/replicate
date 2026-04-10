@@ -16,13 +16,13 @@ echo ""
 DB="/tmp/format-test.db"
 REPLICA="/tmp/format-replica"
 RESTORED="/tmp/format-restored.db"
-LITESTREAM_V3="/opt/homebrew/bin/litestream"
-LITESTREAM_V5="./bin/litestream"
+REPLICATE_V3="/opt/homebrew/bin/replicate"
+REPLICATE_V5="./bin/replicate"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*format-test.db" 2>/dev/null || true
-    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-litestream"
+    pkill -f "replicate replicate.*format-test.db" 2>/dev/null || true
+    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-replicate"
     rm -f "$RESTORED" "$RESTORED-wal" "$RESTORED-shm"
     rm -rf "$REPLICA"
     rm -f /tmp/format-*.log
@@ -57,7 +57,7 @@ echo "  ✓ Database created with $V3_INITIAL_COUNT rows"
 
 echo ""
 echo "[2] Starting v0.3.13 replication..."
-$LITESTREAM_V3 replicate "$DB" "file://$REPLICA" > /tmp/format-v3.log 2>&1 &
+$REPLICATE_V3 replicate "$DB" "file://$REPLICA" > /tmp/format-v3.log 2>&1 &
 V3_PID=$!
 sleep 3
 
@@ -106,7 +106,7 @@ echo "=========================================="
 echo "[5] Attempting v0.5.0 restore from PURE v0.3.x files..."
 echo "  CRITICAL: This should fail if formats are incompatible"
 
-$LITESTREAM_V5 restore -o "$RESTORED" "file://$REPLICA" > /tmp/format-restore-pure.log 2>&1
+$REPLICATE_V5 restore -o "$RESTORED" "file://$REPLICA" > /tmp/format-restore-pure.log 2>&1
 PURE_RESTORE_EXIT=$?
 
 if [ $PURE_RESTORE_EXIT -eq 0 ]; then
@@ -166,7 +166,7 @@ EOF
 echo "  ✓ Recreated database with v0.5.0 data"
 
 # Start v0.5.0 against the replica that has v0.3.x files
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/format-v5.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/format-v5.log 2>&1 &
 V5_PID=$!
 sleep 5
 
@@ -203,7 +203,7 @@ wait $V5_PID 2>/dev/null
 
 echo ""
 echo "[8] Testing restore from mixed backup..."
-$LITESTREAM_V5 restore -o "$RESTORED" "file://$REPLICA" > /tmp/format-restore-mixed.log 2>&1
+$REPLICATE_V5 restore -o "$RESTORED" "file://$REPLICA" > /tmp/format-restore-mixed.log 2>&1
 MIXED_RESTORE_EXIT=$?
 
 if [ $MIXED_RESTORE_EXIT -eq 0 ]; then

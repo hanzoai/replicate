@@ -14,13 +14,13 @@ echo ""
 # Configuration
 DB="/tmp/restart-test.db"
 REPLICA="/tmp/restart-replica"
-LITESTREAM_V5="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE_V5="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*restart-test.db" 2>/dev/null || true
-    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-litestream"
+    pkill -f "replicate replicate.*restart-test.db" 2>/dev/null || true
+    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-replicate"
     rm -rf "$REPLICA"
     rm -f /tmp/restart-*.log
 }
@@ -36,7 +36,7 @@ echo "Scenario 1: Simple v0.5.0 restart"
 echo "=========================================="
 
 echo "[1] Creating large database for restart testing..."
-$LITESTREAM_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
+$REPLICATE_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
 
 # Add identifiable data
 sqlite3 "$DB" <<EOF
@@ -56,7 +56,7 @@ echo "  ✓ Database created: $DB_SIZE ($PAGE_COUNT pages)"
 
 echo ""
 echo "[2] First v0.5.0 run..."
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/restart-run1.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/restart-run1.log 2>&1 &
 RUN1_PID=$!
 sleep 5
 
@@ -103,7 +103,7 @@ echo "[4] Stopping first run and adding offline data..."
 kill $RUN1_PID 2>/dev/null || true
 wait $RUN1_PID 2>/dev/null
 
-# Add data while Litestream is down
+# Add data while Replicate is down
 sqlite3 "$DB" "INSERT INTO restart_test (scenario, restart_number, data) VALUES ('offline', 0, randomblob(4000));"
 OFFLINE_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM restart_test;")
 echo "  ✓ Offline data added, total: $OFFLINE_COUNT rows"
@@ -112,7 +112,7 @@ echo ""
 echo "[5] CRITICAL: Second v0.5.0 restart..."
 echo "  Starting v0.5.0 against existing LTX files with HeaderFlagNoChecksum..."
 
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/restart-run2.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/restart-run2.log 2>&1 &
 RUN2_PID=$!
 sleep 5
 
@@ -184,7 +184,7 @@ wait $RUN2_PID 2>/dev/null
 
 sqlite3 "$DB" "INSERT INTO restart_test (scenario, restart_number, data) VALUES ('between-2-and-3', 0, randomblob(2500));"
 
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/restart-run3.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/restart-run3.log 2>&1 &
 RUN3_PID=$!
 sleep 5
 
@@ -235,8 +235,8 @@ echo "CRITICAL FINDINGS:"
 if [ "$RESTART_TRIGGERS_754" = true ] || [ "${RUN3_FLAGS:-0}" -gt "0" ]; then
     echo "🚨 #754 FLAG ISSUE TRIGGERED BY v0.5.0 RESTARTS"
     echo "   Root cause: v0.5.0 reading its own LTX files with HeaderFlagNoChecksum"
-    echo "   Trigger: Restarting Litestream against existing v0.5.0 backup files"
-    echo "   Impact: Production Litestream restarts will fail"
+    echo "   Trigger: Restarting Replicate against existing v0.5.0 backup files"
+    echo "   Impact: Production Replicate restarts will fail"
 else
     echo "✅ No #754 errors in restart scenarios tested"
     echo "   Issue may require specific database content or timing conditions"

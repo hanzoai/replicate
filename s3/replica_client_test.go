@@ -25,7 +25,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/superfly/ltx"
 
-	litestream "github.com/hanzoai/replicate"
+	replicate "github.com/hanzoai/replicate"
 )
 
 // mockAPIError implements smithy.APIError for testing
@@ -620,8 +620,8 @@ func TestReplicaClientDeleteLTXFiles_ContentMD5(t *testing.T) {
 				t.Fatalf("unexpected query: %s", r.URL.RawQuery)
 			}
 
-			if ua := r.Header.Get("User-Agent"); !strings.Contains(ua, "litestream") {
-				t.Fatalf("expected User-Agent to contain litestream, got %q", ua)
+			if ua := r.Header.Get("User-Agent"); !strings.Contains(ua, "replicate") {
+				t.Fatalf("expected User-Agent to contain replicate, got %q", ua)
 			}
 
 			body, err := io.ReadAll(r.Body)
@@ -1288,7 +1288,7 @@ func TestReplicaClient_S3DebugEnvVar(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Always set env var (even to empty) to isolate tests from caller's environment
-			t.Setenv("LITESTREAM_S3_DEBUG", tt.envValue)
+			t.Setenv("REPLICATE_S3_DEBUG", tt.envValue)
 
 			gotLogMode := parseS3DebugEnv()
 			if gotLogMode != tt.wantLogMode {
@@ -1817,7 +1817,7 @@ func TestReplicaClient_R2ConcurrencyDefault(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := litestream.NewReplicaClientFromURL(tt.url)
+			client, err := replicate.NewReplicaClientFromURL(tt.url)
 			if err != nil {
 				t.Fatalf("NewReplicaClientFromURL() error: %v", err)
 			}
@@ -1872,13 +1872,13 @@ func TestReplicaClient_ProviderEndpointDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := litestream.IsCloudflareR2Endpoint(tt.endpoint); got != tt.wantR2 {
+			if got := replicate.IsCloudflareR2Endpoint(tt.endpoint); got != tt.wantR2 {
 				t.Errorf("IsCloudflareR2Endpoint() = %v, want %v", got, tt.wantR2)
 			}
-			if got := litestream.IsBackblazeEndpoint(tt.endpoint); got != tt.wantB2 {
+			if got := replicate.IsBackblazeEndpoint(tt.endpoint); got != tt.wantB2 {
 				t.Errorf("IsBackblazeEndpoint() = %v, want %v", got, tt.wantB2)
 			}
-			if got := litestream.IsDigitalOceanEndpoint(tt.endpoint); got != tt.wantDO {
+			if got := replicate.IsDigitalOceanEndpoint(tt.endpoint); got != tt.wantDO {
 				t.Errorf("IsDigitalOceanEndpoint() = %v, want %v", got, tt.wantDO)
 			}
 		})
@@ -1998,7 +1998,7 @@ func TestNewReplicaClientFromURL_QueryParamAliases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := litestream.NewReplicaClientFromURL(tt.url)
+			client, err := replicate.NewReplicaClientFromURL(tt.url)
 			if err != nil {
 				t.Fatalf("NewReplicaClientFromURL() error: %v", err)
 			}
@@ -2067,9 +2067,9 @@ func TestNewReplicaClientFromURL_EndpointEnvVar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("LITESTREAM_S3_ENDPOINT", tt.envEndpoint)
+			t.Setenv("REPLICATE_S3_ENDPOINT", tt.envEndpoint)
 
-			client, err := litestream.NewReplicaClientFromURL(tt.url)
+			client, err := replicate.NewReplicaClientFromURL(tt.url)
 			if err != nil {
 				t.Fatalf("NewReplicaClientFromURL() error: %v", err)
 			}

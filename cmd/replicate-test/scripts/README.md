@@ -1,14 +1,14 @@
-# Litestream Test Scripts
+# Replicate Test Scripts
 
-Comprehensive test scripts for validating Litestream functionality across various scenarios. These scripts use the `litestream-test` CLI tool to orchestrate complex testing scenarios.
+Comprehensive test scripts for validating Replicate functionality across various scenarios. These scripts use the `replicate-test` CLI tool to orchestrate complex testing scenarios.
 
 ## Prerequisites
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 
-./cmd/litestream-test/scripts/verify-test-setup.sh
+./cmd/replicate-test/scripts/verify-test-setup.sh
 ```
 
 ## Quick Reference
@@ -43,12 +43,12 @@ go build -o bin/litestream-test ./cmd/litestream-test
 Verifies that the test environment is properly configured with required binaries and dependencies.
 
 ```bash
-./cmd/litestream-test/scripts/verify-test-setup.sh
+./cmd/replicate-test/scripts/verify-test-setup.sh
 ```
 
 **Checks:**
-- Litestream binary exists
-- litestream-test binary exists
+- Replicate binary exists
+- replicate-test binary exists
 - SQLite3 available
 - Python dependencies for S3 mock
 
@@ -58,15 +58,15 @@ Verifies that the test environment is properly configured with required binaries
 Reproduces checkpoint during downtime bug that causes restore failures.
 
 ```bash
-./cmd/litestream-test/scripts/reproduce-critical-bug.sh
+./cmd/replicate-test/scripts/reproduce-critical-bug.sh
 ```
 
 **Reproduces:** Issue #752
 
 **Scenario:**
-1. Litestream is killed (simulating crash)
+1. Replicate is killed (simulating crash)
 2. Writes continue and a checkpoint occurs
-3. Litestream is restarted
+3. Replicate is restarted
 4. Restore fails with "nonsequential page numbers" error
 
 **Expected:** Database should restore successfully
@@ -76,7 +76,7 @@ Reproduces checkpoint during downtime bug that causes restore failures.
 Tests Issue #754 flag compatibility with S3 replication versus file replication.
 
 ```bash
-./cmd/litestream-test/scripts/test-754-s3-scenarios.sh
+./cmd/replicate-test/scripts/test-754-s3-scenarios.sh
 ```
 
 **Tests:**
@@ -89,7 +89,7 @@ Tests Issue #754 flag compatibility with S3 replication versus file replication.
 Focused testing of Issue #754 restore failures.
 
 ```bash
-./cmd/litestream-test/scripts/test-754-restore-focus.sh
+./cmd/replicate-test/scripts/test-754-restore-focus.sh
 ```
 
 **Tests:**
@@ -101,7 +101,7 @@ Focused testing of Issue #754 restore failures.
 Minimal reproduction case for Issue #754.
 
 ```bash
-./cmd/litestream-test/scripts/test-simple-754-reproduction.sh
+./cmd/replicate-test/scripts/test-simple-754-reproduction.sh
 ```
 
 **Reproduces:** Issue #754 with minimal steps for debugging
@@ -110,7 +110,7 @@ Minimal reproduction case for Issue #754.
 Reproduces ltx v0.5.0 flag compatibility issue.
 
 ```bash
-./cmd/litestream-test/scripts/test-v0.5-flag-reproduction.sh
+./cmd/replicate-test/scripts/test-v0.5-flag-reproduction.sh
 ```
 
 **Tests:**
@@ -122,7 +122,7 @@ Reproduces ltx v0.5.0 flag compatibility issue.
 Tests various restart scenarios with ltx v0.5.0.
 
 ```bash
-./cmd/litestream-test/scripts/test-v0.5-restart-scenarios.sh
+./cmd/replicate-test/scripts/test-v0.5-restart-scenarios.sh
 ```
 
 **Tests:**
@@ -137,7 +137,7 @@ Tests various restart scenarios with ltx v0.5.0.
 Tests isolation between different LTX format versions.
 
 ```bash
-./cmd/litestream-test/scripts/test-format-isolation.sh
+./cmd/replicate-test/scripts/test-format-isolation.sh
 ```
 
 **Tests:**
@@ -150,7 +150,7 @@ Tests isolation between different LTX format versions.
 Quick validation of LTX format handling.
 
 ```bash
-./cmd/litestream-test/scripts/test-quick-format-check.sh
+./cmd/replicate-test/scripts/test-quick-format-check.sh
 ```
 
 **Duration:** ~30 seconds
@@ -164,7 +164,7 @@ Quick validation of LTX format handling.
 Tests upgrade path from ltx v0.3 to v0.5.
 
 ```bash
-./cmd/litestream-test/scripts/test-upgrade-v0.3-to-v0.5.sh
+./cmd/replicate-test/scripts/test-upgrade-v0.3-to-v0.5.sh
 ```
 
 **Tests:**
@@ -177,7 +177,7 @@ Tests upgrade path from ltx v0.3 to v0.5.
 Tests upgrade process with large databases (1GB+).
 
 ```bash
-./cmd/litestream-test/scripts/test-upgrade-large-db.sh
+./cmd/replicate-test/scripts/test-upgrade-large-db.sh
 ```
 
 **Tests:**
@@ -190,7 +190,7 @@ Tests upgrade process with large databases (1GB+).
 Tests upgrade with very large databases and long-running scenarios.
 
 ```bash
-./cmd/litestream-test/scripts/test-massive-upgrade.sh
+./cmd/replicate-test/scripts/test-massive-upgrade.sh
 ```
 
 **Tests:**
@@ -207,8 +207,8 @@ For detailed S3 retention testing documentation, see [S3-RETENTION-TESTING.md](.
 Tests S3 Access Point ARN support (Issue #923). Verifies that Access Point ARNs work automatically without manual endpoint configuration.
 
 ```bash
-export LITESTREAM_S3_ACCESS_POINT_ARN='arn:aws:s3:us-east-2:123456789012:accesspoint/my-access-point'
-./cmd/litestream-test/scripts/test-s3-access-point.sh
+export REPLICATE_S3_ACCESS_POINT_ARN='arn:aws:s3:us-east-2:123456789012:accesspoint/my-access-point'
+./cmd/replicate-test/scripts/test-s3-access-point.sh
 ```
 
 **Tests:**
@@ -218,16 +218,16 @@ export LITESTREAM_S3_ACCESS_POINT_ARN='arn:aws:s3:us-east-2:123456789012:accessp
 - Data integrity verification
 
 **Environment Variables:**
-- `LITESTREAM_S3_ACCESS_POINT_ARN` - Full ARN of the S3 Access Point (required)
-- `LITESTREAM_S3_REGION` - AWS region (optional, extracted from ARN)
-- `LITESTREAM_S3_PREFIX` - Path prefix in bucket (optional)
+- `REPLICATE_S3_ACCESS_POINT_ARN` - Full ARN of the S3 Access Point (required)
+- `REPLICATE_S3_REGION` - AWS region (optional, extracted from ARN)
+- `REPLICATE_S3_PREFIX` - Path prefix in bucket (optional)
 - AWS credentials via standard methods (env vars, credentials file, IAM role)
 
 #### test-s3-retention-cleanup.sh
 Basic S3 LTX retention cleanup testing.
 
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-cleanup.sh
+./cmd/replicate-test/scripts/test-s3-retention-cleanup.sh
 ```
 
 **Tests:**
@@ -239,7 +239,7 @@ Basic S3 LTX retention cleanup testing.
 S3 retention testing with 50MB database.
 
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-small-db.sh
+./cmd/replicate-test/scripts/test-s3-retention-small-db.sh
 ```
 
 **Configuration:**
@@ -256,7 +256,7 @@ S3 retention testing with 50MB database.
 S3 retention testing with 1.5GB database crossing lock page boundary.
 
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-large-db.sh
+./cmd/replicate-test/scripts/test-s3-retention-large-db.sh
 ```
 
 **Configuration:**
@@ -275,11 +275,11 @@ S3 retention testing with 1.5GB database crossing lock page boundary.
 Master script running both small and large database retention tests with analysis.
 
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh
 
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh --small-only
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh --large-only
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh --no-cleanup
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh --small-only
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh --large-only
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh --no-cleanup
 ```
 
 **Duration:** ~30 minutes for full suite
@@ -295,14 +295,14 @@ Master script running both small and large database retention tests with analysi
 ### Running Individual Tests
 
 ```bash
-./cmd/litestream-test/scripts/test-fresh-start.sh
+./cmd/replicate-test/scripts/test-fresh-start.sh
 ```
 
 ### Verify Environment First
 
 ```bash
-./cmd/litestream-test/scripts/verify-test-setup.sh
-./cmd/litestream-test/scripts/test-rapid-checkpoints.sh
+./cmd/replicate-test/scripts/verify-test-setup.sh
+./cmd/replicate-test/scripts/test-rapid-checkpoints.sh
 ```
 
 ### Running Multiple Tests
@@ -310,7 +310,7 @@ Master script running both small and large database retention tests with analysi
 ```bash
 for script in test-fresh-start.sh test-rapid-checkpoints.sh test-database-integrity.sh; do
     echo "Running $script..."
-    ./cmd/litestream-test/scripts/$script
+    ./cmd/replicate-test/scripts/$script
     echo ""
 done
 ```
@@ -320,7 +320,7 @@ done
 The S3 tests automatically use the Python S3 mock server (`./etc/s3_mock.py`) for isolated testing:
 
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-small-db.sh
+./cmd/replicate-test/scripts/test-s3-retention-small-db.sh
 ```
 
 ### Debugging Failed Tests
@@ -383,13 +383,13 @@ Historical test results and analysis are stored in `.local/test-results/` (git-i
 
 ## Related Issues
 
-- [#752](https://github.com/benbjohnson/litestream/issues/752) - Checkpoint during downtime bug
-- [#753](https://github.com/benbjohnson/litestream/issues/753) - Transaction numbering (FIXED)
-- [#754](https://github.com/benbjohnson/litestream/issues/754) - ltx v0.5.0 flag compatibility (CRITICAL)
+- [#752](https://github.com/benbjohnson/replicate/issues/752) - Checkpoint during downtime bug
+- [#753](https://github.com/benbjohnson/replicate/issues/753) - Transaction numbering (FIXED)
+- [#754](https://github.com/benbjohnson/replicate/issues/754) - ltx v0.5.0 flag compatibility (CRITICAL)
 
 ## Related Documentation
 
-- [litestream-test CLI Documentation](../README.md) - CLI tool reference
+- [replicate-test CLI Documentation](../README.md) - CLI tool reference
 - [S3 Retention Testing Guide](../S3-RETENTION-TESTING.md) - Detailed S3 testing
 - [Top-level Integration Scripts](../../../scripts/README.md) - Long-running tests
 

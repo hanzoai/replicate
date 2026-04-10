@@ -1,6 +1,6 @@
-# Contributing to Litestream
+# Contributing to Replicate
 
-Thank you for your interest in contributing to Litestream! We value community contributions and appreciate your help in making Litestream better.
+Thank you for your interest in contributing to Replicate! We value community contributions and appreciate your help in making Replicate better.
 
 ## Types of Contributions We Accept
 
@@ -19,7 +19,7 @@ Thank you for your interest in contributing to Litestream! We value community co
 
 ### ❌ Generally Not Accepted
 
-- **Large external feature contributions**: Features carry a long-term maintenance burden. To reduce burnout and maintain code quality, we typically implement major features internally. This allows us to ensure consistency with the overall architecture and maintain the high reliability that Litestream users depend on for disaster recovery
+- **Large external feature contributions**: Features carry a long-term maintenance burden. To reduce burnout and maintain code quality, we typically implement major features internally. This allows us to ensure consistency with the overall architecture and maintain the high reliability that Replicate users depend on for disaster recovery
 - **Breaking changes**: Changes that break backward compatibility require extensive discussion
 
 ## AI-Assisted Contributions
@@ -44,14 +44,14 @@ We welcome AI-assisted contributions for bug fixes and small improvements. Wheth
 
 Before reporting a bug:
 
-1. Check the [existing issues](https://github.com/benbjohnson/litestream/issues) to avoid duplicates
-2. Verify you're using the latest version of Litestream
+1. Check the [existing issues](https://github.com/benbjohnson/replicate/issues) to avoid duplicates
+2. Verify you're using the latest version of Replicate
 3. Gather diagnostic information (OS, version, configuration, error messages)
 
 When reporting a bug, please use our issue template and include:
 
 - Your operating system and version
-- Litestream version (`litestream version`)
+- Replicate version (`replicate version`)
 - Relevant configuration (sanitized of sensitive data)
 - Steps to reproduce the issue
 - Expected vs actual behavior
@@ -69,7 +69,7 @@ When reporting a bug, please use our issue template and include:
    go test -v ./...
    go vet ./...
    go fmt ./...
-   goimports -local github.com/benbjohnson/litestream -w .
+   goimports -local github.com/benbjohnson/replicate -w .
    pre-commit run --all-files
    ```
 
@@ -98,11 +98,11 @@ Your PR should:
 
 ```bash
 # Clone the repository
-git clone https://github.com/benbjohnson/litestream.git
-cd litestream
+git clone https://github.com/benbjohnson/replicate.git
+cd replicate
 
 # Build the binary
-go build ./cmd/litestream
+go build ./cmd/replicate
 
 # Run tests
 go test -v ./...
@@ -147,8 +147,8 @@ before merging:
 
 ```bash
 # Build required binaries first (tests skip if these don't exist)
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 
 # Run the behavioral test suite
 go test -tags 'integration,soak' -run TestLTXBehavior -short -v ./tests/integration/
@@ -176,13 +176,13 @@ We expect all contributors to:
 
 ## Getting Help
 
-- **Documentation**: [litestream.io](https://litestream.io)
-- **Issues**: [GitHub Issues](https://github.com/benbjohnson/litestream/issues)
+- **Documentation**: [replicate.io](https://replicate.io)
+- **Issues**: [GitHub Issues](https://github.com/benbjohnson/replicate/issues)
 
 ## License
 
-By contributing to Litestream, you agree that your contributions will be licensed under the Apache License 2.0, the same as the project.
+By contributing to Replicate, you agree that your contributions will be licensed under the Apache License 2.0, the same as the project.
 
 ## Acknowledgments
 
-Thank you to all our contributors! Your efforts help make Litestream a reliable disaster recovery tool for the SQLite community.
+Thank you to all our contributors! Your efforts help make Replicate a reliable disaster recovery tool for the SQLite community.

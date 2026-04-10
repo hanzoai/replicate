@@ -52,7 +52,7 @@ func TestRestore_FormatConsistency(t *testing.T) {
 	}
 
 	// Checkpoint to ensure data is persisted
-	if err := db.Checkpoint(ctx, litestream.CheckpointModeTruncate); err != nil {
+	if err := db.Checkpoint(ctx, replicate.CheckpointModeTruncate); err != nil {
 		t.Fatalf("checkpoint: %v", err)
 	}
 
@@ -87,7 +87,7 @@ func TestRestore_FormatConsistency(t *testing.T) {
 
 	// Restore to a new location
 	restorePath := filepath.Join(t.TempDir(), "restored.db")
-	if err := db.Replica.Restore(ctx, litestream.RestoreOptions{
+	if err := db.Replica.Restore(ctx, replicate.RestoreOptions{
 		OutputPath: restorePath,
 	}); err != nil {
 		t.Fatalf("restore: %v", err)
@@ -164,7 +164,7 @@ func TestRestore_MultipleSyncs(t *testing.T) {
 
 	// Restore
 	restorePath := filepath.Join(t.TempDir(), "restored.db")
-	if err := db.Replica.Restore(ctx, litestream.RestoreOptions{
+	if err := db.Replica.Restore(ctx, replicate.RestoreOptions{
 		OutputPath: restorePath,
 	}); err != nil {
 		t.Fatalf("restore: %v", err)
@@ -198,7 +198,7 @@ func TestRestore_LTXFileValidation(t *testing.T) {
 
 	// Create a valid snapshot first
 	validSnapshot := createValidLTXData(t, 1, 1, time.Now())
-	if _, err := client.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(validSnapshot)); err != nil {
+	if _, err := client.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(validSnapshot)); err != nil {
 		t.Fatalf("write snapshot: %v", err)
 	}
 
@@ -265,7 +265,7 @@ func TestRestore_CrossPlatformPaths(t *testing.T) {
 
 			// Create snapshot
 			snapshot := createValidLTXData(t, 1, 1, time.Now())
-			if _, err := client.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+			if _, err := client.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 				t.Fatalf("write snapshot: %v", err)
 			}
 
@@ -310,7 +310,7 @@ func TestRestore_PointInTimeAccuracy(t *testing.T) {
 
 	// Create snapshot at baseTime
 	snapshot := createValidLTXData(t, 1, 1, baseTime)
-	if _, err := client.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+	if _, err := client.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 		t.Fatalf("write snapshot: %v", err)
 	}
 
@@ -380,20 +380,20 @@ func createValidLTXData(t *testing.T, minTXID, maxTXID ltx.TXID, ts time.Time) [
 	return headerBytes
 }
 
-// TestBinaryCompatibility_CLIRestore tests that the litestream CLI can restore
+// TestBinaryCompatibility_CLIRestore tests that the replicate CLI can restore
 // backups created programmatically. This is a basic end-to-end test.
 func TestBinaryCompatibility_CLIRestore(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping in short mode")
 	}
 
-	// Skip if litestream binary is not available
-	litestreamBin := os.Getenv("LITESTREAM_BIN")
-	if litestreamBin == "" {
-		litestreamBin = "./bin/litestream"
+	// Skip if replicate binary is not available
+	replicateBin := os.Getenv("REPLICATE_BIN")
+	if replicateBin == "" {
+		replicateBin = "./bin/replicate"
 	}
-	if _, err := os.Stat(litestreamBin); os.IsNotExist(err) {
-		t.Skip("litestream binary not found, skipping CLI test")
+	if _, err := os.Stat(replicateBin); os.IsNotExist(err) {
+		t.Skip("replicate binary not found, skipping CLI test")
 	}
 
 	ctx := context.Background()
@@ -430,7 +430,7 @@ func TestBinaryCompatibility_CLIRestore(t *testing.T) {
 
 	// Restore using CLI
 	restorePath := filepath.Join(t.TempDir(), "cli-restored.db")
-	cmd := exec.CommandContext(ctx, litestreamBin, "restore", "-o", restorePath, "file://"+replicaPath)
+	cmd := exec.CommandContext(ctx, replicateBin, "restore", "-o", restorePath, "file://"+replicaPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("CLI restore failed: %v\nOutput: %s", err, output)
@@ -466,7 +466,7 @@ func TestVersionMigration_DirectoryLayout(t *testing.T) {
 
 		// Create files in expected layout
 		snapshot := createValidLTXData(t, 1, 1, time.Now())
-		if _, err := client.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+		if _, err := client.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 			t.Fatalf("write snapshot: %v", err)
 		}
 
@@ -478,7 +478,7 @@ func TestVersionMigration_DirectoryLayout(t *testing.T) {
 		}
 
 		// Verify structure
-		snapshotDir := filepath.Join(replicaDir, "ltx", strconv.Itoa(litestream.SnapshotLevel))
+		snapshotDir := filepath.Join(replicaDir, "ltx", strconv.Itoa(replicate.SnapshotLevel))
 		l0Dir := filepath.Join(replicaDir, "ltx", "0")
 
 		if _, err := os.Stat(snapshotDir); err != nil {
@@ -489,7 +489,7 @@ func TestVersionMigration_DirectoryLayout(t *testing.T) {
 		}
 
 		// Verify files can be listed
-		snapshotItr, err := client.LTXFiles(ctx, litestream.SnapshotLevel, 0, false)
+		snapshotItr, err := client.LTXFiles(ctx, replicate.SnapshotLevel, 0, false)
 		if err != nil {
 			t.Fatalf("list snapshots: %v", err)
 		}
@@ -531,7 +531,7 @@ func TestVersionMigration_DirectoryLayout(t *testing.T) {
 		client := file.NewReplicaClient(replicaDir)
 
 		snapshot := createValidLTXData(t, 1, 1, time.Now())
-		if _, err := client.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+		if _, err := client.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 			t.Fatalf("write snapshot: %v", err)
 		}
 
@@ -601,7 +601,7 @@ func TestCompaction_Compatibility(t *testing.T) {
 
 	// Restore and verify
 	restorePath := filepath.Join(t.TempDir(), "compacted-restore.db")
-	if err := db.Replica.Restore(ctx, litestream.RestoreOptions{
+	if err := db.Replica.Restore(ctx, replicate.RestoreOptions{
 		OutputPath: restorePath,
 	}); err != nil {
 		t.Fatalf("restore: %v", err)

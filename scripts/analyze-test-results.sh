@@ -7,7 +7,7 @@ if [ $# -lt 1 ]; then
     echo "Analyzes overnight test results from the specified test directory."
     echo ""
     echo "Example:"
-    echo "  $0 /tmp/litestream-overnight-20240924-120000"
+    echo "  $0 /tmp/replicate-overnight-20240924-120000"
     exit 1
 fi
 
@@ -22,7 +22,7 @@ LOG_DIR="$TEST_DIR/logs"
 ANALYSIS_REPORT="$TEST_DIR/analysis-report.txt"
 
 echo "================================================"
-echo "Litestream Test Analysis Report"
+echo "Replicate Test Analysis Report"
 echo "================================================"
 echo "Test directory: $TEST_DIR"
 echo "Analysis time: $(date)"
@@ -30,7 +30,7 @@ echo ""
 
 {
     echo "================================================"
-    echo "Litestream Test Analysis Report"
+    echo "Replicate Test Analysis Report"
     echo "================================================"
     echo "Test directory: $TEST_DIR"
     echo "Analysis time: $(date)"
@@ -38,9 +38,9 @@ echo ""
 
     echo "1. TEST DURATION AND TIMELINE"
     echo "=============================="
-    if [ -f "$LOG_DIR/litestream.log" ]; then
-        START_TIME=$(head -1 "$LOG_DIR/litestream.log" 2>/dev/null | grep -oE '[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -1 || echo "Unknown")
-        END_TIME=$(tail -1 "$LOG_DIR/litestream.log" 2>/dev/null | grep -oE '[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -1 || echo "Unknown")
+    if [ -f "$LOG_DIR/replicate.log" ]; then
+        START_TIME=$(head -1 "$LOG_DIR/replicate.log" 2>/dev/null | grep -oE '[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -1 || echo "Unknown")
+        END_TIME=$(tail -1 "$LOG_DIR/replicate.log" 2>/dev/null | grep -oE '[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -1 || echo "Unknown")
         echo "Start time: $START_TIME"
         echo "End time: $END_TIME"
 
@@ -102,19 +102,19 @@ except:
 
     echo "4. COMPACTION ANALYSIS"
     echo "======================"
-    if [ -f "$LOG_DIR/litestream.log" ]; then
-        COMPACTION_COUNT=$(grep -c "compacting" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
+    if [ -f "$LOG_DIR/replicate.log" ]; then
+        COMPACTION_COUNT=$(grep -c "compacting" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
         echo "Total compaction operations: $COMPACTION_COUNT"
 
         # Count compactions by level
         echo ""
         echo "Compactions by retention level:"
-        grep "compacting" "$LOG_DIR/litestream.log" 2>/dev/null | grep -oE "retention=[0-9]+[hms]+" | sort | uniq -c | sort -rn || echo "No compaction data found"
+        grep "compacting" "$LOG_DIR/replicate.log" 2>/dev/null | grep -oE "retention=[0-9]+[hms]+" | sort | uniq -c | sort -rn || echo "No compaction data found"
 
         # Show compaction timing patterns
         echo ""
         echo "Compaction frequency (last 10):"
-        grep "compacting" "$LOG_DIR/litestream.log" 2>/dev/null | tail -10 | grep -oE "[0-9]{2}:[0-9]{2}:[0-9]{2}" || echo "No timing data"
+        grep "compacting" "$LOG_DIR/replicate.log" 2>/dev/null | tail -10 | grep -oE "[0-9]{2}:[0-9]{2}:[0-9]{2}" || echo "No timing data"
     fi
     echo ""
 
@@ -138,9 +138,9 @@ except:
     ERROR_COUNT=0
     WARNING_COUNT=0
 
-    if [ -f "$LOG_DIR/litestream.log" ]; then
-        ERROR_COUNT=$(grep -ic "ERROR\|error" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
-        WARNING_COUNT=$(grep -ic "WARN\|warning" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
+    if [ -f "$LOG_DIR/replicate.log" ]; then
+        ERROR_COUNT=$(grep -ic "ERROR\|error" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
+        WARNING_COUNT=$(grep -ic "WARN\|warning" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
 
         echo "Total errors: $ERROR_COUNT"
         echo "Total warnings: $WARNING_COUNT"
@@ -148,15 +148,15 @@ except:
         if [ "$ERROR_COUNT" -gt 0 ]; then
             echo ""
             echo "Error types:"
-            grep -i "ERROR\|error" "$LOG_DIR/litestream.log" | sed 's/.*ERROR[: ]*//' | cut -d' ' -f1-5 | sort | uniq -c | sort -rn | head -10
+            grep -i "ERROR\|error" "$LOG_DIR/replicate.log" | sed 's/.*ERROR[: ]*//' | cut -d' ' -f1-5 | sort | uniq -c | sort -rn | head -10
         fi
 
         # Check for specific issues
         echo ""
         echo "Specific issues detected:"
-        BUSY_ERRORS=$(grep -c "database is locked\|SQLITE_BUSY" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
-        TIMEOUT_ERRORS=$(grep -c "timeout\|timed out" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
-        S3_ERRORS=$(grep -c "S3\|AWS\|403\|404\|500\|503" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
+        BUSY_ERRORS=$(grep -c "database is locked\|SQLITE_BUSY" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
+        TIMEOUT_ERRORS=$(grep -c "timeout\|timed out" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
+        S3_ERRORS=$(grep -c "S3\|AWS\|403\|404\|500\|503" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
 
         [ "$BUSY_ERRORS" -gt 0 ] && echo "  - Database busy/locked errors: $BUSY_ERRORS"
         [ "$TIMEOUT_ERRORS" -gt 0 ] && echo "  - Timeout errors: $TIMEOUT_ERRORS"
@@ -166,14 +166,14 @@ except:
 
     echo "7. CHECKPOINT ANALYSIS"
     echo "======================"
-    if [ -f "$LOG_DIR/litestream.log" ]; then
-        CHECKPOINT_COUNT=$(grep -c "checkpoint" "$LOG_DIR/litestream.log" 2>/dev/null || echo "0")
+    if [ -f "$LOG_DIR/replicate.log" ]; then
+        CHECKPOINT_COUNT=$(grep -c "checkpoint" "$LOG_DIR/replicate.log" 2>/dev/null || echo "0")
         echo "Total checkpoint operations: $CHECKPOINT_COUNT"
 
         # Analyze checkpoint performance
         echo ""
         echo "Checkpoint timing (last 10):"
-        grep "checkpoint" "$LOG_DIR/litestream.log" 2>/dev/null | tail -10 | grep -oE "[0-9]{2}:[0-9]{2}:[0-9]{2}" || echo "No checkpoint data"
+        grep "checkpoint" "$LOG_DIR/replicate.log" 2>/dev/null | tail -10 | grep -oE "[0-9]{2}:[0-9]{2}:[0-9]{2}" || echo "No checkpoint data"
     fi
     echo ""
 
@@ -226,7 +226,7 @@ except:
         ISSUES+=("Validation failed")
     fi
 
-    if [ -f "$LOG_DIR/litestream.log" ] && ! grep -q "compacting" "$LOG_DIR/litestream.log" 2>/dev/null; then
+    if [ -f "$LOG_DIR/replicate.log" ] && ! grep -q "compacting" "$LOG_DIR/replicate.log" 2>/dev/null; then
         ISSUES+=("No compaction operations detected")
     fi
 

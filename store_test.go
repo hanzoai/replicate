@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"errors"
@@ -23,12 +23,12 @@ func TestStore_CompactDB(t *testing.T) {
 		db1, sqldb1 := testingutil.MustOpenDBs(t)
 		defer testingutil.MustCloseDBs(t, db1, sqldb1)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1, Interval: 1 * time.Second},
 			{Level: 2, Interval: 500 * time.Millisecond},
 		}
-		s := litestream.NewStore([]*litestream.DB{db0, db1}, levels)
+		s := replicate.NewStore([]*replicate.DB{db0, db1}, levels)
 		s.CompactionMonitorEnabled = false
 		if err := s.Open(t.Context()); err != nil {
 			t.Fatal(err)
@@ -56,25 +56,25 @@ func TestStore_CompactDB(t *testing.T) {
 		// (PrevCompactionAt truncates to seconds, causing edge cases at boundaries).
 		_, err = s.CompactDB(t.Context(), db0, levels[1])
 		require.True(t,
-			errors.Is(err, litestream.ErrCompactionTooEarly) || errors.Is(err, litestream.ErrNoCompaction),
+			errors.Is(err, replicate.ErrCompactionTooEarly) || errors.Is(err, replicate.ErrNoCompaction),
 			"expected ErrCompactionTooEarly or ErrNoCompaction, got: %v", err)
 
 		// Re-compacting after the interval should show that there is nothing to compact.
 		time.Sleep(levels[1].Interval)
 		_, err = s.CompactDB(t.Context(), db0, levels[1])
-		require.ErrorIs(t, err, litestream.ErrNoCompaction)
+		require.ErrorIs(t, err, replicate.ErrNoCompaction)
 	})
 
 	t.Run("Snapshot", func(t *testing.T) {
 		db0, sqldb0 := testingutil.MustOpenDBs(t)
 		defer testingutil.MustCloseDBs(t, db0, sqldb0)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1, Interval: 100 * time.Millisecond},
 			{Level: 2, Interval: 500 * time.Millisecond},
 		}
-		s := litestream.NewStore([]*litestream.DB{db0}, levels)
+		s := replicate.NewStore([]*replicate.DB{db0}, levels)
 		s.CompactionMonitorEnabled = false
 		if err := s.Open(t.Context()); err != nil {
 			t.Fatal(err)
@@ -97,7 +97,7 @@ func TestStore_CompactDB(t *testing.T) {
 		}
 
 		// Re-compacting immediately should return an error that there's nothing to compact.
-		if _, err := s.CompactDB(t.Context(), db0, s.SnapshotLevel()); !errors.Is(err, litestream.ErrCompactionTooEarly) {
+		if _, err := s.CompactDB(t.Context(), db0, s.SnapshotLevel()); !errors.Is(err, replicate.ErrCompactionTooEarly) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 	})
@@ -108,11 +108,11 @@ func TestStore_CompactDB(t *testing.T) {
 		db0 := testingutil.MustOpenDB(t)
 		defer testingutil.MustCloseDB(t, db0)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1, Interval: 100 * time.Millisecond},
 		}
-		s := litestream.NewStore([]*litestream.DB{db0}, levels)
+		s := replicate.NewStore([]*replicate.DB{db0}, levels)
 		s.CompactionMonitorEnabled = false
 		if err := s.Open(t.Context()); err != nil {
 			t.Fatal(err)
@@ -122,7 +122,7 @@ func TestStore_CompactDB(t *testing.T) {
 		// Attempt snapshot before DB is initialized (page size not set).
 		// This reproduces the timing issue where level 9 compaction fires
 		// immediately at startup before db.Sync() has been called.
-		if _, err := s.CompactDB(t.Context(), db0, s.SnapshotLevel()); !errors.Is(err, litestream.ErrDBNotReady) {
+		if _, err := s.CompactDB(t.Context(), db0, s.SnapshotLevel()); !errors.Is(err, replicate.ErrDBNotReady) {
 			t.Fatalf("expected ErrDBNotReady, got: %v", err)
 		}
 	})
@@ -137,7 +137,7 @@ func TestStore_Integration(t *testing.T) {
 
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 	db.MonitorInterval = factor * 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = file.NewReplicaClient(t.TempDir())
 	if err := db.Open(); err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestStore_Integration(t *testing.T) {
 	sqldb := testingutil.MustOpenSQLDB(t, db.Path())
 	defer testingutil.MustCloseSQLDB(t, sqldb)
 
-	store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{
+	store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: factor * 200 * time.Millisecond},
 		{Level: 2, Interval: factor * 500 * time.Millisecond},
@@ -229,7 +229,7 @@ func TestStore_Integration(t *testing.T) {
 		case <-ticker.C:
 			// Restore database to a temporary location.
 			outputPath := filepath.Join(t.TempDir(), fmt.Sprintf("restore-%d.db", i))
-			if err := db.Replica.Restore(t.Context(), litestream.RestoreOptions{
+			if err := db.Replica.Restore(t.Context(), replicate.RestoreOptions{
 				OutputPath: outputPath,
 			}); err != nil {
 				t.Fatal(err)
@@ -262,12 +262,12 @@ func TestStore_Integration(t *testing.T) {
 // is preserved when not explicitly set (regression test for issue #689).
 func TestStore_SnapshotInterval_Default(t *testing.T) {
 	// Create a store with no databases and no levels
-	store := litestream.NewStore(nil, nil)
+	store := replicate.NewStore(nil, nil)
 
 	// Verify default snapshot interval is set
-	if store.SnapshotInterval != litestream.DefaultSnapshotInterval {
+	if store.SnapshotInterval != replicate.DefaultSnapshotInterval {
 		t.Errorf("expected default snapshot interval of %v, got %v",
-			litestream.DefaultSnapshotInterval, store.SnapshotInterval)
+			replicate.DefaultSnapshotInterval, store.SnapshotInterval)
 	}
 
 	// Verify default is 24 hours
@@ -281,14 +281,14 @@ func TestStore_Validate(t *testing.T) {
 	t.Run("AllLevelsValid", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
 
-		db := &litestream.DB{}
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db := &replicate.DB{}
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1},
 		}
-		store := litestream.NewStore([]*litestream.DB{db}, levels)
+		store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 		// Create contiguous files at L0
 		createTestLTXFile(t, client, 0, 1, 1)
@@ -308,14 +308,14 @@ func TestStore_Validate(t *testing.T) {
 	t.Run("ErrorAtMultipleLevels", func(t *testing.T) {
 		client := file.NewReplicaClient(t.TempDir())
 
-		db := &litestream.DB{}
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db := &replicate.DB{}
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1},
 		}
-		store := litestream.NewStore([]*litestream.DB{db}, levels)
+		store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 		// Create files with gap at L0
 		createTestLTXFile(t, client, 0, 1, 1)
@@ -339,13 +339,13 @@ func TestStore_Validate(t *testing.T) {
 
 	t.Run("NilReplica", func(t *testing.T) {
 		// DB with nil replica should be skipped
-		db := &litestream.DB{}
+		db := &replicate.DB{}
 		// db.Replica is nil
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 		}
-		store := litestream.NewStore([]*litestream.DB{db}, levels)
+		store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 		result, err := store.Validate(t.Context())
 		if err != nil {
@@ -360,16 +360,16 @@ func TestStore_Validate(t *testing.T) {
 		client1 := file.NewReplicaClient(t.TempDir())
 		client2 := file.NewReplicaClient(t.TempDir())
 
-		db1 := &litestream.DB{}
-		db1.Replica = litestream.NewReplicaWithClient(db1, client1)
+		db1 := &replicate.DB{}
+		db1.Replica = replicate.NewReplicaWithClient(db1, client1)
 
-		db2 := &litestream.DB{}
-		db2.Replica = litestream.NewReplicaWithClient(db2, client2)
+		db2 := &replicate.DB{}
+		db2.Replica = replicate.NewReplicaWithClient(db2, client2)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 		}
-		store := litestream.NewStore([]*litestream.DB{db1, db2}, levels)
+		store := replicate.NewStore([]*replicate.DB{db1, db2}, levels)
 
 		// db1: valid
 		createTestLTXFile(t, client1, 0, 1, 1)
@@ -397,11 +397,11 @@ func TestStore_ValidationMonitor(t *testing.T) {
 		db, sqldb := testingutil.MustOpenDBs(t)
 		defer testingutil.MustCloseDBs(t, db, sqldb)
 
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1, Interval: time.Hour},
 		}
-		store := litestream.NewStore([]*litestream.DB{db}, levels)
+		store := replicate.NewStore([]*replicate.DB{db}, levels)
 		store.CompactionMonitorEnabled = false
 		store.ValidationInterval = 50 * time.Millisecond
 
@@ -418,10 +418,10 @@ func TestStore_ValidationMonitor(t *testing.T) {
 	})
 
 	t.Run("DisabledByDefault", func(t *testing.T) {
-		levels := litestream.CompactionLevels{
+		levels := replicate.CompactionLevels{
 			{Level: 0},
 		}
-		store := litestream.NewStore(nil, levels)
+		store := replicate.NewStore(nil, levels)
 		store.CompactionMonitorEnabled = false
 
 		// ValidationInterval should be zero by default
@@ -446,11 +446,11 @@ func TestStore_SetRetentionEnabled(t *testing.T) {
 	db1, sqldb1 := testingutil.MustOpenDBs(t)
 	defer testingutil.MustCloseDBs(t, db1, sqldb1)
 
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: time.Hour},
 	}
-	store := litestream.NewStore([]*litestream.DB{db0, db1}, levels)
+	store := replicate.NewStore([]*replicate.DB{db0, db1}, levels)
 	store.CompactionMonitorEnabled = false
 
 	// Initially should be true (retention enabled by default).

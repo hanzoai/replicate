@@ -117,10 +117,10 @@ func runProfileBehaviorTest(t *testing.T, profile LoadProfile, duration, snapsho
 	configPath := CreateSoakConfig(db.Path, replicaURL, nil, shortMode)
 	db.ConfigPath = configPath
 
-	// Start Litestream (LOG_LEVEL=DEBUG is set automatically by StartLitestreamWithConfig)
-	t.Log("Starting Litestream...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	// Start Replicate (LOG_LEVEL=DEBUG is set automatically by StartReplicateWithConfig)
+	t.Log("Starting Replicate...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	// Record start time AFTER setup to avoid inflating duration used by assertions.
@@ -217,15 +217,15 @@ func runProfileBehaviorTest(t *testing.T, profile LoadProfile, duration, snapsho
 		}
 	}
 
-	// Give Litestream time to flush final syncs and run gap recovery.
+	// Give Replicate time to flush final syncs and run gap recovery.
 	// Under high write load, the last checkpoints can create TOCTOU gaps
 	// that need one more sync + compaction cycle to heal.
 	t.Log("Waiting for final sync/compaction cycle...")
 	time.Sleep(45 * time.Second)
 
-	// Stop Litestream
-	t.Log("Stopping Litestream...")
-	if err := db.StopLitestream(); err != nil {
+	// Stop Replicate
+	t.Log("Stopping Replicate...")
+	if err := db.StopReplicate(); err != nil {
 		t.Logf("Warning: %v", err)
 	}
 
@@ -235,13 +235,13 @@ func runProfileBehaviorTest(t *testing.T, profile LoadProfile, duration, snapsho
 	t.Log("")
 	t.Log("Analyzing LTX behavior...")
 
-	logContent, err := db.GetLitestreamLog()
+	logContent, err := db.GetReplicateLog()
 	if err != nil {
-		t.Fatalf("Failed to read Litestream log: %v", err)
+		t.Fatalf("Failed to read Replicate log: %v", err)
 	}
 
 	// Write log to file for parsing
-	logPath := filepath.Join(db.TempDir, "litestream.log")
+	logPath := filepath.Join(db.TempDir, "replicate.log")
 	events, err := ParseLTXEvents(logPath)
 	if err != nil {
 		t.Fatalf("Failed to parse LTX events: %v", err)

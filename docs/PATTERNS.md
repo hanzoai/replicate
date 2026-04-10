@@ -1,6 +1,6 @@
-# Litestream Code Patterns and Anti-Patterns
+# Replicate Code Patterns and Anti-Patterns
 
-This document contains detailed code patterns, examples, and anti-patterns for working with Litestream. For a quick overview, see [AGENTS.md](../AGENTS.md).
+This document contains detailed code patterns, examples, and anti-patterns for working with Replicate. For a quick overview, see [AGENTS.md](../AGENTS.md).
 
 ## Table of Contents
 
@@ -136,7 +136,7 @@ func writeFileDirect(path string, data []byte) error {
 
 When you handle an error, ask: "Does the caller need to know about this failure?"
 
-- **Yes → return the error.** This is the default for virtually all cases in Litestream.
+- **Yes → return the error.** This is the default for virtually all cases in Replicate.
   - The result is needed for correctness
   - Failure could corrupt data or state
   - You're in a loop processing items
@@ -298,7 +298,7 @@ io.ReadFull(rc, buf) // unexpected EOF!
 
 ## Retention Bypass Pattern
 
-When using cloud provider lifecycle policies (S3 lifecycle rules, R2 auto-cleanup), Litestream's active file deletion can be disabled:
+When using cloud provider lifecycle policies (S3 lifecycle rules, R2 auto-cleanup), Replicate's active file deletion can be disabled:
 
 ```yaml
 retention:
@@ -307,7 +307,7 @@ retention:
 
 ### Propagation Chain
 
-1. `RetentionConfig{Enabled *bool}` in YAML config (`cmd/litestream/main.go`)
+1. `RetentionConfig{Enabled *bool}` in YAML config (`cmd/replicate/main.go`)
 2. `Store.SetRetentionEnabled(bool)` propagates to all DBs and their compactors (`store.go`)
 3. `Compactor.RetentionEnabled` guards 3 deletion points in `compactor.go`
 
@@ -319,7 +319,7 @@ store.SetRetentionEnabled(false) // Delegates deletion to cloud lifecycle polici
 
 ### DON'T: Disable retention without cloud lifecycle policies
 
-Disabling retention without cloud lifecycle policies causes unbounded storage growth. Litestream logs a warning: "retention disabled; cloud provider lifecycle policies must handle retention".
+Disabling retention without cloud lifecycle policies causes unbounded storage growth. Replicate logs a warning: "retention disabled; cloud provider lifecycle policies must handle retention".
 
 ## Conditional Write Pattern (Distributed Locking)
 
@@ -560,11 +560,11 @@ go test -race -v -run TestStore_CompactDB ./...
 
 ```bash
 # Test with various page sizes
-./bin/litestream-test populate -db test.db -page-size 4096 -target-size 2GB
-./bin/litestream-test populate -db test.db -page-size 8192 -target-size 2GB
+./bin/replicate-test populate -db test.db -page-size 4096 -target-size 2GB
+./bin/replicate-test populate -db test.db -page-size 8192 -target-size 2GB
 
 # Validate lock page handling
-./bin/litestream-test validate -source-db test.db -replica-url file:///tmp/replica
+./bin/replicate-test validate -source-db test.db -replica-url file:///tmp/replica
 ```
 
 ### Integration Testing

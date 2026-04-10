@@ -47,7 +47,7 @@ func (c *StopCommand) Run(ctx context.Context, args []string) error {
 		},
 	}
 
-	req := litestream.StopRequest{
+	req := replicate.StopRequest{
 		Path:    dbPath,
 		Timeout: *timeout,
 	}
@@ -68,14 +68,14 @@ func (c *StopCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("stop failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("stop failed: %s", string(body))
 	}
 
-	var result litestream.StopResponse
+	var result replicate.StopResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -92,7 +92,7 @@ func (c *StopCommand) Run(ctx context.Context, args []string) error {
 // Usage prints the help text for the stop command.
 func (c *StopCommand) Usage() {
 	fmt.Println(`
-usage: litestream stop [OPTIONS] DB_PATH
+usage: replicate stop [OPTIONS] DB_PATH
 
 Stop replication for a database.
 Stop always waits for shutdown and final sync.

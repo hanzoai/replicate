@@ -14,10 +14,11 @@ import (
 	"golang.org/x/sys/windows/svc/eventlog"
 )
 
-const defaultConfigPath = `C:\Litestream\litestream.yml`
+const defaultConfigPath = `C:\Replicate\replicate.yml`
+const legacyConfigPath = `C:\Replicate\litestream.yml`
 
 // serviceName is the Windows Service name.
-const serviceName = "Litestream"
+const serviceName = "Replicate"
 
 // isWindowsService returns true if currently executing within a Windows service.
 func isWindowsService() (bool, error) {
@@ -39,13 +40,13 @@ func runWindowsService(ctx context.Context) error {
 	slog.SetDefault(slog.New(slog.NewTextHandler((*eventlogWriter)(elog), nil)))
 	defer slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 
-	slog.Info("Litestream service starting")
+	slog.Info("Replicate service starting")
 
 	if err := svc.Run(serviceName, &windowsService{ctx: ctx}); err != nil {
 		return errStop
 	}
 
-	slog.Info("Litestream service stopped")
+	slog.Info("Replicate service stopped")
 	return nil
 }
 
@@ -88,7 +89,7 @@ func (s *windowsService) Execute(args []string, r <-chan svc.ChangeRequest, stat
 			case svc.Interrogate:
 				statusCh <- req.CurrentStatus
 			default:
-				slog.Error("Litestream service received unexpected change request", "cmd", req.Cmd)
+				slog.Error("Replicate service received unexpected change request", "cmd", req.Cmd)
 			}
 		}
 	}

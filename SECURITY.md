@@ -2,7 +2,7 @@
 
 ## Reporting Security Vulnerabilities
 
-We take security issues seriously. If you discover a security vulnerability in Litestream, please report it responsibly.
+We take security issues seriously. If you discover a security vulnerability in Replicate, please report it responsibly.
 
 **Please DO NOT open a public GitHub issue for security vulnerabilities.**
 
@@ -21,4 +21,4 @@ When reporting a security issue, please include:
 
 We will make our best effort to acknowledge receipt of your report as soon as possible and keep you informed of our progress. Please understand that as an open source project, response times may vary.
 
-Thank you for helping keep Litestream and its users safe!
+Thank you for helping keep Replicate and its users safe!

@@ -23,9 +23,9 @@ func TestUpgrade_V3ToV5(t *testing.T) {
 	}
 
 	// Skip if v0.3 binary not provided.
-	v3Bin := os.Getenv("LITESTREAM_V3_BIN")
+	v3Bin := os.Getenv("REPLICATE_V3_BIN")
 	if v3Bin == "" {
-		t.Skip("LITESTREAM_V3_BIN not set, skipping upgrade test")
+		t.Skip("REPLICATE_V3_BIN not set, skipping upgrade test")
 	}
 
 	// Verify v0.3 binary exists and is executable.
@@ -36,7 +36,7 @@ func TestUpgrade_V3ToV5(t *testing.T) {
 	}
 
 	// Verify current binary exists and is executable.
-	v5Bin := getBinaryPath("litestream")
+	v5Bin := getBinaryPath("replicate")
 	if info, err := os.Stat(v5Bin); err != nil {
 		t.Fatalf("current binary not found at %s: %v", v5Bin, err)
 	} else if info.Mode()&0111 == 0 {
@@ -180,7 +180,7 @@ func TestUpgrade_V3ToV5(t *testing.T) {
 
 	// Wait up to 30s for ltx/9/ directory to contain at least one .ltx file (snapshot).
 	t.Log("  Waiting up to 30s for snapshot in ltx/9/")
-	snapshotDir := filepath.Join(replicaPath, "ltx", fmt.Sprintf("%d", litestream.SnapshotLevel))
+	snapshotDir := filepath.Join(replicaPath, "ltx", fmt.Sprintf("%d", replicate.SnapshotLevel))
 	deadline := time.Now().Add(30 * time.Second)
 	snapshotFound := false
 	for time.Now().Before(deadline) {

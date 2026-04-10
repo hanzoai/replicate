@@ -1,6 +1,6 @@
-// Example: Litestream Library Usage with S3 and Restore-on-Startup
+// Example: Replicate Library Usage with S3 and Restore-on-Startup
 //
-// This example demonstrates a production-like pattern for using Litestream:
+// This example demonstrates a production-like pattern for using Replicate:
 // - Check if local database exists
 // - If not, restore from S3 backup (if available)
 // - Start replication to S3
@@ -9,8 +9,8 @@
 // Environment variables:
 //   - AWS_ACCESS_KEY_ID: AWS access key
 //   - AWS_SECRET_ACCESS_KEY: AWS secret key
-//   - LITESTREAM_BUCKET: S3 bucket name (e.g., "my-backup-bucket")
-//   - LITESTREAM_PATH: Path within bucket (e.g., "databases/myapp")
+//   - REPLICATE_BUCKET: S3 bucket name (e.g., "my-backup-bucket")
+//   - REPLICATE_PATH: Path within bucket (e.g., "databases/myapp")
 //   - AWS_REGION: AWS region (default: us-east-1)
 //
 // Run: go run main.go
@@ -43,13 +43,13 @@ func main() {
 
 func run(ctx context.Context) error {
 	// Load configuration from environment
-	bucket := os.Getenv("LITESTREAM_BUCKET")
+	bucket := os.Getenv("REPLICATE_BUCKET")
 	if bucket == "" {
-		return fmt.Errorf("LITESTREAM_BUCKET environment variable required")
+		return fmt.Errorf("REPLICATE_BUCKET environment variable required")
 	}
-	path := os.Getenv("LITESTREAM_PATH")
+	path := os.Getenv("REPLICATE_PATH")
 	if path == "" {
-		path = "litestream"
+		path = "replicate"
 	}
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
@@ -69,21 +69,21 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("restore: %w", err)
 	}
 
-	// 3. Create the Litestream DB wrapper
-	db := litestream.NewDB(dbPath)
+	// 3. Create the Replicate DB wrapper
+	db := replicate.NewDB(dbPath)
 
 	// 4. Create replica and attach to database
-	replica := litestream.NewReplicaWithClient(db, client)
+	replica := replicate.NewReplicaWithClient(db, client)
 	db.Replica = replica
 
 	// 5. Create compaction levels (L0 is required, plus at least one more level)
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: 10 * time.Second},
 	}
 
 	// 6. Create a Store to manage the database and background compaction
-	store := litestream.NewStore([]*litestream.DB{db}, levels)
+	store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 	// 7. Open store (opens all DBs and starts background monitors)
 	if err := store.Open(ctx); err != nil {
@@ -148,16 +148,16 @@ func restoreIfNotExists(ctx context.Context, client *s3.ReplicaClient, dbPath st
 	}
 
 	// Create a replica (without DB) for restore
-	replica := litestream.NewReplicaWithClient(nil, client)
+	replica := replicate.NewReplicaWithClient(nil, client)
 
 	// Set up restore options
-	opt := litestream.NewRestoreOptions()
+	opt := replicate.NewRestoreOptions()
 	opt.OutputPath = dbPath
 
 	// Attempt restore
 	if err := replica.Restore(ctx, opt); err != nil {
 		// If no backup exists, that's OK - we'll create a fresh database
-		if errors.Is(err, litestream.ErrTxNotAvailable) || errors.Is(err, litestream.ErrNoSnapshots) {
+		if errors.Is(err, replicate.ErrTxNotAvailable) || errors.Is(err, replicate.ErrNoSnapshots) {
 			log.Println("No backup found in S3, will create new database")
 			return nil
 		}

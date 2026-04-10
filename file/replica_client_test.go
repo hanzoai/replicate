@@ -683,9 +683,9 @@ func TestReplica_Sync(t *testing.T) {
 		db, sqldb := MustOpenDBs(t)
 		defer MustCloseDBs(t, db, sqldb)
 
-		r := litestream.NewReplica(db, "", file.NewReplicaClient(t.TempDir()))
+		r := replicate.NewReplica(db, "", file.NewReplicaClient(t.TempDir()))
 		r.MonitorEnabled = false
-		db.Replicas = []*litestream.Replica{r}
+		db.Replicas = []*replicate.Replica{r}
 
 		// Sync database & then sync replica.
 		if err := db.Sync(context.Background()); err != nil {
@@ -709,9 +709,9 @@ func TestReplica_Sync(t *testing.T) {
 		db, sqldb := MustOpenDBs(t)
 		defer MustCloseDBs(t, db, sqldb)
 
-		r := litestream.NewReplica(db, "", file.NewReplicaClient(t.TempDir()))
+		r := replicate.NewReplica(db, "", file.NewReplicaClient(t.TempDir()))
 		r.MonitorEnabled = false
-		db.Replicas = []*litestream.Replica{r}
+		db.Replicas = []*replicate.Replica{r}
 
 		if _, err := sqldb.Exec(`CREATE TABLE foo (bar TEXT);`); err != nil {
 			t.Fatal(err)
@@ -753,9 +753,9 @@ func TestReplica_Sync(t *testing.T) {
 		db, sqldb := MustOpenDBs(t)
 		defer MustCloseDBs(t, db, sqldb)
 
-		r := litestream.NewReplica(db, "", file.NewReplicaClient(t.TempDir()))
+		r := replicate.NewReplica(db, "", file.NewReplicaClient(t.TempDir()))
 		r.MonitorEnabled = false
-		db.Replicas = []*litestream.Replica{r}
+		db.Replicas = []*replicate.Replica{r}
 
 		if err := r.Sync(context.Background()); err == nil || err.Error() != `no generation, waiting for data` {
 			t.Fatal(err)
@@ -773,7 +773,7 @@ func TestReplicaClient_OpenLTXFile_OpenErrorReturnsLTXError(t *testing.T) {
 			t.Fatal("expected error for missing LTX file")
 		}
 
-		var ltxErr *litestream.LTXError
+		var ltxErr *replicate.LTXError
 		if !errors.As(err, &ltxErr) {
 			t.Fatalf("expected *LTXError, got %T: %v", err, err)
 		}
@@ -807,7 +807,7 @@ func TestReplicaClient_OpenLTXFile_OpenErrorReturnsLTXError(t *testing.T) {
 			t.Fatal("expected error for unreadable LTX file")
 		}
 
-		var ltxErr *litestream.LTXError
+		var ltxErr *replicate.LTXError
 		if !errors.As(err, &ltxErr) {
 			t.Fatalf("expected *LTXError, got %T: %v", err, err)
 		}

@@ -10,7 +10,7 @@ echo ""
 
 DB="/tmp/simple754.db"
 REPLICA="/tmp/simple754-replica"
-LITESTREAM="./bin/litestream"
+REPLICATE="./bin/replicate"
 
 # Clean up
 rm -rf "$DB"* "$REPLICA" /tmp/simple754-*.log
@@ -29,18 +29,18 @@ echo "   WAL exists: $([ -f "$DB-wal" ] && echo "YES" || echo "NO")"
 
 echo ""
 echo "2. Starting first v0.5.0 run..."
-$LITESTREAM replicate "$DB" "file://$REPLICA" > /tmp/simple754-run1.log 2>&1 &
+$REPLICATE replicate "$DB" "file://$REPLICA" > /tmp/simple754-run1.log 2>&1 &
 PID1=$!
 
-echo "   Litestream PID: $PID1"
+echo "   Replicate PID: $PID1"
 echo "   Waiting for initial replication..."
 sleep 10
 
 # Check if it's still running
 if kill -0 $PID1 2>/dev/null; then
-    echo "   ✓ Litestream running"
+    echo "   ✓ Replicate running"
 else
-    echo "   ✗ Litestream died, checking logs..."
+    echo "   ✗ Replicate died, checking logs..."
     cat /tmp/simple754-run1.log
     exit 1
 fi
@@ -73,7 +73,7 @@ if [ -d "$REPLICA" ]; then
     fi
 else
     echo "   ✗ No replica directory found!"
-    echo "   Litestream logs:"
+    echo "   Replicate logs:"
     cat /tmp/simple754-run1.log
     exit 1
 fi
@@ -107,7 +107,7 @@ echo ""
 echo "8. CRITICAL: Starting second run (potential #754 trigger)..."
 echo "   This should trigger #754 if HeaderFlagNoChecksum is incompatible"
 
-$LITESTREAM replicate "$DB" "file://$REPLICA" > /tmp/simple754-run2.log 2>&1 &
+$REPLICATE replicate "$DB" "file://$REPLICA" > /tmp/simple754-run2.log 2>&1 &
 PID2=$!
 
 echo "   Second run PID: $PID2"

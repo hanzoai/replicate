@@ -1,15 +1,15 @@
-source = ["./dist/litestream"]
-bundle_id = "com.middlemost.litestream"
+source = ["./dist/replicate"]
+bundle_id = "ai.hanzo.replicate"
 
 apple_id {
-  username = "benbjohnson@yahoo.com"
+  username = "@env:APPLE_ID"
   password = "@env:AC_PASSWORD"
 }
 
 sign {
-  application_identity = "Developer ID Application: Middlemost Systems, LLC"
+  application_identity = "@env:APPLE_DEVELOPER_ID"
 }
 
 zip {
-  output_path = "dist/litestream.zip"
+  output_path = "dist/replicate.zip"
 }

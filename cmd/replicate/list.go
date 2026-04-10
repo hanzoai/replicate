@@ -57,14 +57,14 @@ func (c *ListCommand) Run(_ context.Context, args []string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("list failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("list failed: %s", string(body))
 	}
 
-	var result litestream.ListResponse
+	var result replicate.ListResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -95,7 +95,7 @@ func (c *ListCommand) Run(_ context.Context, args []string) error {
 // Usage prints the help text for the list command.
 func (c *ListCommand) Usage() {
 	fmt.Println(`
-usage: litestream list [OPTIONS]
+usage: replicate list [OPTIONS]
 
 List all managed databases from a running daemon.
 

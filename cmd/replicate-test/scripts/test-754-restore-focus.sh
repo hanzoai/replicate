@@ -14,12 +14,12 @@ echo ""
 DB="/tmp/restore754.db"
 REPLICA="/tmp/restore754-replica"
 RESTORED="/tmp/restore754-restored.db"
-LITESTREAM="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup
 cleanup() {
-    pkill -f "litestream replicate.*restore754.db" 2>/dev/null || true
+    pkill -f "replicate replicate.*restore754.db" 2>/dev/null || true
     rm -rf "$DB"* "$REPLICA" "$RESTORED"* /tmp/restore754-*.log
 }
 
@@ -31,7 +31,7 @@ echo "Test 1: Large database with many restores"
 echo "=========================================="
 
 echo "[1] Creating large database (2GB+)..."
-$LITESTREAM_TEST populate -db "$DB" -target-size 2GB >/dev/null 2>&1
+$REPLICATE_TEST populate -db "$DB" -target-size 2GB >/dev/null 2>&1
 
 # Add complex schema
 sqlite3 "$DB" <<EOF
@@ -52,7 +52,7 @@ echo "  ✓ Large database: $DB_SIZE ($PAGE_COUNT pages)"
 
 echo ""
 echo "[2] Creating LTX backups with HeaderFlagNoChecksum..."
-$LITESTREAM replicate "$DB" "file://$REPLICA" > /tmp/restore754-replication.log 2>&1 &
+$REPLICATE replicate "$DB" "file://$REPLICA" > /tmp/restore754-replication.log 2>&1 &
 REPL_PID=$!
 sleep 10
 
@@ -85,7 +85,7 @@ for attempt in {1..5}; do
     echo "  Restore attempt $attempt..."
     rm -f "$RESTORED"*
 
-    $LITESTREAM restore -o "$RESTORED" "file://$REPLICA" > /tmp/restore754-attempt$attempt.log 2>&1
+    $REPLICATE restore -o "$RESTORED" "file://$REPLICA" > /tmp/restore754-attempt$attempt.log 2>&1
     RESTORE_EXIT=$?
 
     # Check for the specific #754 errors
@@ -131,7 +131,7 @@ if [ "$LTX_COUNT" -gt "0" ]; then
         echo "  Attempting restore from corrupted LTX..."
         rm -f "$RESTORED"*
 
-        $LITESTREAM restore -o "$RESTORED" "file://$REPLICA" > /tmp/restore754-corrupted.log 2>&1
+        $REPLICATE restore -o "$RESTORED" "file://$REPLICA" > /tmp/restore754-corrupted.log 2>&1
         CORRUPT_EXIT=$?
 
         CORRUPT_FLAGS=$(grep -c "no flags allowed" /tmp/restore754-corrupted.log 2>/dev/null || echo "0")
@@ -163,11 +163,11 @@ for size in "500MB" "1GB" "3GB"; do
     cleanup
 
     # Create database of specific size
-    $LITESTREAM_TEST populate -db "$DB" -target-size "$size" >/dev/null 2>&1
+    $REPLICATE_TEST populate -db "$DB" -target-size "$size" >/dev/null 2>&1
     sqlite3 "$DB" "CREATE TABLE size_test (id INTEGER PRIMARY KEY, size TEXT, data BLOB); INSERT INTO size_test (size, data) VALUES ('$size', randomblob(8000));"
 
     # Quick replication
-    $LITESTREAM replicate "$DB" "file://$REPLICA" > /dev/null 2>&1 &
+    $REPLICATE replicate "$DB" "file://$REPLICA" > /dev/null 2>&1 &
     REPL_PID=$!
     sleep 5
 
@@ -181,7 +181,7 @@ for size in "500MB" "1GB" "3GB"; do
 
     # Test restore
     rm -f "$RESTORED"*
-    $LITESTREAM restore -o "$RESTORED" "file://$REPLICA" > /tmp/restore754-$size.log 2>&1
+    $REPLICATE restore -o "$RESTORED" "file://$REPLICA" > /tmp/restore754-$size.log 2>&1
     SIZE_EXIT=$?
 
     SIZE_FLAGS=$(grep -c "no flags allowed" /tmp/restore754-$size.log 2>/dev/null || echo "0")

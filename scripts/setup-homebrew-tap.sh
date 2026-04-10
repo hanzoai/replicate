@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-echo "Setting up Homebrew tap repository for Litestream..."
+echo "Setting up Homebrew tap repository for Replicate..."
 
-REPO_NAME="homebrew-litestream"
+REPO_NAME="homebrew-replicate"
 GITHUB_USER="benbjohnson"
 
 echo "This script will help you create the ${GITHUB_USER}/${REPO_NAME} repository."
@@ -23,7 +23,7 @@ fi
 echo "Creating repository ${GITHUB_USER}/${REPO_NAME}..."
 gh repo create ${GITHUB_USER}/${REPO_NAME} \
     --public \
-    --description "Homebrew tap for Litestream" \
+    --description "Homebrew tap for Replicate" \
     --clone=false || echo "Repository may already exist, continuing..."
 
 echo ""
@@ -39,22 +39,22 @@ mkdir -p Formula
 
 echo "Creating README..."
 cat > README.md << 'EOF'
-# Homebrew Tap for Litestream
+# Homebrew Tap for Replicate
 
-This is the official Homebrew tap for [Litestream](https://github.com/benbjohnson/litestream).
+This is the official Homebrew tap for [Replicate](https://github.com/benbjohnson/replicate).
 
 ## Installation
 
 ```bash
-brew tap benbjohnson/litestream
-brew install litestream
+brew tap hanzoai/replicate
+brew install replicate
 ```
 
 ## Documentation
 
-For more information about Litestream, visit:
-- [GitHub Repository](https://github.com/benbjohnson/litestream)
-- [Official Documentation](https://litestream.io)
+For more information about Replicate, visit:
+- [GitHub Repository](https://github.com/benbjohnson/replicate)
+- [Official Documentation](https://replicate.io)
 
 ## License
 

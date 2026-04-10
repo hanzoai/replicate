@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"bytes"
@@ -49,7 +49,7 @@ func createLTXDataWithTimestamp(minTXID, maxTXID ltx.TXID, ts time.Time, data []
 }
 
 func TestReplicaClient_LTX(t *testing.T) {
-	RunWithReplicaClient(t, "OK", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "OK", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -112,7 +112,7 @@ func TestReplicaClient_LTX(t *testing.T) {
 		}
 	})
 
-	RunWithReplicaClient(t, "NoWALs", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "NoWALs", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -129,7 +129,7 @@ func TestReplicaClient_LTX(t *testing.T) {
 }
 
 func TestReplicaClient_WriteLTXFile(t *testing.T) {
-	RunWithReplicaClient(t, "OK", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "OK", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -163,7 +163,7 @@ func TestReplicaClient_WriteLTXFile(t *testing.T) {
 }
 
 func TestReplicaClient_OpenLTXFile(t *testing.T) {
-	RunWithReplicaClient(t, "OK", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "OK", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -188,7 +188,7 @@ func TestReplicaClient_OpenLTXFile(t *testing.T) {
 		}
 	})
 
-	RunWithReplicaClient(t, "ErrNotFound", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "ErrNotFound", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -199,7 +199,7 @@ func TestReplicaClient_OpenLTXFile(t *testing.T) {
 }
 
 func TestReplicaClient_DeleteWALSegments(t *testing.T) {
-	RunWithReplicaClient(t, "OK", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "OK", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -227,7 +227,7 @@ func TestReplicaClient_DeleteWALSegments(t *testing.T) {
 }
 
 // RunWithReplicaClient executes fn with each replica specified by the -integration flag
-func RunWithReplicaClient(t *testing.T, name string, fn func(*testing.T, litestream.ReplicaClient)) {
+func RunWithReplicaClient(t *testing.T, name string, fn func(*testing.T, replicate.ReplicaClient)) {
 	t.Run(name, func(t *testing.T) {
 		for _, typ := range testingutil.ReplicaClientTypes() {
 			t.Run(typ, func(t *testing.T) {
@@ -247,7 +247,7 @@ func RunWithReplicaClient(t *testing.T, name string, fn func(*testing.T, litestr
 // TestReplicaClient_TimestampPreservation verifies that LTX file timestamps are preserved
 // during write and read operations. This is critical for point-in-time restoration (#771).
 func TestReplicaClient_TimestampPreservation(t *testing.T) {
-	RunWithReplicaClient(t, "PreservesTimestamp", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "PreservesTimestamp", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -310,7 +310,7 @@ func TestReplicaClient_S3_UploaderConfig(t *testing.T) {
 		t.Skip("Skipping S3-specific uploader config test")
 	}
 
-	RunWithReplicaClient(t, "LargeFileWithCustomConfig", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "LargeFileWithCustomConfig", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -378,7 +378,7 @@ func TestReplicaClient_S3_ErrorContext(t *testing.T) {
 		t.Skip("Skipping S3-specific error context test")
 	}
 
-	RunWithReplicaClient(t, "ErrorContext", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "ErrorContext", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 		t.Parallel()
 
@@ -430,19 +430,19 @@ func TestReplicaClient_S3_UnsignedPayloadRejected(t *testing.T) {
 	}
 
 	// Skip if using mock endpoint (moto accepts unsigned payloads)
-	if endpoint := os.Getenv("LITESTREAM_S3_ENDPOINT"); endpoint != "" {
+	if endpoint := os.Getenv("REPLICATE_S3_ENDPOINT"); endpoint != "" {
 		t.Skip("Skipping negative test with mock endpoint (moto accepts unsigned)")
 	}
 
 	// Create client directly (not via test helper) to control SignPayload
 	c := s3.NewReplicaClient()
-	c.AccessKeyID = os.Getenv("LITESTREAM_S3_ACCESS_KEY_ID")
-	c.SecretAccessKey = os.Getenv("LITESTREAM_S3_SECRET_ACCESS_KEY")
-	c.Region = os.Getenv("LITESTREAM_S3_REGION")
+	c.AccessKeyID = os.Getenv("REPLICATE_S3_ACCESS_KEY_ID")
+	c.SecretAccessKey = os.Getenv("REPLICATE_S3_SECRET_ACCESS_KEY")
+	c.Region = os.Getenv("REPLICATE_S3_REGION")
 	if c.Region == "" {
 		c.Region = "us-east-1"
 	}
-	c.Bucket = os.Getenv("LITESTREAM_S3_BUCKET")
+	c.Bucket = os.Getenv("REPLICATE_S3_BUCKET")
 	c.Path = fmt.Sprintf("negative-test/%016x", rand.Uint64())
 
 	// Force unsigned payloads - this should fail with real AWS
@@ -558,7 +558,7 @@ func TestReplicaClient_S3_MultipartThresholds(t *testing.T) {
 	}
 
 	// Skip if using mock endpoint (moto has multipart checksum issues)
-	if endpoint := os.Getenv("LITESTREAM_S3_ENDPOINT"); endpoint != "" {
+	if endpoint := os.Getenv("REPLICATE_S3_ENDPOINT"); endpoint != "" {
 		if strings.Contains(endpoint, "127.0.0.1") || strings.Contains(endpoint, "localhost") {
 			t.Skip("Skipping multipart tests with mock endpoint (moto has checksum issues)")
 		}
@@ -647,7 +647,7 @@ func TestReplicaClient_S3_ConcurrencyLimits(t *testing.T) {
 	}
 
 	// Skip if using mock endpoint
-	if endpoint := os.Getenv("LITESTREAM_S3_ENDPOINT"); endpoint != "" {
+	if endpoint := os.Getenv("REPLICATE_S3_ENDPOINT"); endpoint != "" {
 		if strings.Contains(endpoint, "127.0.0.1") || strings.Contains(endpoint, "localhost") {
 			t.Skip("Skipping concurrency test with mock endpoint")
 		}
@@ -718,12 +718,12 @@ func TestReplicaClient_PITR_ManyLTXFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		RunWithReplicaClient(t, tt.name, func(t *testing.T, c litestream.ReplicaClient) {
+		RunWithReplicaClient(t, tt.name, func(t *testing.T, c replicate.ReplicaClient) {
 			t.Helper()
 
 			// Skip very long tests unless explicitly enabled
-			if tt.fileCount > 100 && os.Getenv("LITESTREAM_PITR_STRESS_TEST") == "" {
-				t.Skipf("Skipping %d file stress test (set LITESTREAM_PITR_STRESS_TEST=1 to enable)", tt.fileCount)
+			if tt.fileCount > 100 && os.Getenv("REPLICATE_PITR_STRESS_TEST") == "" {
+				t.Skipf("Skipping %d file stress test (set REPLICATE_PITR_STRESS_TEST=1 to enable)", tt.fileCount)
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), tt.timeout)
@@ -734,7 +734,7 @@ func TestReplicaClient_PITR_ManyLTXFiles(t *testing.T) {
 
 			// Create snapshot at TXID 1
 			snapshot := createLTXDataWithTimestamp(1, 1, baseTime, []byte("snapshot"))
-			if _, err := c.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+			if _, err := c.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 				t.Fatalf("WriteLTXFile(snapshot): %v", err)
 			}
 
@@ -805,7 +805,7 @@ func TestReplicaClient_PITR_ManyLTXFiles(t *testing.T) {
 // TestReplicaClient_PITR_TimestampFiltering tests that PITR correctly filters files
 // by timestamp across a range of LTX files.
 func TestReplicaClient_PITR_TimestampFiltering(t *testing.T) {
-	RunWithReplicaClient(t, "TimestampFilter", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "TimestampFilter", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 
 		ctx := context.Background()
@@ -814,7 +814,7 @@ func TestReplicaClient_PITR_TimestampFiltering(t *testing.T) {
 
 		// Create snapshot at TXID 1
 		snapshot := createLTXDataWithTimestamp(1, 1, baseTime, []byte("snapshot"))
-		if _, err := c.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+		if _, err := c.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 			t.Fatalf("WriteLTXFile(snapshot): %v", err)
 		}
 
@@ -875,7 +875,7 @@ func TestReplicaClient_PITR_CalcRestorePlanWithManyFiles(t *testing.T) {
 	db, sqldb := testingutil.MustOpenDBs(t)
 	defer testingutil.MustCloseDBs(t, db, sqldb)
 
-	RunWithReplicaClient(t, "RestorePlan", func(t *testing.T, c litestream.ReplicaClient) {
+	RunWithReplicaClient(t, "RestorePlan", func(t *testing.T, c replicate.ReplicaClient) {
 		t.Helper()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -886,7 +886,7 @@ func TestReplicaClient_PITR_CalcRestorePlanWithManyFiles(t *testing.T) {
 
 		// Create snapshot
 		snapshot := createLTXDataWithTimestamp(1, 1, baseTime, []byte("snapshot"))
-		if _, err := c.WriteLTXFile(ctx, litestream.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
+		if _, err := c.WriteLTXFile(ctx, replicate.SnapshotLevel, 1, 1, bytes.NewReader(snapshot)); err != nil {
 			t.Fatalf("WriteLTXFile(snapshot): %v", err)
 		}
 
@@ -917,7 +917,7 @@ func TestReplicaClient_PITR_CalcRestorePlanWithManyFiles(t *testing.T) {
 			t.Run(target.name, func(t *testing.T) {
 				startTime := time.Now()
 
-				plan, err := litestream.CalcRestorePlan(ctx, c, target.txID, time.Time{}, logger)
+				plan, err := replicate.CalcRestorePlan(ctx, c, target.txID, time.Time{}, logger)
 				if err != nil {
 					t.Fatalf("CalcRestorePlan(%d): %v", target.txID, err)
 				}
@@ -942,7 +942,7 @@ func TestReplicaClient_PITR_CalcRestorePlanWithManyFiles(t *testing.T) {
 			targetTime := baseTime.Add(time.Duration(fileCount/2) * time.Minute)
 			startTime := time.Now()
 
-			plan, err := litestream.CalcRestorePlan(ctx, c, 0, targetTime, logger)
+			plan, err := replicate.CalcRestorePlan(ctx, c, 0, targetTime, logger)
 			if err != nil {
 				t.Fatalf("CalcRestorePlan(timestamp=%v): %v", targetTime, err)
 			}

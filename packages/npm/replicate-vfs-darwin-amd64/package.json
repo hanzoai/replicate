@@ -1,0 +1,12 @@
+{
+  "name": "replicate-vfs-darwin-amd64",
+  "version": "0.0.0",
+  "description": "Replicate VFS extension for macOS x64",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanzoai/replicate"
+  },
+  "license": "Apache-2.0"
+}

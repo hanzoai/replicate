@@ -38,17 +38,25 @@ import (
 
 func main() {}
 
-//export LitestreamVFSRegister
-func LitestreamVFSRegister() *C.char {
-	var client litestream.ReplicaClient
+// envWithFallback checks REPLICATE_ env var first, falls back to LITESTREAM_ for compat.
+func envWithFallback(suffix string) string {
+	if v := os.Getenv("REPLICATE_" + suffix); v != "" {
+		return v
+	}
+	return os.Getenv("LITESTREAM_" + suffix)
+}
+
+//export ReplicateVFSRegister
+func ReplicateVFSRegister() *C.char {
+	var client replicate.ReplicaClient
 	var err error
 
-	replicaURL := os.Getenv("LITESTREAM_REPLICA_URL")
+	replicaURL := envWithFallback("REPLICA_URL")
 	if replicaURL == "" {
-		return C.CString("LITESTREAM_REPLICA_URL environment variable required")
+		return C.CString("REPLICATE_REPLICA_URL environment variable required")
 	}
 
-	client, err = litestream.NewReplicaClientFromURL(replicaURL)
+	client, err = replicate.NewReplicaClientFromURL(replicaURL)
 	if err != nil {
 		return C.CString(fmt.Sprintf("failed to create replica client: %s", err))
 	}
@@ -59,7 +67,7 @@ func LitestreamVFSRegister() *C.char {
 	}
 
 	var level slog.Level
-	switch strings.ToUpper(os.Getenv("LITESTREAM_LOG_LEVEL")) {
+	switch strings.ToUpper(envWithFallback("LOG_LEVEL")) {
 	case "DEBUG":
 		level = slog.LevelDebug
 	default:
@@ -67,7 +75,7 @@ func LitestreamVFSRegister() *C.char {
 	}
 
 	var logOutput io.Writer = os.Stdout
-	if logFile := os.Getenv("LITESTREAM_LOG_FILE"); logFile != "" {
+	if logFile := envWithFallback("LOG_FILE"); logFile != "" {
 		f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			return C.CString(fmt.Sprintf("failed to open log file: %s", err))
@@ -76,77 +84,77 @@ func LitestreamVFSRegister() *C.char {
 	}
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: level}))
 
-	vfs := litestream.NewVFS(client, logger)
+	vfs := replicate.NewVFS(client, logger)
 
 	// Configure write support if enabled.
-	if strings.ToLower(os.Getenv("LITESTREAM_WRITE_ENABLED")) == "true" {
+	if strings.ToLower(envWithFallback("WRITE_ENABLED")) == "true" {
 		vfs.WriteEnabled = true
 
-		if s := os.Getenv("LITESTREAM_SYNC_INTERVAL"); s != "" {
+		if s := envWithFallback("SYNC_INTERVAL"); s != "" {
 			d, err := time.ParseDuration(s)
 			if err != nil {
-				return C.CString(fmt.Sprintf("invalid LITESTREAM_SYNC_INTERVAL: %s", err))
+				return C.CString(fmt.Sprintf("invalid REPLICATE_SYNC_INTERVAL: %s", err))
 			}
 			vfs.WriteSyncInterval = d
 		}
 
-		if s := os.Getenv("LITESTREAM_BUFFER_PATH"); s != "" {
+		if s := envWithFallback("BUFFER_PATH"); s != "" {
 			vfs.WriteBufferPath = s
 		}
 	}
 
 	// Configure hydration support if enabled.
-	if strings.ToLower(os.Getenv("LITESTREAM_HYDRATION_ENABLED")) == "true" {
+	if strings.ToLower(envWithFallback("HYDRATION_ENABLED")) == "true" {
 		vfs.HydrationEnabled = true
 
-		if s := os.Getenv("LITESTREAM_HYDRATION_PATH"); s != "" {
+		if s := envWithFallback("HYDRATION_PATH"); s != "" {
 			vfs.HydrationPath = s
 		}
 	}
 
-	if err := sqlite3vfs.RegisterVFS("litestream", vfs); err != nil {
+	if err := sqlite3vfs.RegisterVFS("replicate", vfs); err != nil {
 		return C.CString(fmt.Sprintf("failed to register VFS: %s", err))
 	}
 
 	return nil
 }
 
-//export GoLitestreamRegisterConnection
-func GoLitestreamRegisterConnection(dbPtr unsafe.Pointer, fileID C.sqlite3_uint64) *C.char {
-	if err := litestream.RegisterVFSConnection(uintptr(dbPtr), uint64(fileID)); err != nil {
+//export GoReplicateRegisterConnection
+func GoReplicateRegisterConnection(dbPtr unsafe.Pointer, fileID C.sqlite3_uint64) *C.char {
+	if err := replicate.RegisterVFSConnection(uintptr(dbPtr), uint64(fileID)); err != nil {
 		return C.CString(err.Error())
 	}
 	return nil
 }
 
-//export GoLitestreamUnregisterConnection
-func GoLitestreamUnregisterConnection(dbPtr unsafe.Pointer) *C.char {
-	litestream.UnregisterVFSConnection(uintptr(dbPtr))
+//export GoReplicateUnregisterConnection
+func GoReplicateUnregisterConnection(dbPtr unsafe.Pointer) *C.char {
+	replicate.UnregisterVFSConnection(uintptr(dbPtr))
 	return nil
 }
 
-//export GoLitestreamSetTime
-func GoLitestreamSetTime(dbPtr unsafe.Pointer, timestamp *C.char) *C.char {
+//export GoReplicateSetTime
+func GoReplicateSetTime(dbPtr unsafe.Pointer, timestamp *C.char) *C.char {
 	if timestamp == nil {
 		return C.CString("timestamp required")
 	}
-	if err := litestream.SetVFSConnectionTime(uintptr(dbPtr), C.GoString(timestamp)); err != nil {
+	if err := replicate.SetVFSConnectionTime(uintptr(dbPtr), C.GoString(timestamp)); err != nil {
 		return C.CString(err.Error())
 	}
 	return nil
 }
 
-//export GoLitestreamResetTime
-func GoLitestreamResetTime(dbPtr unsafe.Pointer) *C.char {
-	if err := litestream.ResetVFSConnectionTime(uintptr(dbPtr)); err != nil {
+//export GoReplicateResetTime
+func GoReplicateResetTime(dbPtr unsafe.Pointer) *C.char {
+	if err := replicate.ResetVFSConnectionTime(uintptr(dbPtr)); err != nil {
 		return C.CString(err.Error())
 	}
 	return nil
 }
 
-//export GoLitestreamTime
-func GoLitestreamTime(dbPtr unsafe.Pointer, out **C.char) *C.char {
-	value, err := litestream.GetVFSConnectionTime(uintptr(dbPtr))
+//export GoReplicateTime
+func GoReplicateTime(dbPtr unsafe.Pointer, out **C.char) *C.char {
+	value, err := replicate.GetVFSConnectionTime(uintptr(dbPtr))
 	if err != nil {
 		return C.CString(err.Error())
 	}
@@ -156,9 +164,9 @@ func GoLitestreamTime(dbPtr unsafe.Pointer, out **C.char) *C.char {
 	return nil
 }
 
-//export GoLitestreamTxid
-func GoLitestreamTxid(dbPtr unsafe.Pointer, out **C.char) *C.char {
-	value, err := litestream.GetVFSConnectionTXID(uintptr(dbPtr))
+//export GoReplicateTxid
+func GoReplicateTxid(dbPtr unsafe.Pointer, out **C.char) *C.char {
+	value, err := replicate.GetVFSConnectionTXID(uintptr(dbPtr))
 	if err != nil {
 		return C.CString(err.Error())
 	}
@@ -168,9 +176,9 @@ func GoLitestreamTxid(dbPtr unsafe.Pointer, out **C.char) *C.char {
 	return nil
 }
 
-//export GoLitestreamLag
-func GoLitestreamLag(dbPtr unsafe.Pointer, out *C.sqlite3_int64) *C.char {
-	value, err := litestream.GetVFSConnectionLag(uintptr(dbPtr))
+//export GoReplicateLag
+func GoReplicateLag(dbPtr unsafe.Pointer, out *C.sqlite3_int64) *C.char {
+	value, err := replicate.GetVFSConnectionLag(uintptr(dbPtr))
 	if err != nil {
 		return C.CString(err.Error())
 	}

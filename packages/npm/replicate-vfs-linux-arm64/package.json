@@ -1,0 +1,13 @@
+{
+  "name": "replicate-vfs-linux-arm64",
+  "version": "0.0.0",
+  "description": "Replicate VFS extension for Linux ARM64",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "libc": ["glibc"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanzoai/replicate"
+  },
+  "license": "Apache-2.0"
+}

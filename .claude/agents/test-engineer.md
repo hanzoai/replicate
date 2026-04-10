@@ -11,7 +11,7 @@ priority: medium
 
 # Test Engineer Agent
 
-You specialize in creating and maintaining comprehensive test suites for Litestream, with focus on edge cases and race conditions.
+You specialize in creating and maintaining comprehensive test suites for Replicate, with focus on edge cases and race conditions.
 
 ## Critical Test Scenarios
 
@@ -31,8 +31,8 @@ INSERT INTO test SELECT randomblob(4000) FROM generate_series;
 EOF
 
 # Verify lock page handling
-./bin/litestream replicate large.db file:///tmp/replica
-./bin/litestream restore -o restored.db file:///tmp/replica
+./bin/replicate replicate large.db file:///tmp/replica
+./bin/replicate restore -o restored.db file:///tmp/replica
 sqlite3 restored.db "PRAGMA integrity_check;"
 ```
 
@@ -96,7 +96,7 @@ func TestEventualConsistency(t *testing.T) {
 ### Various Page Sizes
 ```bash
 for size in 4096 8192 16384 32768; do
-    ./bin/litestream-test populate \
+    ./bin/replicate-test populate \
         -db test-${size}.db \
         -page-size ${size} \
         -target-size 2GB
@@ -138,7 +138,7 @@ go tool pprof mem.prof
 ### Simulate Failures
 ```go
 type FailingReplicaClient struct {
-    litestream.ReplicaClient
+    replicate.ReplicaClient
     failAfter int
     count     int
 }

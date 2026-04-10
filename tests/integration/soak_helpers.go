@@ -115,8 +115,8 @@ func promptYesNoDefaultYes(t *testing.T, prompt string) bool {
 func StartMinIOContainer(t *testing.T) (containerID string, endpoint string, volumeName string) {
 	t.Helper()
 
-	containerName := fmt.Sprintf("litestream-test-minio-%d", time.Now().Unix())
-	volumeName = fmt.Sprintf("litestream-test-minio-data-%d", time.Now().Unix())
+	containerName := fmt.Sprintf("replicate-test-minio-%d", time.Now().Unix())
+	volumeName = fmt.Sprintf("replicate-test-minio-data-%d", time.Now().Unix())
 	minioPort := "9100"
 	consolePort := "9101"
 
@@ -362,10 +362,10 @@ func GetS3StorageSize(t *testing.T, s3URL string) int64 {
 	return 0
 }
 
-// CreateSoakConfig creates a litestream configuration file for soak tests
+// CreateSoakConfig creates a replicate configuration file for soak tests
 func CreateSoakConfig(dbPath, replicaURL string, s3Config *S3Config, shortMode bool) string {
 	tempDir := filepath.Dir(dbPath)
-	configPath := filepath.Join(tempDir, "litestream.yml")
+	configPath := filepath.Join(tempDir, "replicate.yml")
 
 	var config strings.Builder
 
@@ -524,12 +524,12 @@ func performGracefulShutdown(t *testing.T, testInfo *TestInfo) {
 
 	elapsed := time.Since(testInfo.StartTime)
 
-	// Stop Litestream gracefully
-	t.Log("Stopping Litestream...")
-	if err := testInfo.DB.StopLitestream(); err != nil {
-		t.Logf("Warning: Error stopping Litestream: %v", err)
+	// Stop Replicate gracefully
+	t.Log("Stopping Replicate...")
+	if err := testInfo.DB.StopReplicate(); err != nil {
+		t.Logf("Warning: Error stopping Replicate: %v", err)
 	} else {
-		t.Log("✓ Litestream stopped")
+		t.Log("✓ Replicate stopped")
 	}
 
 	// Wait for pending operations
@@ -586,7 +586,7 @@ func performGracefulShutdown(t *testing.T, testInfo *TestInfo) {
 	t.Log("Test artifacts preserved at:")
 	t.Logf("  %s", testInfo.DB.TempDir)
 
-	if logPath, err := testInfo.DB.GetLitestreamLog(); err == nil {
+	if logPath, err := testInfo.DB.GetReplicateLog(); err == nil {
 		t.Logf("  Log: %s", logPath)
 	}
 
@@ -968,8 +968,8 @@ func AnalyzeSoakTest(t *testing.T, db *TestDB, duration time.Duration) *SoakTest
 		analysis.FinalFileCount = count
 	}
 
-	// Parse litestream log
-	logPath, _ := db.GetLitestreamLog()
+	// Parse replicate log
+	logPath, _ := db.GetReplicateLog()
 	if logPath != "" {
 		parseLog(logPath, analysis)
 	}
@@ -1104,7 +1104,7 @@ func PrintSoakTestAnalysis(t *testing.T, analysis *SoakTestAnalysis) {
 	t.Log("")
 
 	t.Logf("✓ Long-term Stability")
-	t.Logf("  Litestream ran flawlessly for %v under sustained load", analysis.Duration.Round(time.Minute))
+	t.Logf("  Replicate ran flawlessly for %v under sustained load", analysis.Duration.Round(time.Minute))
 	t.Log("")
 
 	t.Log("✓ Snapshot Generation")

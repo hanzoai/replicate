@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Test Litestream v0.3.x to v0.5.0 upgrade with large database (>1GB)
+# Test Replicate v0.3.x to v0.5.0 upgrade with large database (>1GB)
 # Specifically testing for #754 flag issue in upgrade scenario
 
 echo "=========================================="
@@ -14,14 +14,14 @@ echo ""
 # Configuration
 DB="/tmp/large-upgrade-test.db"
 REPLICA="/tmp/large-upgrade-replica"
-LITESTREAM_V3="/opt/homebrew/bin/litestream"
-LITESTREAM_V5="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE_V3="/opt/homebrew/bin/replicate"
+REPLICATE_V5="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*large-upgrade-test.db" 2>/dev/null || true
-    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-litestream"
+    pkill -f "replicate replicate.*large-upgrade-test.db" 2>/dev/null || true
+    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-replicate"
     rm -rf "$REPLICA"
     rm -f /tmp/large-upgrade-*.log
 }
@@ -48,7 +48,7 @@ CREATE TABLE large_test (
 EOF
 
 # Use our test harness to create large database quickly
-$LITESTREAM_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
+$REPLICATE_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
 
 # Add our test table after populate
 sqlite3 "$DB" <<EOF
@@ -81,12 +81,12 @@ echo "  ✓ Added identifiable row, total: $INITIAL_LARGE_COUNT"
 
 echo ""
 echo "[2] Starting v0.3.13 replication with large database..."
-$LITESTREAM_V3 replicate "$DB" "file://$REPLICA" > /tmp/large-upgrade-v3.log 2>&1 &
+$REPLICATE_V3 replicate "$DB" "file://$REPLICA" > /tmp/large-upgrade-v3.log 2>&1 &
 V3_PID=$!
 sleep 5
 
 if ! kill -0 $V3_PID 2>/dev/null; then
-    echo "  ✗ Litestream v0.3.13 failed to start with large database"
+    echo "  ✗ Replicate v0.3.13 failed to start with large database"
     cat /tmp/large-upgrade-v3.log
     exit 1
 fi
@@ -122,12 +122,12 @@ echo "  ✓ Added transition data, total: $TRANSITION_COUNT"
 
 echo ""
 echo "[5] Starting v0.5.0 with large database..."
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/large-upgrade-v5.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/large-upgrade-v5.log 2>&1 &
 V5_PID=$!
 sleep 5
 
 if ! kill -0 $V5_PID 2>/dev/null; then
-    echo "  ✗ Litestream v0.5.0 failed to start"
+    echo "  ✗ Replicate v0.5.0 failed to start"
     cat /tmp/large-upgrade-v5.log
     exit 1
 fi

@@ -15,13 +15,13 @@ echo ""
 # Configuration
 DB="/tmp/flag-reproduction-test.db"
 REPLICA="/tmp/flag-reproduction-replica"
-LITESTREAM_V5="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE_V5="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*flag-reproduction-test.db" 2>/dev/null || true
-    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-litestream"
+    pkill -f "replicate replicate.*flag-reproduction-test.db" 2>/dev/null || true
+    rm -f "$DB" "$DB-wal" "$DB-shm" "$DB-replicate"
     rm -rf "$REPLICA"
     rm -f /tmp/flag-reproduction-*.log
 }
@@ -33,7 +33,7 @@ cleanup
 
 echo ""
 echo "[1] Creating large database with v0.5.0 (first run)..."
-$LITESTREAM_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
+$REPLICATE_TEST populate -db "$DB" -target-size 1200MB >/dev/null 2>&1
 
 # Add identifiable data
 sqlite3 "$DB" <<EOF
@@ -57,7 +57,7 @@ echo "    Records: $INITIAL_COUNT"
 
 echo ""
 echo "[2] First v0.5.0 replication run..."
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/flag-reproduction-run1.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/flag-reproduction-run1.log 2>&1 &
 RUN1_PID=$!
 sleep 5
 
@@ -112,7 +112,7 @@ kill $RUN1_PID 2>/dev/null || true
 wait $RUN1_PID 2>/dev/null
 echo "  ✓ First run stopped"
 
-# Add data while Litestream is down
+# Add data while Replicate is down
 sqlite3 "$DB" "INSERT INTO flag_test (run_number, data) VALUES (2, randomblob(4000));"
 BETWEEN_RUNS_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM flag_test;")
 echo "  ✓ Data added between runs, total: $BETWEEN_RUNS_COUNT"
@@ -121,7 +121,7 @@ echo ""
 echo "[5] CRITICAL: Second v0.5.0 run (where #754 might occur)..."
 echo "  Starting v0.5.0 against database with existing v0.5.0 LTX files..."
 
-$LITESTREAM_V5 replicate "$DB" "file://$REPLICA" > /tmp/flag-reproduction-run2.log 2>&1 &
+$REPLICATE_V5 replicate "$DB" "file://$REPLICA" > /tmp/flag-reproduction-run2.log 2>&1 &
 RUN2_PID=$!
 sleep 5
 

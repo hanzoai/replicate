@@ -42,12 +42,12 @@ cleanup() {
 trap cleanup EXIT
 
 # Export environment variables for the S3 integration tests
-export LITESTREAM_S3_ACCESS_KEY_ID=minioadmin
-export LITESTREAM_S3_SECRET_ACCESS_KEY=minioadmin
-export LITESTREAM_S3_BUCKET=test-bucket
-export LITESTREAM_S3_ENDPOINT=http://localhost:9000
-export LITESTREAM_S3_FORCE_PATH_STYLE=true
-export LITESTREAM_S3_REGION=us-east-1
+export REPLICATE_S3_ACCESS_KEY_ID=minioadmin
+export REPLICATE_S3_SECRET_ACCESS_KEY=minioadmin
+export REPLICATE_S3_BUCKET=test-bucket
+export REPLICATE_S3_ENDPOINT=http://localhost:9000
+export REPLICATE_S3_FORCE_PATH_STYLE=true
+export REPLICATE_S3_REGION=us-east-1
 
 echo "Running S3 integration tests against MinIO..."
 go test -v ./replica_client_test.go -integration -replica-clients=s3 "$@"

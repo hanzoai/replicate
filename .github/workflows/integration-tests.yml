@@ -37,8 +37,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Run quick integration tests
         run: |
@@ -53,7 +53,7 @@ jobs:
         with:
           name: quick-test-logs
           path: |
-            /tmp/litestream-*/*.log
+            /tmp/replicate-*/*.log
             /tmp/*-test.log
 
   scenario-tests:
@@ -69,8 +69,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Run all scenario tests
         run: |
@@ -85,7 +85,7 @@ jobs:
         with:
           name: scenario-test-logs
           path: |
-            /tmp/litestream-*/*.log
+            /tmp/replicate-*/*.log
             /tmp/*-test.log
 
   long-running-tests:
@@ -102,8 +102,8 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o bin/litestream ./cmd/litestream
-          go build -o bin/litestream-test ./cmd/litestream-test
+          go build -o bin/replicate ./cmd/replicate
+          go build -o bin/replicate-test ./cmd/replicate-test
 
       - name: Run long tests
         run: |
@@ -118,7 +118,7 @@ jobs:
         with:
           name: long-test-logs
           path: |
-            /tmp/litestream-*/*.log
+            /tmp/replicate-*/*.log
             /tmp/*-test.log
 
   summary:

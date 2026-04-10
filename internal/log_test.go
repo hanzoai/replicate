@@ -111,17 +111,17 @@ func TestCleanSourcePath(t *testing.T) {
 		},
 		{
 			name: "absolute with module path",
-			file: "/Users/dev/go/pkg/mod/github.com/benbjohnson/litestream@v0.5.0/db.go",
+			file: "/Users/dev/go/pkg/mod/github.com/benbjohnson/replicate@v0.5.0/db.go",
 			want: "db.go",
 		},
 		{
 			name: "absolute checkout path",
-			file: "/Users/dev/projects/litestream/db.go",
+			file: "/Users/dev/projects/replicate/db.go",
 			want: "db.go",
 		},
 		{
 			name: "absolute checkout nested path",
-			file: "/workspace/litestream/internal/internal.go",
+			file: "/workspace/replicate/internal/internal.go",
 			want: "internal/internal.go",
 		},
 		{

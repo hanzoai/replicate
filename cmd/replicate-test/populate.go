@@ -27,7 +27,7 @@ type PopulateCommand struct {
 }
 
 func (c *PopulateCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-test populate", flag.ExitOnError)
+	fs := flag.NewFlagSet("replicate-test populate", flag.ExitOnError)
 	fs.StringVar(&c.DB, "db", "", "Database path (required)")
 	fs.StringVar(&c.TargetSize, "target-size", "100MB", "Target database size (e.g., 1GB, 500MB)")
 	fs.IntVar(&c.RowSize, "row-size", 1024, "Average row size in bytes")
@@ -226,7 +226,7 @@ Populate a SQLite database to a target size for testing.
 
 Usage:
 
-	litestream-test populate [options]
+	replicate-test populate [options]
 
 Options:
 
@@ -260,13 +260,13 @@ Options:
 Examples:
 
 	# Create a 1GB database with default settings
-	litestream-test populate -db /tmp/test.db -target-size 1GB
+	replicate-test populate -db /tmp/test.db -target-size 1GB
 
 	# Create a 2GB database with larger rows
-	litestream-test populate -db /tmp/test.db -target-size 2GB -row-size 4096
+	replicate-test populate -db /tmp/test.db -target-size 2GB -row-size 4096
 
 	# Test lock page with different page sizes
-	litestream-test populate -db /tmp/test.db -target-size 1.5GB -page-size 8192
+	replicate-test populate -db /tmp/test.db -target-size 1.5GB -page-size 8192
 `[1:])
 }
 

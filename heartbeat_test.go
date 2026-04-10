@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func TestHeartbeatClient_Ping(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := litestream.NewHeartbeatClient(server.URL, 5*time.Minute)
+		client := replicate.NewHeartbeatClient(server.URL, 5*time.Minute)
 		if err := client.Ping(context.Background()); err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -36,7 +36,7 @@ func TestHeartbeatClient_Ping(t *testing.T) {
 	})
 
 	t.Run("EmptyURL", func(t *testing.T) {
-		client := litestream.NewHeartbeatClient("", 5*time.Minute)
+		client := replicate.NewHeartbeatClient("", 5*time.Minute)
 		if err := client.Ping(context.Background()); err != nil {
 			t.Fatalf("expected no error for empty URL, got %v", err)
 		}
@@ -48,7 +48,7 @@ func TestHeartbeatClient_Ping(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := litestream.NewHeartbeatClient(server.URL, 5*time.Minute)
+		client := replicate.NewHeartbeatClient(server.URL, 5*time.Minute)
 		err := client.Ping(context.Background())
 		if err == nil {
 			t.Fatal("expected error for 500 status code")
@@ -56,7 +56,7 @@ func TestHeartbeatClient_Ping(t *testing.T) {
 	})
 
 	t.Run("NetworkError", func(t *testing.T) {
-		client := litestream.NewHeartbeatClient("http://localhost:1", 5*time.Minute)
+		client := replicate.NewHeartbeatClient("http://localhost:1", 5*time.Minute)
 		err := client.Ping(context.Background())
 		if err == nil {
 			t.Fatal("expected error for unreachable server")
@@ -73,7 +73,7 @@ func TestHeartbeatClient_Ping(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client := litestream.NewHeartbeatClient(server.URL, 5*time.Minute)
+		client := replicate.NewHeartbeatClient(server.URL, 5*time.Minute)
 		err := client.Ping(ctx)
 		if err == nil {
 			t.Fatal("expected error for canceled context")
@@ -83,14 +83,14 @@ func TestHeartbeatClient_Ping(t *testing.T) {
 
 func TestHeartbeatClient_ShouldPing(t *testing.T) {
 	t.Run("FirstPing", func(t *testing.T) {
-		client := litestream.NewHeartbeatClient("http://example.com", 5*time.Minute)
+		client := replicate.NewHeartbeatClient("http://example.com", 5*time.Minute)
 		if !client.ShouldPing() {
 			t.Error("expected ShouldPing to return true for first ping")
 		}
 	})
 
 	t.Run("AfterRecordPing", func(t *testing.T) {
-		client := litestream.NewHeartbeatClient("http://example.com", 5*time.Minute)
+		client := replicate.NewHeartbeatClient("http://example.com", 5*time.Minute)
 		client.RecordPing()
 
 		if client.ShouldPing() {
@@ -100,14 +100,14 @@ func TestHeartbeatClient_ShouldPing(t *testing.T) {
 }
 
 func TestHeartbeatClient_MinInterval(t *testing.T) {
-	client := litestream.NewHeartbeatClient("http://example.com", 30*time.Second)
-	if client.Interval != litestream.MinHeartbeatInterval {
-		t.Errorf("expected interval to be clamped to %v, got %v", litestream.MinHeartbeatInterval, client.Interval)
+	client := replicate.NewHeartbeatClient("http://example.com", 30*time.Second)
+	if client.Interval != replicate.MinHeartbeatInterval {
+		t.Errorf("expected interval to be clamped to %v, got %v", replicate.MinHeartbeatInterval, client.Interval)
 	}
 }
 
 func TestHeartbeatClient_LastPingAt(t *testing.T) {
-	client := litestream.NewHeartbeatClient("http://example.com", 5*time.Minute)
+	client := replicate.NewHeartbeatClient("http://example.com", 5*time.Minute)
 
 	if !client.LastPingAt().IsZero() {
 		t.Error("expected LastPingAt to be zero initially")
@@ -125,8 +125,8 @@ func TestHeartbeatClient_LastPingAt(t *testing.T) {
 
 func TestStore_Heartbeat_AllDatabasesHealthy(t *testing.T) {
 	t.Run("NoDatabases", func(t *testing.T) {
-		levels := litestream.CompactionLevels{{Level: 0}}
-		store := litestream.NewStore(nil, levels)
+		levels := replicate.CompactionLevels{{Level: 0}}
+		store := replicate.NewStore(nil, levels)
 		store.CompactionMonitorEnabled = false
 		store.HeartbeatCheckInterval = 0 // Disable automatic monitoring
 
@@ -137,7 +137,7 @@ func TestStore_Heartbeat_AllDatabasesHealthy(t *testing.T) {
 		}))
 		defer server.Close()
 
-		store.Heartbeat = litestream.NewHeartbeatClient(server.URL, 1*time.Minute)
+		store.Heartbeat = replicate.NewHeartbeatClient(server.URL, 1*time.Minute)
 
 		// With no databases, heartbeat should not fire
 		// We need to trigger the check manually since monitor is disabled
@@ -154,8 +154,8 @@ func TestStore_Heartbeat_AllDatabasesHealthy(t *testing.T) {
 		db1, sqldb1 := testingutil.MustOpenDBs(t)
 		defer testingutil.MustCloseDBs(t, db1, sqldb1)
 
-		levels := litestream.CompactionLevels{{Level: 0}, {Level: 1, Interval: time.Second}}
-		store := litestream.NewStore([]*litestream.DB{db0, db1}, levels)
+		levels := replicate.CompactionLevels{{Level: 0}, {Level: 1, Interval: time.Second}}
+		store := replicate.NewStore([]*replicate.DB{db0, db1}, levels)
 		store.CompactionMonitorEnabled = false
 		store.HeartbeatCheckInterval = 0
 
@@ -166,7 +166,7 @@ func TestStore_Heartbeat_AllDatabasesHealthy(t *testing.T) {
 		}))
 		defer server.Close()
 
-		store.Heartbeat = litestream.NewHeartbeatClient(server.URL, 1*time.Minute)
+		store.Heartbeat = replicate.NewHeartbeatClient(server.URL, 1*time.Minute)
 
 		if err := store.Open(t.Context()); err != nil {
 			t.Fatalf("open store: %v", err)
@@ -209,14 +209,14 @@ func TestStore_Heartbeat_AllDatabasesHealthy(t *testing.T) {
 		defer testingutil.MustCloseDBs(t, db0, sqldb0)
 
 		// Create second DB but don't sync it
-		db1 := litestream.NewDB(filepath.Join(t.TempDir(), "db1"))
-		db1.Replica = litestream.NewReplica(db1)
+		db1 := replicate.NewDB(filepath.Join(t.TempDir(), "db1"))
+		db1.Replica = replicate.NewReplica(db1)
 		db1.Replica.Client = testingutil.NewFileReplicaClient(t)
 		db1.Replica.MonitorEnabled = false
 		db1.MonitorInterval = 0
 
-		levels := litestream.CompactionLevels{{Level: 0}, {Level: 1, Interval: time.Second}}
-		store := litestream.NewStore([]*litestream.DB{db0, db1}, levels)
+		levels := replicate.CompactionLevels{{Level: 0}, {Level: 1, Interval: time.Second}}
+		store := replicate.NewStore([]*replicate.DB{db0, db1}, levels)
 		store.CompactionMonitorEnabled = false
 		store.HeartbeatCheckInterval = 0
 
@@ -225,7 +225,7 @@ func TestStore_Heartbeat_AllDatabasesHealthy(t *testing.T) {
 		}))
 		defer server.Close()
 
-		store.Heartbeat = litestream.NewHeartbeatClient(server.URL, 1*time.Minute)
+		store.Heartbeat = replicate.NewHeartbeatClient(server.URL, 1*time.Minute)
 
 		if err := store.Open(t.Context()); err != nil {
 			t.Fatalf("open store: %v", err)

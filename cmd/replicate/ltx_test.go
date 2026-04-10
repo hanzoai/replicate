@@ -129,7 +129,7 @@ func TestLevelVarParsing(t *testing.T) {
 		{
 			name:  "level 9 (snapshot level)",
 			input: "9",
-			want:  litestream.SnapshotLevel,
+			want:  replicate.SnapshotLevel,
 		},
 		{
 			name:  "all levels",

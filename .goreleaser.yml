@@ -48,8 +48,8 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     files:
-      - etc/litestream.yml
-      - etc/litestream.service
+      - etc/replicate.yml
+      - etc/replicate.service
       - README.md
       - LICENSE
 
@@ -63,11 +63,11 @@ nfpms:
       - deb
       - rpm
     contents:
-      - src: etc/litestream.yml
-        dst: /etc/litestream.yml
+      - src: etc/replicate.yml
+        dst: /etc/replicate.yml
         type: config
-      - src: etc/litestream.service
-        dst: /lib/systemd/system/litestream.service
+      - src: etc/replicate.service
+        dst: /lib/systemd/system/replicate.service
         type: config
     bindir: /usr/bin
     file_name_template: >-
@@ -91,7 +91,7 @@ brews:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     install: |
       bin.install "replicate"
-      etc.install "etc/litestream.yml" => "litestream.yml"
+      etc.install "etc/replicate.yml" => "replicate.yml"
     test: |
       system "#{bin}/replicate", "version"
     commit_author:
@@ -133,20 +133,20 @@ release:
 
     ### Homebrew (macOS and Linux)
     ```bash
-    brew tap benbjohnson/litestream
-    brew install litestream
+    brew tap hanzoai/replicate
+    brew install replicate
     ```
 
     ### Debian/Ubuntu
     Download the `.deb` file for your architecture and install:
     ```bash
-    sudo dpkg -i litestream-*.deb
+    sudo dpkg -i replicate-*.deb
     ```
 
     ### RPM-based systems
     Download the `.rpm` file for your architecture and install:
     ```bash
-    sudo rpm -i litestream-*.rpm
+    sudo rpm -i replicate-*.rpm
     ```
 
     ### Binary installation
@@ -154,20 +154,20 @@ release:
 
     ## VFS Extension (Experimental)
 
-    SQLite loadable extensions for read-only access to Litestream replicas are available for supported platforms:
+    SQLite loadable extensions for read-only access to Replicate replicas are available for supported platforms:
 
     | Platform | File |
     |----------|------|
-    | Linux x86_64 | `litestream-vfs-v{{.Version}}-linux-amd64.tar.gz` |
-    | Linux ARM64 | `litestream-vfs-v{{.Version}}-linux-arm64.tar.gz` |
-    | macOS Intel | `litestream-vfs-v{{.Version}}-darwin-amd64.tar.gz` |
-    | macOS Apple Silicon | `litestream-vfs-v{{.Version}}-darwin-arm64.tar.gz` |
+    | Linux x86_64 | `replicate-vfs-v{{.Version}}-linux-amd64.tar.gz` |
+    | Linux ARM64 | `replicate-vfs-v{{.Version}}-linux-arm64.tar.gz` |
+    | macOS Intel | `replicate-vfs-v{{.Version}}-darwin-amd64.tar.gz` |
+    | macOS Apple Silicon | `replicate-vfs-v{{.Version}}-darwin-arm64.tar.gz` |
 
     Install via package managers:
     ```bash
-    pip install litestream-vfs    # Python
-    npm install litestream-vfs    # Node.js
-    gem install litestream-vfs    # Ruby
+    pip install replicate-vfs    # Python
+    npm install replicate-vfs    # Node.js
+    gem install replicate-vfs    # Ruby
     ```
 
   # Signing configuration

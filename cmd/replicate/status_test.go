@@ -21,7 +21,7 @@ func TestStatusCommand_Run(t *testing.T) {
 	t.Run("WithConfig", func(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test.db")
-		configPath := filepath.Join(dir, "litestream.yml")
+		configPath := filepath.Join(dir, "replicate.yml")
 
 		// Create a SQLite database.
 		if err := os.WriteFile(dbPath, []byte{}, 0644); err != nil {
@@ -48,7 +48,7 @@ func TestStatusCommand_Run(t *testing.T) {
 	t.Run("FilterByPath", func(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test.db")
-		configPath := filepath.Join(dir, "litestream.yml")
+		configPath := filepath.Join(dir, "replicate.yml")
 
 		// Create a SQLite database.
 		if err := os.WriteFile(dbPath, []byte{}, 0644); err != nil {

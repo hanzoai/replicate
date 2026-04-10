@@ -1,6 +1,6 @@
-# AGENTS.md - Litestream AI Agent Guide
+# AGENTS.md - Replicate AI Agent Guide
 
-Litestream is a disaster recovery tool for SQLite that runs as a background process, monitors the WAL, converts changes to immutable LTX files, and replicates them to cloud storage. It uses `modernc.org/sqlite` (pure Go, no CGO required).
+Replicate is a disaster recovery tool for SQLite that runs as a background process, monitors the WAL, converts changes to immutable LTX files, and replicates them to cloud storage. It uses `modernc.org/sqlite` (pure Go, no CGO required).
 
 ## Before You Start
 
@@ -13,13 +13,13 @@ Litestream is a disaster recovery tool for SQLite that runs as a background proc
 - **Lock page at 1GB**: SQLite reserves page at 0x40000000. Always skip it. See [docs/SQLITE_INTERNALS.md](docs/SQLITE_INTERNALS.md)
 - **LTX files are immutable**: Never modify after creation. See [docs/LTX_FORMAT.md](docs/LTX_FORMAT.md)
 - **Single replica per database**: Each DB replicates to exactly one destination
-- **Use `litestream ltx`**: Not `litestream wal` (deprecated)
-- **Use `litestream reset`**: Clears corrupted local LTX state for a database. See `cmd/litestream/reset.go`
+- **Use `replicate ltx`**: Not `replicate wal` (deprecated)
+- **Use `replicate reset`**: Clears corrupted local LTX state for a database. See `cmd/replicate/reset.go`
 - **`auto-recover` config**: Replica option that automatically resets local state on LTX errors. Disabled by default. See `replica.go`
 - **Retention enabled by default**: `Store.RetentionEnabled` is `true` by default. Disable only when cloud lifecycle policies handle cleanup. See `store.go`
 - **IPC socket disabled by default**: Control socket is off by default. Enable with `socket.enabled: true` in config. See `server.go`
-- **`$PID` config expansion**: Config files support `$PID` to expand to the current process ID, plus standard `$ENV_VAR` expansion. See `cmd/litestream/main.go`
-- **`litestream ltx -level`**: Use `-level 0`–`9` or `-level all` to inspect specific compaction levels. See `cmd/litestream/ltx.go`
+- **`$PID` config expansion**: Config files support `$PID` to expand to the current process ID, plus standard `$ENV_VAR` expansion. See `cmd/replicate/main.go`
+- **`replicate ltx -level`**: Use `-level 0`–`9` or `-level all` to inspect specific compaction levels. See `cmd/replicate/ltx.go`
 - **Return errors, don't log them**: Always return errors to callers. Never `log.Printf(err)` and continue — this silently hides failures in a disaster recovery tool. Only use DEBUG log for best-effort operations where failure doesn't affect correctness and a valid fallback exists (e.g., reading SHM mxFrame optimization hint). See [docs/PATTERNS.md](docs/PATTERNS.md#error-handling)
 
 ## Layer Boundaries
@@ -39,7 +39,7 @@ Database state logic belongs in DB layer, not Replica layer.
 **Build:**
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
+go build -o bin/replicate ./cmd/replicate
 go test -race -v ./...
 ```
 

@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"context"
@@ -32,12 +32,12 @@ func TestServer_HandleInfo(t *testing.T) {
 	db, sqldb := testingutil.MustOpenDBs(t)
 	defer testingutil.MustCloseDBs(t, db, sqldb)
 
-	store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+	store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 	store.CompactionMonitorEnabled = false
 	require.NoError(t, store.Open(t.Context()))
 	defer store.Close(t.Context())
 
-	server := litestream.NewServer(store)
+	server := replicate.NewServer(store)
 	server.SocketPath = testSocketPath(t)
 	server.Version = "v1.0.0-test"
 	require.NoError(t, server.Start())
@@ -50,7 +50,7 @@ func TestServer_HandleInfo(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var result litestream.InfoResponse
+	var result replicate.InfoResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 
 	require.Equal(t, "v1.0.0-test", result.Version)
@@ -62,12 +62,12 @@ func TestServer_HandleInfo(t *testing.T) {
 
 func TestServer_HandleList(t *testing.T) {
 	t.Run("EmptyStore", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -79,7 +79,7 @@ func TestServer_HandleList(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.ListResponse
+		var result replicate.ListResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Empty(t, result.Databases)
 	})
@@ -91,12 +91,12 @@ func TestServer_HandleList(t *testing.T) {
 		db2, sqldb2 := testingutil.MustOpenDBs(t)
 		defer testingutil.MustCloseDBs(t, db2, sqldb2)
 
-		store := litestream.NewStore([]*litestream.DB{db1, db2}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db1, db2}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -108,7 +108,7 @@ func TestServer_HandleList(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.ListResponse
+		var result replicate.ListResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Len(t, result.Databases, 2)
 
@@ -128,12 +128,12 @@ func TestServer_HandleList(t *testing.T) {
 		// MonitorEnabled is false by default in test helper.
 		require.False(t, db.Replica.MonitorEnabled)
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -143,7 +143,7 @@ func TestServer_HandleList(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
-		var result litestream.ListResponse
+		var result replicate.ListResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Len(t, result.Databases, 1)
 
@@ -158,12 +158,12 @@ func TestServer_HandleList(t *testing.T) {
 		// Enable the monitor to simulate active replication.
 		db.Replica.MonitorEnabled = true
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -173,7 +173,7 @@ func TestServer_HandleList(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
-		var result litestream.ListResponse
+		var result replicate.ListResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Len(t, result.Databases, 1)
 
@@ -193,12 +193,12 @@ func TestServer_HandleList(t *testing.T) {
 		require.NoError(t, db.Sync(t.Context()))
 		require.NoError(t, db.Replica.Sync(t.Context()))
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -210,7 +210,7 @@ func TestServer_HandleList(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.ListResponse
+		var result replicate.ListResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Len(t, result.Databases, 1)
 		require.NotNil(t, result.Databases[0].LastSyncAt, "LastSyncAt should be set after sync")
@@ -221,12 +221,12 @@ func TestServer_HandleStart(t *testing.T) {
 	db, sqldb := testingutil.MustOpenDBs(t)
 	defer testingutil.MustCloseDBs(t, db, sqldb)
 
-	store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+	store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 	store.CompactionMonitorEnabled = false
 	require.NoError(t, store.Open(t.Context()))
 	defer store.Close(t.Context())
 
-	server := litestream.NewServer(store)
+	server := replicate.NewServer(store)
 	server.SocketPath = testSocketPath(t)
 	require.NoError(t, server.Start())
 	defer server.Close()
@@ -255,12 +255,12 @@ func TestServer_HandleStop(t *testing.T) {
 	db, sqldb := testingutil.MustOpenDBs(t)
 	defer testingutil.MustCloseDBs(t, db, sqldb)
 
-	store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+	store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 	store.CompactionMonitorEnabled = false
 	require.NoError(t, store.Open(t.Context()))
 	defer store.Close(t.Context())
 
-	server := litestream.NewServer(store)
+	server := replicate.NewServer(store)
 	server.SocketPath = testSocketPath(t)
 	require.NoError(t, server.Start())
 	defer server.Close()
@@ -277,12 +277,12 @@ func TestServer_HandleStop(t *testing.T) {
 
 func TestServer_HandleRegister(t *testing.T) {
 	t.Run("MissingPath", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -295,18 +295,18 @@ func TestServer_HandleRegister(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var result litestream.ErrorResponse
+		var result replicate.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "path required", result.Error)
 	})
 
 	t.Run("MissingReplicaURL", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -319,18 +319,18 @@ func TestServer_HandleRegister(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var result litestream.ErrorResponse
+		var result replicate.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "replica_url required", result.Error)
 	})
 
 	t.Run("InvalidReplicaURL", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -343,18 +343,18 @@ func TestServer_HandleRegister(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var result litestream.ErrorResponse
+		var result replicate.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Contains(t, result.Error, "invalid replica url")
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -375,7 +375,7 @@ func TestServer_HandleRegister(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.RegisterDatabaseResponse
+		var result replicate.RegisterDatabaseResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "registered", result.Status)
 		require.Equal(t, dbPath, result.Path)
@@ -389,12 +389,12 @@ func TestServer_HandleRegister(t *testing.T) {
 		db, sqldb := testingutil.MustOpenDBs(t)
 		defer testingutil.MustCloseDBs(t, db, sqldb)
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -409,7 +409,7 @@ func TestServer_HandleRegister(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.RegisterDatabaseResponse
+		var result replicate.RegisterDatabaseResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "already_exists", result.Status)
 	})
@@ -417,12 +417,12 @@ func TestServer_HandleRegister(t *testing.T) {
 
 func TestServer_HandleUnregister(t *testing.T) {
 	t.Run("MissingPath", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -435,18 +435,18 @@ func TestServer_HandleUnregister(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var result litestream.ErrorResponse
+		var result replicate.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "path required", result.Error)
 	})
 
 	t.Run("NotFoundIsIdempotent", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -460,7 +460,7 @@ func TestServer_HandleUnregister(t *testing.T) {
 		// UnregisterDB is idempotent - returns success even if DB not found.
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.UnregisterDatabaseResponse
+		var result replicate.UnregisterDatabaseResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "unregistered", result.Status)
 	})
@@ -470,14 +470,14 @@ func TestServer_HandleUnregister(t *testing.T) {
 		defer testingutil.MustCloseDBs(t, db, sqldb)
 		dbPath := db.Path()
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
 		require.Len(t, store.DBs(), 1)
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -490,7 +490,7 @@ func TestServer_HandleUnregister(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.UnregisterDatabaseResponse
+		var result replicate.UnregisterDatabaseResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "unregistered", result.Status)
 		require.Equal(t, dbPath, result.Path)
@@ -502,12 +502,12 @@ func TestServer_HandleUnregister(t *testing.T) {
 
 func TestServer_HandleSync(t *testing.T) {
 	t.Run("MissingPath", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -520,18 +520,18 @@ func TestServer_HandleSync(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var result litestream.ErrorResponse
+		var result replicate.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "path required", result.Error)
 	})
 
 	t.Run("DatabaseNotFound", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -552,12 +552,12 @@ func TestServer_HandleSync(t *testing.T) {
 		_, err := sqldb.ExecContext(t.Context(), `CREATE TABLE t (id INT)`)
 		require.NoError(t, err)
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -570,7 +570,7 @@ func TestServer_HandleSync(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.SyncResponse
+		var result replicate.SyncResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "synced_local", result.Status)
 		require.Equal(t, db.Path(), result.Path)
@@ -586,12 +586,12 @@ func TestServer_HandleSync(t *testing.T) {
 		_, err = sqldb.ExecContext(t.Context(), `INSERT INTO t (id) VALUES (1)`)
 		require.NoError(t, err)
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -604,7 +604,7 @@ func TestServer_HandleSync(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var result litestream.SyncResponse
+		var result replicate.SyncResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 		require.Equal(t, "synced", result.Status)
 		require.Equal(t, db.Path(), result.Path)
@@ -619,12 +619,12 @@ func TestServer_HandleSync(t *testing.T) {
 		_, err := sqldb.ExecContext(t.Context(), `CREATE TABLE t (id INT)`)
 		require.NoError(t, err)
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		require.NoError(t, store.Open(t.Context()))
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		require.NoError(t, server.Start())
 		defer server.Close()
@@ -638,7 +638,7 @@ func TestServer_HandleSync(t *testing.T) {
 		defer resp1.Body.Close()
 		require.Equal(t, http.StatusOK, resp1.StatusCode)
 
-		var result1 litestream.SyncResponse
+		var result1 replicate.SyncResponse
 		require.NoError(t, json.NewDecoder(resp1.Body).Decode(&result1))
 		require.Equal(t, "synced_local", result1.Status)
 		require.Greater(t, result1.TXID, uint64(0))
@@ -649,7 +649,7 @@ func TestServer_HandleSync(t *testing.T) {
 		defer resp2.Body.Close()
 		require.Equal(t, http.StatusOK, resp2.StatusCode)
 
-		var result2 litestream.SyncResponse
+		var result2 replicate.SyncResponse
 		require.NoError(t, json.NewDecoder(resp2.Body).Decode(&result2))
 		require.Equal(t, "no_change", result2.Status)
 		require.Equal(t, result1.TXID, result2.TXID)

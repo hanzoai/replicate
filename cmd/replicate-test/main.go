@@ -39,7 +39,7 @@ func NewMain() *Main {
 }
 
 func (m *Main) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-test", flag.ExitOnError)
+	fs := flag.NewFlagSet("replicate-test", flag.ExitOnError)
 	fs.Usage = m.Usage
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -68,11 +68,11 @@ func (m *Main) Run(ctx context.Context, args []string) error {
 
 func (m *Main) Usage() {
 	fmt.Fprintln(m.Stdout, `
-litestream-test is a testing harness for Litestream database replication.
+replicate-test is a testing harness for Replicate database replication.
 
 Usage:
 
-	litestream-test <command> [arguments]
+	replicate-test <command> [arguments]
 
 Commands:
 
@@ -82,7 +82,7 @@ Commands:
 	validate    Validate replication integrity
 	version     Show version information
 
-Use "litestream-test <command> -h" for more information about a command.
+Use "replicate-test <command> -h" for more information about a command.
 `[1:])
 }
 
@@ -91,13 +91,13 @@ type VersionCommand struct {
 }
 
 func (c *VersionCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-test version", flag.ExitOnError)
+	fs := flag.NewFlagSet("replicate-test version", flag.ExitOnError)
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(c.Main.Stdout, "litestream-test %s\n", Version)
+	fmt.Fprintf(c.Main.Stdout, "replicate-test %s\n", Version)
 	if Commit != "" {
 		fmt.Fprintf(c.Main.Stdout, "commit: %s\n", Commit)
 	}
@@ -107,11 +107,11 @@ func (c *VersionCommand) Run(ctx context.Context, args []string) error {
 
 func (c *VersionCommand) Usage() {
 	fmt.Fprintln(c.Main.Stdout, `
-Show version information for litestream-test.
+Show version information for replicate-test.
 
 Usage:
 
-	litestream-test version
+	replicate-test version
 `[1:])
 }
 

@@ -1,6 +1,6 @@
 //go:build vfs
 
-package litestream
+package replicate
 
 import (
 	"bytes"

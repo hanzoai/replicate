@@ -9,7 +9,8 @@ import (
 	"syscall"
 )
 
-const defaultConfigPath = "/etc/litestream.yml"
+const defaultConfigPath = "/etc/replicate.yml"
+const legacyConfigPath = "/etc/litestream.yml"
 
 func isWindowsService() (bool, error) {
 	return false, nil

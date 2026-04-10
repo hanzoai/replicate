@@ -1,4 +1,4 @@
-Test Litestream compaction logic. This command helps test and debug compaction issues, especially with eventually consistent storage backends.
+Test Replicate compaction logic. This command helps test and debug compaction issues, especially with eventually consistent storage backends.
 
 First, understand the test scenario:
 - What storage backend needs testing?
@@ -56,6 +56,6 @@ go test -race -v -run TestStore_CompactDB ./...
 
 Use the test harness for large databases:
 ```bash
-./bin/litestream-test populate -db test.db -target-size 1.5GB
-./bin/litestream-test validate -source-db test.db -replica-url file:///tmp/replica
+./bin/replicate-test populate -db test.db -target-size 1.5GB
+./bin/replicate-test validate -source-db test.db -replica-url file:///tmp/replica
 ```

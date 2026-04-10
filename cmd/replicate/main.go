@@ -106,8 +106,8 @@ func (m *Main) Run(ctx context.Context, args []string) (err error) {
 		return runWindowsService(ctx)
 	}
 
-	// Copy "LITESTREAM" environment credentials.
-	applyLitestreamEnv()
+	// Copy "REPLICATE" environment credentials.
+	applyReplicateEnv()
 
 	// Extract command name.
 	var cmd string
@@ -248,7 +248,7 @@ type Config struct {
 	Addr string `yaml:"addr"`
 
 	// Socket configuration for control commands.
-	Socket litestream.SocketConfig `yaml:"socket"`
+	Socket replicate.SocketConfig `yaml:"socket"`
 
 	// List of stages in a multi-level compaction.
 	// Only includes L1 through the last non-snapshot level.
@@ -279,7 +279,7 @@ type Config struct {
 	DBs []*DBConfig `yaml:"dbs"`
 
 	// Subcommand to execute during replication.
-	// Litestream will shutdown when subcommand exits.
+	// Replicate will shutdown when subcommand exits.
 	Exec string `yaml:"exec"`
 
 	// Logging
@@ -330,21 +330,21 @@ func (c *Config) propagateGlobalSettings() {
 func DefaultConfig() Config {
 	defaultSnapshotInterval := 24 * time.Hour
 	defaultSnapshotRetention := 24 * time.Hour
-	defaultL0Retention := litestream.DefaultL0Retention
-	defaultL0RetentionCheckInterval := litestream.DefaultL0RetentionCheckInterval
-	defaultShutdownSyncTimeout := litestream.DefaultShutdownSyncTimeout
-	defaultShutdownSyncInterval := litestream.DefaultShutdownSyncInterval
+	defaultL0Retention := replicate.DefaultL0Retention
+	defaultL0RetentionCheckInterval := replicate.DefaultL0RetentionCheckInterval
+	defaultShutdownSyncTimeout := replicate.DefaultShutdownSyncTimeout
+	defaultShutdownSyncInterval := replicate.DefaultShutdownSyncInterval
 	return Config{
 		Levels: []*CompactionLevelConfig{
-			{Interval: litestream.DefaultCompactionLevels[1].Interval},
-			{Interval: litestream.DefaultCompactionLevels[2].Interval},
-			{Interval: litestream.DefaultCompactionLevels[3].Interval},
+			{Interval: replicate.DefaultCompactionLevels[1].Interval},
+			{Interval: replicate.DefaultCompactionLevels[2].Interval},
+			{Interval: replicate.DefaultCompactionLevels[3].Interval},
 		},
 		Snapshot: SnapshotConfig{
 			Interval:  &defaultSnapshotInterval,
 			Retention: &defaultSnapshotRetention,
 		},
-		Socket:                   litestream.DefaultSocketConfig(),
+		Socket:                   replicate.DefaultSocketConfig(),
 		L0Retention:              &defaultL0Retention,
 		L0RetentionCheckInterval: &defaultL0RetentionCheckInterval,
 		ShutdownSyncTimeout:      &defaultShutdownSyncTimeout,
@@ -406,7 +406,7 @@ func (c *Config) Validate() error {
 			Value: c.HeartbeatURL,
 		}
 	}
-	if c.HeartbeatInterval != nil && *c.HeartbeatInterval < litestream.MinHeartbeatInterval {
+	if c.HeartbeatInterval != nil && *c.HeartbeatInterval < replicate.MinHeartbeatInterval {
 		return &ConfigValidationError{
 			Err:   ErrInvalidHeartbeatInterval,
 			Field: "heartbeat-interval",
@@ -472,13 +472,13 @@ func (c *Config) Validate() error {
 }
 
 // CompactionLevels returns a full list of compaction levels include L0.
-func (c *Config) CompactionLevels() litestream.CompactionLevels {
-	levels := litestream.CompactionLevels{
+func (c *Config) CompactionLevels() replicate.CompactionLevels {
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 	}
 
 	for i, lvl := range c.Levels {
-		levels = append(levels, &litestream.CompactionLevel{
+		levels = append(levels, &replicate.CompactionLevel{
 			Level:    i + 1,
 			Interval: lvl.Interval,
 		})
@@ -631,14 +631,14 @@ type DBConfig struct {
 }
 
 // NewDBFromConfig instantiates a DB based on a configuration.
-func NewDBFromConfig(dbc *DBConfig) (*litestream.DB, error) {
+func NewDBFromConfig(dbc *DBConfig) (*replicate.DB, error) {
 	configPath, err := expand(dbc.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize database with given path.
-	db := litestream.NewDB(configPath)
+	db := replicate.NewDB(configPath)
 
 	// Override default database settings if specified in configuration.
 	if dbc.MetaPath != nil {
@@ -694,7 +694,7 @@ func NewDBFromConfig(dbc *DBConfig) (*litestream.DB, error) {
 }
 
 // NewDBsFromDirectoryConfig scans a directory and creates DB instances for all SQLite databases found.
-func NewDBsFromDirectoryConfig(dbc *DBConfig) ([]*litestream.DB, error) {
+func NewDBsFromDirectoryConfig(dbc *DBConfig) ([]*replicate.DB, error) {
 	if dbc.Dir == "" {
 		return nil, fmt.Errorf("directory path is required for directory replication")
 	}
@@ -719,7 +719,7 @@ func NewDBsFromDirectoryConfig(dbc *DBConfig) ([]*litestream.DB, error) {
 	}
 
 	// Create DB instances for each found database
-	var dbs []*litestream.DB
+	var dbs []*replicate.DB
 	metaPaths := make(map[string]string)
 
 	for _, dbPath := range dbPaths {
@@ -743,7 +743,7 @@ func NewDBsFromDirectoryConfig(dbc *DBConfig) ([]*litestream.DB, error) {
 }
 
 // newDBFromDirectoryEntry creates a DB instance for a database discovered via directory replication.
-func newDBFromDirectoryEntry(dbc *DBConfig, dirPath, dbPath string) (*litestream.DB, error) {
+func newDBFromDirectoryEntry(dbc *DBConfig, dirPath, dbPath string) (*replicate.DB, error) {
 	// Calculate relative path from directory root
 	relPath, err := filepath.Rel(dirPath, dbPath)
 	if err != nil {
@@ -842,7 +842,7 @@ func cloneReplicaConfigWithRelativePath(base *ReplicaConfig, relPath string) (*R
 
 // deriveMetaPathForDirectoryEntry returns a unique metadata directory for a
 // database discovered through directory replication by appending the database's
-// relative path and the standard Litestream suffix to the configured base path.
+// relative path and the standard Replicate suffix to the configured base path.
 func deriveMetaPathForDirectoryEntry(basePath, relPath string) string {
 	relPath = filepath.Clean(relPath)
 	if relPath == "." || relPath == "" {
@@ -854,7 +854,7 @@ func deriveMetaPathForDirectoryEntry(basePath, relPath string) string {
 		return filepath.Join(basePath, relPath)
 	}
 
-	metaDirName := "." + relFile + litestream.MetaDirSuffix
+	metaDirName := "." + relFile + replicate.MetaDirSuffix
 	return filepath.Join(basePath, relDir, metaDirName)
 }
 
@@ -1201,14 +1201,14 @@ type ReplicaConfig struct {
 }
 
 // NewReplicaFromConfig instantiates a replica for a DB based on a config.
-func NewReplicaFromConfig(c *ReplicaConfig, db *litestream.DB) (_ *litestream.Replica, err error) {
+func NewReplicaFromConfig(c *ReplicaConfig, db *replicate.DB) (_ *replicate.Replica, err error) {
 	// Ensure user did not specify URL in path.
-	if litestream.IsURL(c.Path) {
+	if replicate.IsURL(c.Path) {
 		return nil, fmt.Errorf("replica path cannot be a url, please use the 'url' field instead: %s", c.Path)
 	}
 
 	// Build replica.
-	r := litestream.NewReplica(db)
+	r := replicate.NewReplica(db)
 	if v := c.SyncInterval; v != nil {
 		r.SyncInterval = *v
 	}
@@ -1276,7 +1276,7 @@ func NewReplicaFromConfig(c *ReplicaConfig, db *litestream.DB) (_ *litestream.Re
 }
 
 // newFileReplicaClientFromConfig returns a new instance of file.ReplicaClient built from config.
-func newFileReplicaClientFromConfig(c *ReplicaConfig, r *litestream.Replica) (_ *file.ReplicaClient, err error) {
+func newFileReplicaClientFromConfig(c *ReplicaConfig, r *replicate.Replica) (_ *file.ReplicaClient, err error) {
 	// Ensure URL & path are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for file replica")
@@ -1285,7 +1285,7 @@ func newFileReplicaClientFromConfig(c *ReplicaConfig, r *litestream.Replica) (_ 
 	// Parse configPath from URL, if specified.
 	configPath := c.Path
 	if c.URL != "" {
-		if _, _, configPath, err = litestream.ParseReplicaURL(c.URL); err != nil {
+		if _, _, configPath, err = replicate.ParseReplicaURL(c.URL); err != nil {
 			return nil, err
 		}
 	}
@@ -1308,7 +1308,7 @@ func newFileReplicaClientFromConfig(c *ReplicaConfig, r *litestream.Replica) (_ 
 
 // NewS3ReplicaClientFromConfig returns a new instance of s3.ReplicaClient built from config.
 // Exported for testing.
-func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s3.ReplicaClient, err error) {
+func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *s3.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for s3 replica")
@@ -1347,7 +1347,7 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s
 	}
 
 	if c.URL != "" {
-		_, host, upath, query, _, err := litestream.ParseReplicaURLWithQuery(c.URL)
+		_, host, upath, query, _, err := replicate.ParseReplicaURLWithQuery(c.URL)
 		if err != nil {
 			return nil, err
 		}
@@ -1361,7 +1361,7 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s
 
 		if strings.HasPrefix(host, "arn:") {
 			ubucket = host
-			uregion = litestream.RegionFromS3ARN(host)
+			uregion = replicate.RegionFromS3ARN(host)
 		} else {
 			ubucket, uregion, uendpoint, uforcePathStyle = s3.ParseHost(host)
 		}
@@ -1369,7 +1369,7 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s
 		// Override with query parameters if provided
 		if qEndpoint := query.Get("endpoint"); qEndpoint != "" {
 			// Ensure endpoint has a scheme (defaults to https:// for cloud, http:// for local)
-			qEndpoint, _ = litestream.EnsureEndpointScheme(qEndpoint)
+			qEndpoint, _ = replicate.EnsureEndpointScheme(qEndpoint)
 			uendpoint = qEndpoint
 			// Default to path style for custom endpoints unless explicitly set to false
 			if query.Get("forcePathStyle") != "false" {
@@ -1386,11 +1386,11 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s
 		if qSkipVerify := query.Get("skipVerify"); qSkipVerify != "" {
 			skipVerify = qSkipVerify == "true"
 		}
-		if v, ok := litestream.BoolQueryValue(query, "signPayload", "sign-payload"); ok {
+		if v, ok := replicate.BoolQueryValue(query, "signPayload", "sign-payload"); ok {
 			usignPayload = v
 			usignPayloadSet = true
 		}
-		if v, ok := litestream.BoolQueryValue(query, "requireContentMD5", "require-content-md5"); ok {
+		if v, ok := replicate.BoolQueryValue(query, "requireContentMD5", "require-content-md5"); ok {
 			urequireContentMD5 = v
 			urequireContentMD5Set = true
 		}
@@ -1426,17 +1426,17 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s
 
 	// Detect S3-compatible provider endpoints for applying appropriate defaults.
 	// These providers require specific settings to work correctly with AWS SDK v2.
-	isTigris := litestream.IsTigrisEndpoint(endpoint)
-	if !isTigris && !endpointWasSet && litestream.IsTigrisEndpoint(c.Endpoint) {
+	isTigris := replicate.IsTigrisEndpoint(endpoint)
+	if !isTigris && !endpointWasSet && replicate.IsTigrisEndpoint(c.Endpoint) {
 		isTigris = true
 	}
-	isDigitalOcean := litestream.IsDigitalOceanEndpoint(endpoint)
-	isBackblaze := litestream.IsBackblazeEndpoint(endpoint)
-	isFilebase := litestream.IsFilebaseEndpoint(endpoint)
-	isScaleway := litestream.IsScalewayEndpoint(endpoint)
-	isMinIO := litestream.IsMinIOEndpoint(endpoint)
-	isCloudflareR2 := litestream.IsCloudflareR2Endpoint(endpoint)
-	isSupabase := litestream.IsSupabaseEndpoint(endpoint)
+	isDigitalOcean := replicate.IsDigitalOceanEndpoint(endpoint)
+	isBackblaze := replicate.IsBackblazeEndpoint(endpoint)
+	isFilebase := replicate.IsFilebaseEndpoint(endpoint)
+	isScaleway := replicate.IsScalewayEndpoint(endpoint)
+	isMinIO := replicate.IsMinIOEndpoint(endpoint)
+	isCloudflareR2 := replicate.IsCloudflareR2Endpoint(endpoint)
+	isSupabase := replicate.IsSupabaseEndpoint(endpoint)
 
 	// Track if forcePathStyle was explicitly set by user (config or URL query param).
 	forcePathStyleSet := c.ForcePathStyle != nil
@@ -1522,7 +1522,7 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *s
 }
 
 // newGSReplicaClientFromConfig returns a new instance of gs.ReplicaClient built from config.
-func newGSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *gs.ReplicaClient, err error) {
+func newGSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *gs.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for gs replica")
@@ -1534,7 +1534,7 @@ func newGSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *g
 
 	// Apply settings from URL, if specified.
 	if c.URL != "" {
-		_, uhost, upath, err := litestream.ParseReplicaURL(c.URL)
+		_, uhost, upath, err := replicate.ParseReplicaURL(c.URL)
 		if err != nil {
 			return nil, err
 		}
@@ -1561,7 +1561,7 @@ func newGSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *g
 }
 
 // newABSReplicaClientFromConfig returns a new instance of abs.ReplicaClient built from config.
-func newABSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *abs.ReplicaClient, err error) {
+func newABSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *abs.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for abs replica")
@@ -1605,7 +1605,7 @@ func newABSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *
 }
 
 // newSFTPReplicaClientFromConfig returns a new instance of sftp.ReplicaClient built from config.
-func newSFTPReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *sftp.ReplicaClient, err error) {
+func newSFTPReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *sftp.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for sftp replica")
@@ -1662,7 +1662,7 @@ func newSFTPReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ 
 }
 
 // newWebDAVReplicaClientFromConfig returns a new instance of webdav.ReplicaClient built from config.
-func newWebDAVReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *webdav.ReplicaClient, err error) {
+func newWebDAVReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *webdav.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for webdav replica")
@@ -1716,11 +1716,11 @@ func newWebDAVReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (
 }
 
 // newNATSReplicaClientFromConfig returns a new instance of nats.ReplicaClient built from config.
-func newNATSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *nats.ReplicaClient, err error) {
+func newNATSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *nats.ReplicaClient, err error) {
 	// Parse URL if provided to extract bucket name and server URL
 	var url, bucket string
 	if c.URL != "" {
-		scheme, host, bucketPath, err := litestream.ParseReplicaURL(c.URL)
+		scheme, host, bucketPath, err := replicate.ParseReplicaURL(c.URL)
 		if err != nil {
 			return nil, fmt.Errorf("invalid NATS URL: %w", err)
 		}
@@ -1789,7 +1789,7 @@ func newNATSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ 
 }
 
 // newOSSReplicaClientFromConfig returns a new instance of oss.ReplicaClient built from config.
-func newOSSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *oss.ReplicaClient, err error) {
+func newOSSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *oss.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
 	if c.URL != "" && c.Path != "" {
 		return nil, fmt.Errorf("cannot specify url & path for oss replica")
@@ -1802,7 +1802,7 @@ func newOSSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *
 
 	// Apply settings from URL, if specified.
 	if c.URL != "" {
-		_, host, upath, err := litestream.ParseReplicaURL(c.URL)
+		_, host, upath, err := replicate.ParseReplicaURL(c.URL)
 		if err != nil {
 			return nil, err
 		}
@@ -1851,16 +1851,25 @@ func newOSSReplicaClientFromConfig(c *ReplicaConfig, _ *litestream.Replica) (_ *
 	return client, nil
 }
 
-// applyLitestreamEnv copies "LITESTREAM" prefixed environment variables to
+// applyReplicateEnv copies "REPLICATE" prefixed environment variables to
 // their AWS counterparts as the "AWS" prefix can be confusing when using a
-// non-AWS S3-compatible service.
-func applyLitestreamEnv() {
-	if v, ok := os.LookupEnv("LITESTREAM_ACCESS_KEY_ID"); ok {
+// non-AWS S3-compatible service. Falls back to legacy "LITESTREAM_" prefix
+// for backward compatibility.
+func applyReplicateEnv() {
+	if v, ok := os.LookupEnv("REPLICATE_ACCESS_KEY_ID"); ok {
+		if _, ok := os.LookupEnv("AWS_ACCESS_KEY_ID"); !ok {
+			os.Setenv("AWS_ACCESS_KEY_ID", v)
+		}
+	} else if v, ok := os.LookupEnv("LITESTREAM_ACCESS_KEY_ID"); ok {
 		if _, ok := os.LookupEnv("AWS_ACCESS_KEY_ID"); !ok {
 			os.Setenv("AWS_ACCESS_KEY_ID", v)
 		}
 	}
-	if v, ok := os.LookupEnv("LITESTREAM_SECRET_ACCESS_KEY"); ok {
+	if v, ok := os.LookupEnv("REPLICATE_SECRET_ACCESS_KEY"); ok {
+		if _, ok := os.LookupEnv("AWS_SECRET_ACCESS_KEY"); !ok {
+			os.Setenv("AWS_SECRET_ACCESS_KEY", v)
+		}
+	} else if v, ok := os.LookupEnv("LITESTREAM_SECRET_ACCESS_KEY"); ok {
 		if _, ok := os.LookupEnv("AWS_SECRET_ACCESS_KEY"); !ok {
 			os.Setenv("AWS_SECRET_ACCESS_KEY", v)
 		}
@@ -1889,7 +1898,7 @@ func (s *boolSetting) ApplyDefault(value bool) {
 
 // ReplicaType returns the type based on the type field or extracted from the URL.
 func (c *ReplicaConfig) ReplicaType() string {
-	if replicaType := litestream.ReplicaTypeFromURL(c.URL); replicaType != "" {
+	if replicaType := replicate.ReplicaTypeFromURL(c.URL); replicaType != "" {
 		return replicaType
 	} else if c.Type != "" {
 		return c.Type
@@ -1898,9 +1907,21 @@ func (c *ReplicaConfig) ReplicaType() string {
 }
 
 // DefaultConfigPath returns the default config path.
+// Checks REPLICATE_CONFIG first, falls back to LITESTREAM_CONFIG for compat.
+// If neither env var is set, checks for replicate.yml then litestream.yml.
 func DefaultConfigPath() string {
+	if v := os.Getenv("REPLICATE_CONFIG"); v != "" {
+		return v
+	}
 	if v := os.Getenv("LITESTREAM_CONFIG"); v != "" {
 		return v
+	}
+	// Check if the default replicate.yml exists; fall back to legacy litestream.yml.
+	if _, err := os.Stat(defaultConfigPath); err == nil {
+		return defaultConfigPath
+	}
+	if _, err := os.Stat(legacyConfigPath); err == nil {
+		return legacyConfigPath
 	}
 	return defaultConfigPath
 }
@@ -1944,7 +1965,7 @@ func expand(s string) (string, error) {
 
 // StripSQLitePrefix removes SQLite connection string prefixes (sqlite://, sqlite3://)
 // from the given path. This allows users to use standard connection string formats
-// across their tooling while Litestream extracts just the file path.
+// across their tooling while Replicate extracts just the file path.
 func StripSQLitePrefix(s string) string {
 	if len(s) < 9 || s[0] != 's' {
 		return s
@@ -2001,10 +2022,10 @@ func (v *levelVar) Set(s string) error {
 	}
 	n, err := strconv.Atoi(s)
 	if err != nil {
-		return fmt.Errorf("invalid level: must be 0-%d or \"all\"", litestream.SnapshotLevel)
+		return fmt.Errorf("invalid level: must be 0-%d or \"all\"", replicate.SnapshotLevel)
 	}
-	if n < 0 || n > litestream.SnapshotLevel {
-		return fmt.Errorf("level must be between 0 and %d", litestream.SnapshotLevel)
+	if n < 0 || n > replicate.SnapshotLevel {
+		return fmt.Errorf("level must be between 0 and %d", replicate.SnapshotLevel)
 	}
 	*v = levelVar(n)
 	return nil

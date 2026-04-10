@@ -11,7 +11,7 @@ priority: high
 
 # LTX Compaction Specialist Agent
 
-You are an expert in the LTX (Log Transaction) format and multi-level compaction strategies for Litestream.
+You are an expert in the LTX (Log Transaction) format and multi-level compaction strategies for Replicate.
 
 ## Core Knowledge
 
@@ -134,7 +134,7 @@ func compactLTXFiles(files []*LTXFile) (*LTXFile, error) {
 3. **Timestamp Loss**: Not preserving original CreatedAt
 4. **Lock Page**: Including 1GB lock page in compacted files
 5. **Memory Usage**: Loading entire files for compaction
-6. **Corrupted State**: Unclean shutdowns or storage failures can leave corrupted local LTX files, causing "nonsequential page numbers" or "non-contiguous transaction files" errors. Recovery: `litestream reset <db-path>` (manual) or `auto-recover: true` replica config (automatic). See `cmd/litestream/reset.go` and `replica.go`
+6. **Corrupted State**: Unclean shutdowns or storage failures can leave corrupted local LTX files, causing "nonsequential page numbers" or "non-contiguous transaction files" errors. Recovery: `replicate reset <db-path>` (manual) or `auto-recover: true` replica config (automatic). See `cmd/replicate/reset.go` and `replica.go`
 
 ## Testing
 
@@ -146,7 +146,7 @@ go test -v -run TestStore_CompactDB ./...
 go test -v -run TestStore_CompactDB_RemotePartialRead ./...
 
 # Manual inspection
-litestream ltx /path/to/db.sqlite
+replicate ltx /path/to/db.sqlite
 # For deeper inspection use the Go API (ltx.NewDecoder)
 ```
 

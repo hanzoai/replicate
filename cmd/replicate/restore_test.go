@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	litestream "github.com/hanzoai/replicate"
+	replicate "github.com/hanzoai/replicate"
 )
 
 func TestRestoreCommand_FollowIntervalFlag(t *testing.T) {
@@ -39,7 +39,7 @@ func TestRestoreCommand_FollowIntervalFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opt := litestream.NewRestoreOptions()
+			opt := replicate.NewRestoreOptions()
 			fs := flag.NewFlagSet("test", flag.ContinueOnError)
 			fs.DurationVar(&opt.FollowInterval, "follow-interval", opt.FollowInterval, "polling interval for follow mode")
 

@@ -17,19 +17,19 @@ echo ""
 PROJECT_ROOT="$(pwd)"
 DB="/tmp/small-retention-test.db"
 RESTORED_DB="/tmp/small-retention-restored.db"
-LITESTREAM="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 S3_MOCK="./etc/s3_mock.py"
 
 # Build binaries if needed
-if [ ! -f "$LITESTREAM" ]; then
-    echo "Building litestream binary..."
-    go build -o bin/litestream ./cmd/litestream
+if [ ! -f "$REPLICATE" ]; then
+    echo "Building replicate binary..."
+    go build -o bin/replicate ./cmd/replicate
 fi
 
-if [ ! -f "$LITESTREAM_TEST" ]; then
-    echo "Building litestream-test binary..."
-    go build -o bin/litestream-test ./cmd/litestream-test
+if [ ! -f "$REPLICATE_TEST" ]; then
+    echo "Building replicate-test binary..."
+    go build -o bin/replicate-test ./cmd/replicate-test
 fi
 
 # Check for Python S3 mock dependencies
@@ -57,7 +57,7 @@ fi
 # Cleanup function
 cleanup() {
     # Kill any running processes
-    pkill -f "litestream replicate.*small-retention-test.db" 2>/dev/null || true
+    pkill -f "replicate replicate.*small-retention-test.db" 2>/dev/null || true
     pkill -f "python.*s3_mock.py" 2>/dev/null || true
 
     # Clean up temp files
@@ -74,7 +74,7 @@ echo "Step 1: Creating Small Test Database (50MB)"
 echo "=========================================="
 
 echo "[1.1] Creating and populating database to 50MB..."
-$LITESTREAM_TEST populate \
+$REPLICATE_TEST populate \
     -db "$DB" \
     -target-size 50MB \
     -row-size 2048 \
@@ -92,17 +92,17 @@ echo "=========================================="
 echo "Step 2: Starting Local S3 Mock and Replication"
 echo "=========================================="
 
-# Create Litestream config for S3 mock
+# Create Replicate config for S3 mock
 cat > /tmp/small-retention-config.yml <<EOF
 dbs:
   - path: $DB
     replicas:
       - type: s3
-        bucket: \${LITESTREAM_S3_BUCKET}
+        bucket: \${REPLICATE_S3_BUCKET}
         path: small-retention-test
-        endpoint: \${LITESTREAM_S3_ENDPOINT}
-        access-key-id: \${LITESTREAM_S3_ACCESS_KEY_ID}
-        secret-access-key: \${LITESTREAM_S3_SECRET_ACCESS_KEY}
+        endpoint: \${REPLICATE_S3_ENDPOINT}
+        access-key-id: \${REPLICATE_S3_ACCESS_KEY_ID}
+        secret-access-key: \${REPLICATE_S3_SECRET_ACCESS_KEY}
         force-path-style: true
         retention: 2m
         sync-interval: 5s
@@ -114,7 +114,7 @@ if [ -f "$PROJECT_ROOT/venv/bin/activate" ]; then
 else
     PYTHON_CMD="python3"
 fi
-$PYTHON_CMD $S3_MOCK $LITESTREAM replicate -config /tmp/small-retention-config.yml > /tmp/small-retention-test.log 2>&1 &
+$PYTHON_CMD $S3_MOCK $REPLICATE replicate -config /tmp/small-retention-config.yml > /tmp/small-retention-test.log 2>&1 &
 REPL_PID=$!
 sleep 8
 
@@ -252,7 +252,7 @@ if [ "$CLEANUP_INDICATORS" -gt "0" ]; then
 else
     echo ""
     echo "⚠️  No explicit cleanup activity found in logs"
-    echo "   Note: Litestream may perform silent cleanup without verbose logging"
+    echo "   Note: Replicate may perform silent cleanup without verbose logging"
 fi
 
 # Show any errors
@@ -269,8 +269,8 @@ echo "[5.3] Testing restoration to verify integrity..."
 echo "Attempting restoration from S3 mock..."
 RESTORE_SUCCESS=true
 
-if ! timeout 30 $PYTHON_CMD $S3_MOCK $LITESTREAM restore -o "$RESTORED_DB" \
-    "s3://\${LITESTREAM_S3_BUCKET}/small-retention-test" 2>/tmp/restore.log; then
+if ! timeout 30 $PYTHON_CMD $S3_MOCK $REPLICATE restore -o "$RESTORED_DB" \
+    "s3://\${REPLICATE_S3_BUCKET}/small-retention-test" 2>/tmp/restore.log; then
     echo "  ✗ Restoration failed"
     RESTORE_SUCCESS=false
     cat /tmp/restore.log
@@ -355,7 +355,7 @@ echo ""
 echo "Notes:"
 echo "  - This test uses a local S3 mock (moto) for isolation"
 echo "  - Real S3 testing may show different cleanup patterns"
-echo "  - Retention behavior may vary with Litestream version"
+echo "  - Retention behavior may vary with Replicate version"
 echo "  - Check logs for specific cleanup messages"
 
 echo ""

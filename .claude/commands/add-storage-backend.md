@@ -4,7 +4,7 @@ description: Create a new storage backend implementation
 
 # Add Storage Backend Command
 
-Create a new storage backend implementation for Litestream with all required components.
+Create a new storage backend implementation for Replicate with all required components.
 
 ## Steps
 
@@ -49,7 +49,7 @@ Create a new storage backend implementation for Litestream with all required com
    ```
 
 3. **Add Configuration Parsing**
-   Update `cmd/litestream/config.go`:
+   Update `cmd/replicate/config.go`:
    ```go
    case "{{backend_name}}":
        client = &{{backend_name}}.ReplicaClient{

@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ import (
 
 func TestNewReplicaClientFromURL(t *testing.T) {
 	t.Run("S3", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://mybucket/path/to/db")
+		client, err := replicate.NewReplicaClientFromURL("s3://mybucket/path/to/db")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -36,7 +36,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("S3WithQueryParams", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://mybucket/db?endpoint=localhost:9000&region=us-west-2")
+		client, err := replicate.NewReplicaClientFromURL("s3://mybucket/db?endpoint=localhost:9000&region=us-west-2")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +53,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("File", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("file:///tmp/replica")
+		client, err := replicate.NewReplicaClientFromURL("file:///tmp/replica")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("GS", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("gs://mybucket/path")
+		client, err := replicate.NewReplicaClientFromURL("gs://mybucket/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,14 +90,14 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("GS_MissingBucket", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("gs:///path")
+		_, err := replicate.NewReplicaClientFromURL("gs:///path")
 		if err == nil {
 			t.Fatal("expected error for missing bucket")
 		}
 	})
 
 	t.Run("ABS", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("abs://mycontainer/path")
+		client, err := replicate.NewReplicaClientFromURL("abs://mycontainer/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -117,7 +117,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("ABS_WithAccount", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("abs://myaccount@mycontainer/path")
+		client, err := replicate.NewReplicaClientFromURL("abs://myaccount@mycontainer/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,14 +134,14 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("ABS_MissingBucket", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("abs:///path")
+		_, err := replicate.NewReplicaClientFromURL("abs:///path")
 		if err == nil {
 			t.Fatal("expected error for missing bucket")
 		}
 	})
 
 	t.Run("SFTP", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("sftp://myuser@host.example.com/path")
+		client, err := replicate.NewReplicaClientFromURL("sftp://myuser@host.example.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,7 +164,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("SFTP_WithPassword", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("sftp://myuser:secret@host.example.com/path")
+		client, err := replicate.NewReplicaClientFromURL("sftp://myuser:secret@host.example.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,21 +181,21 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("SFTP_RequiresUserError", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("sftp://host.example.com/path")
+		_, err := replicate.NewReplicaClientFromURL("sftp://host.example.com/path")
 		if err == nil {
 			t.Fatal("expected error for missing user")
 		}
 	})
 
 	t.Run("SFTP_MissingHost", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("sftp:///path")
+		_, err := replicate.NewReplicaClientFromURL("sftp:///path")
 		if err == nil {
 			t.Fatal("expected error for missing host")
 		}
 	})
 
 	t.Run("WebDAV", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("webdav://host.example.com/path")
+		client, err := replicate.NewReplicaClientFromURL("webdav://host.example.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +215,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("WebDAVS", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("webdavs://host.example.com/path")
+		client, err := replicate.NewReplicaClientFromURL("webdavs://host.example.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -232,7 +232,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("WebDAV_WithCredentials", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("webdav://myuser:secret@host.example.com/path")
+		client, err := replicate.NewReplicaClientFromURL("webdav://myuser:secret@host.example.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -252,7 +252,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("WebDAVS_WithCredentials", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("webdavs://myuser:secret@host.example.com/path")
+		client, err := replicate.NewReplicaClientFromURL("webdavs://myuser:secret@host.example.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -272,14 +272,14 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("WebDAV_MissingHost", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("webdav:///path")
+		_, err := replicate.NewReplicaClientFromURL("webdav:///path")
 		if err == nil {
 			t.Fatal("expected error for missing host")
 		}
 	})
 
 	t.Run("NATS", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("nats://localhost:4222/mybucket")
+		client, err := replicate.NewReplicaClientFromURL("nats://localhost:4222/mybucket")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -299,7 +299,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("NATS_WithCredentials", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("nats://myuser:secret@localhost:4222/mybucket")
+		client, err := replicate.NewReplicaClientFromURL("nats://myuser:secret@localhost:4222/mybucket")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -319,14 +319,14 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("NATS_MissingBucket", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("nats://localhost:4222/")
+		_, err := replicate.NewReplicaClientFromURL("nats://localhost:4222/")
 		if err == nil {
 			t.Fatal("expected error for missing bucket")
 		}
 	})
 
 	t.Run("OSS", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("oss://mybucket/path")
+		client, err := replicate.NewReplicaClientFromURL("oss://mybucket/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -346,7 +346,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("OSS_WithRegion", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("oss://mybucket.oss-cn-shanghai.aliyuncs.com/path")
+		client, err := replicate.NewReplicaClientFromURL("oss://mybucket.oss-cn-shanghai.aliyuncs.com/path")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -364,7 +364,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("OSS_MissingBucket", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("oss:///path")
+		_, err := replicate.NewReplicaClientFromURL("oss:///path")
 		if err == nil {
 			t.Fatal("expected error for missing bucket")
 		}
@@ -373,7 +373,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	// Note: file:// with empty path returns "." due to path.Clean behavior.
 	// This is technically valid but may not be the intended behavior.
 	t.Run("File_EmptyPathReturnsDot", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("file://")
+		client, err := replicate.NewReplicaClientFromURL("file://")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -388,7 +388,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("S3_ARN", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/db-access/backups")
+		client, err := replicate.NewReplicaClientFromURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/db-access/backups")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -405,7 +405,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("S3_ARN_WithQueryParams", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/db-access/backups?sign-payload=false")
+		client, err := replicate.NewReplicaClientFromURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/db-access/backups?sign-payload=false")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -425,28 +425,28 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 	})
 
 	t.Run("S3_MissingBucket", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("s3:///path")
+		_, err := replicate.NewReplicaClientFromURL("s3:///path")
 		if err == nil {
 			t.Fatal("expected error for missing bucket")
 		}
 	})
 
 	t.Run("EmptyURL", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("")
+		_, err := replicate.NewReplicaClientFromURL("")
 		if err == nil {
 			t.Fatal("expected error for empty URL")
 		}
 	})
 
 	t.Run("UnsupportedScheme", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("unknown://bucket/path")
+		_, err := replicate.NewReplicaClientFromURL("unknown://bucket/path")
 		if err == nil {
 			t.Fatal("expected error for unsupported scheme")
 		}
 	})
 
 	t.Run("InvalidURL", func(t *testing.T) {
-		_, err := litestream.NewReplicaClientFromURL("not-a-valid-url")
+		_, err := replicate.NewReplicaClientFromURL("not-a-valid-url")
 		if err == nil {
 			t.Fatal("expected error for invalid URL")
 		}
@@ -473,7 +473,7 @@ func TestReplicaTypeFromURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			got := litestream.ReplicaTypeFromURL(tt.url)
+			got := replicate.ReplicaTypeFromURL(tt.url)
 			if got != tt.expected {
 				t.Errorf("ReplicaTypeFromURL(%q) = %q, want %q", tt.url, got, tt.expected)
 			}
@@ -496,7 +496,7 @@ func TestIsURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.s, func(t *testing.T) {
-			got := litestream.IsURL(tt.s)
+			got := replicate.IsURL(tt.s)
 			if got != tt.expected {
 				t.Errorf("IsURL(%q) = %v, want %v", tt.s, got, tt.expected)
 			}
@@ -509,7 +509,7 @@ func TestBoolQueryValue(t *testing.T) {
 		for _, v := range []string{"true", "True", "TRUE", "1", "t", "yes"} {
 			query := make(map[string][]string)
 			query["key"] = []string{v}
-			value, ok := litestream.BoolQueryValue(query, "key")
+			value, ok := replicate.BoolQueryValue(query, "key")
 			if !ok {
 				t.Errorf("BoolQueryValue with %q should be ok", v)
 			}
@@ -523,7 +523,7 @@ func TestBoolQueryValue(t *testing.T) {
 		for _, v := range []string{"false", "False", "FALSE", "0", "f", "no"} {
 			query := make(map[string][]string)
 			query["key"] = []string{v}
-			value, ok := litestream.BoolQueryValue(query, "key")
+			value, ok := replicate.BoolQueryValue(query, "key")
 			if !ok {
 				t.Errorf("BoolQueryValue with %q should be ok", v)
 			}
@@ -535,7 +535,7 @@ func TestBoolQueryValue(t *testing.T) {
 
 	t.Run("Missing key", func(t *testing.T) {
 		query := make(map[string][]string)
-		_, ok := litestream.BoolQueryValue(query, "key")
+		_, ok := replicate.BoolQueryValue(query, "key")
 		if ok {
 			t.Error("BoolQueryValue with missing key should not be ok")
 		}
@@ -544,7 +544,7 @@ func TestBoolQueryValue(t *testing.T) {
 	t.Run("Multiple keys", func(t *testing.T) {
 		query := make(map[string][]string)
 		query["key2"] = []string{"true"}
-		value, ok := litestream.BoolQueryValue(query, "key1", "key2")
+		value, ok := replicate.BoolQueryValue(query, "key1", "key2")
 		if !ok {
 			t.Error("BoolQueryValue should find second key")
 		}
@@ -554,7 +554,7 @@ func TestBoolQueryValue(t *testing.T) {
 	})
 
 	t.Run("Nil query", func(t *testing.T) {
-		_, ok := litestream.BoolQueryValue(nil, "key")
+		_, ok := replicate.BoolQueryValue(nil, "key")
 		if ok {
 			t.Error("BoolQueryValue with nil query should not be ok")
 		}
@@ -563,7 +563,7 @@ func TestBoolQueryValue(t *testing.T) {
 	t.Run("Invalid value returns false with ok", func(t *testing.T) {
 		query := make(map[string][]string)
 		query["key"] = []string{"invalid"}
-		value, ok := litestream.BoolQueryValue(query, "key")
+		value, ok := replicate.BoolQueryValue(query, "key")
 		if !ok {
 			t.Error("BoolQueryValue with invalid value should be ok")
 		}
@@ -595,7 +595,7 @@ func TestIsTigrisEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsTigrisEndpoint(tt.endpoint)
+			got := replicate.IsTigrisEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsTigrisEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -619,7 +619,7 @@ func TestRegionFromS3ARN(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.arn, func(t *testing.T) {
-			got := litestream.RegionFromS3ARN(tt.arn)
+			got := replicate.RegionFromS3ARN(tt.arn)
 			if got != tt.expected {
 				t.Errorf("RegionFromS3ARN(%q) = %q, want %q", tt.arn, got, tt.expected)
 			}
@@ -647,7 +647,7 @@ func TestCleanReplicaURLPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			got := litestream.CleanReplicaURLPath(tt.path)
+			got := replicate.CleanReplicaURLPath(tt.path)
 			if got != tt.expected {
 				t.Errorf("CleanReplicaURLPath(%q) = %q, want %q", tt.path, got, tt.expected)
 			}
@@ -725,7 +725,7 @@ func TestParseS3AccessPointURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scheme, host, path, query, _, err := litestream.ParseReplicaURLWithQuery(tt.url)
+			scheme, host, path, query, _, err := replicate.ParseReplicaURLWithQuery(tt.url)
 
 			if tt.wantErr {
 				if err == nil {
@@ -776,7 +776,7 @@ func TestIsDigitalOceanEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsDigitalOceanEndpoint(tt.endpoint)
+			got := replicate.IsDigitalOceanEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsDigitalOceanEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -798,7 +798,7 @@ func TestIsBackblazeEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsBackblazeEndpoint(tt.endpoint)
+			got := replicate.IsBackblazeEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsBackblazeEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -820,7 +820,7 @@ func TestIsFilebaseEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsFilebaseEndpoint(tt.endpoint)
+			got := replicate.IsFilebaseEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsFilebaseEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -842,7 +842,7 @@ func TestIsScalewayEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsScalewayEndpoint(tt.endpoint)
+			got := replicate.IsScalewayEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsScalewayEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -864,7 +864,7 @@ func TestIsCloudflareR2Endpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsCloudflareR2Endpoint(tt.endpoint)
+			got := replicate.IsCloudflareR2Endpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsCloudflareR2Endpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -886,7 +886,7 @@ func TestIsSupabaseEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsSupabaseEndpoint(tt.endpoint)
+			got := replicate.IsSupabaseEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsSupabaseEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -910,7 +910,7 @@ func TestIsHetznerEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsHetznerEndpoint(tt.endpoint)
+			got := replicate.IsHetznerEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsHetznerEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -934,7 +934,7 @@ func TestIsMinIOEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsMinIOEndpoint(tt.endpoint)
+			got := replicate.IsMinIOEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsMinIOEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -989,7 +989,7 @@ func TestIsLocalEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := litestream.IsLocalEndpoint(tt.endpoint)
+			got := replicate.IsLocalEndpoint(tt.endpoint)
 			if got != tt.expected {
 				t.Errorf("IsLocalEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
@@ -1075,7 +1075,7 @@ func TestS3ProviderDefaults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := litestream.NewReplicaClientFromURL(tt.url)
+			client, err := replicate.NewReplicaClientFromURL(tt.url)
 			if err != nil {
 				t.Fatalf("NewReplicaClientFromURL(%q) error: %v", tt.url, err)
 			}
@@ -1129,7 +1129,7 @@ func TestEnsureEndpointScheme(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got, added := litestream.EnsureEndpointScheme(tt.input)
+			got, added := replicate.EnsureEndpointScheme(tt.input)
 			if got != tt.expected {
 				t.Errorf("EnsureEndpointScheme(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
@@ -1144,7 +1144,7 @@ func TestEnsureEndpointScheme(t *testing.T) {
 // override provider-specific defaults.
 func TestS3ProviderDefaults_QueryParamOverrides(t *testing.T) {
 	t.Run("SignPayload_ExplicitFalse", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://mybucket/path?endpoint=https://account123.r2.cloudflarestorage.com&sign-payload=false")
+		client, err := replicate.NewReplicaClientFromURL("s3://mybucket/path?endpoint=https://account123.r2.cloudflarestorage.com&sign-payload=false")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1155,7 +1155,7 @@ func TestS3ProviderDefaults_QueryParamOverrides(t *testing.T) {
 	})
 
 	t.Run("ForcePathStyle_ExplicitFalse", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://mybucket/path?endpoint=https://s3.us-west-002.backblazeb2.com&forcePathStyle=false")
+		client, err := replicate.NewReplicaClientFromURL("s3://mybucket/path?endpoint=https://s3.us-west-002.backblazeb2.com&forcePathStyle=false")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1166,7 +1166,7 @@ func TestS3ProviderDefaults_QueryParamOverrides(t *testing.T) {
 	})
 
 	t.Run("RequireMD5_ExplicitTrue_Tigris", func(t *testing.T) {
-		client, err := litestream.NewReplicaClientFromURL("s3://mybucket/path?endpoint=https://fly.storage.tigris.dev&require-content-md5=true")
+		client, err := replicate.NewReplicaClientFromURL("s3://mybucket/path?endpoint=https://fly.storage.tigris.dev&require-content-md5=true")
 		if err != nil {
 			t.Fatal(err)
 		}

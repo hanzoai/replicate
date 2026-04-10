@@ -1,4 +1,4 @@
-Validate a ReplicaClient implementation in Litestream. This command helps ensure a replica client correctly implements the interface and handles edge cases.
+Validate a ReplicaClient implementation in Replicate. This command helps ensure a replica client correctly implements the interface and handles edge cases.
 
 First, identify what needs validation:
 - Which replica client implementation?
@@ -11,7 +11,7 @@ Then validate the implementation:
 
    ```go
    // Ensure all methods are implemented
-   var _ litestream.ReplicaClient = (*YourClient)(nil)
+   var _ replicate.ReplicaClient = (*YourClient)(nil)
    ```
 
 1. **Verify error types**:

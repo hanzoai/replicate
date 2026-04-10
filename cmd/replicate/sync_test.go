@@ -60,14 +60,14 @@ func TestSyncCommand_Run(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		if err := store.Open(t.Context()); err != nil {
 			t.Fatal(err)
 		}
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		if err := server.Start(); err != nil {
 			t.Fatal(err)
@@ -90,14 +90,14 @@ func TestSyncCommand_Run(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		if err := store.Open(t.Context()); err != nil {
 			t.Fatal(err)
 		}
 		defer store.Close(t.Context())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		if err := server.Start(); err != nil {
 			t.Fatal(err)

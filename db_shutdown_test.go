@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"context"
@@ -48,7 +48,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 5 * time.Second
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -87,7 +87,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 300 * time.Millisecond
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -129,7 +129,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 10 * time.Second
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -173,7 +173,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 0 // Disable retries
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -223,7 +223,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 5 * time.Second
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -263,7 +263,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 10 * time.Second
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -288,7 +288,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error after done signal")
 		}
-		if !errors.Is(err, litestream.ErrShutdownInterrupted) {
+		if !errors.Is(err, replicate.ErrShutdownInterrupted) {
 			t.Fatalf("expected ErrShutdownInterrupted, got: %v", err)
 		}
 
@@ -324,7 +324,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 10 * time.Second
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 
@@ -346,7 +346,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error with pre-closed done channel")
 		}
-		if !errors.Is(err, litestream.ErrShutdownInterrupted) {
+		if !errors.Is(err, replicate.ErrShutdownInterrupted) {
 			t.Fatalf("expected ErrShutdownInterrupted, got: %v", err)
 		}
 
@@ -383,7 +383,7 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			},
 		}
 
-		db.Replica = litestream.NewReplicaWithClient(db, client)
+		db.Replica = replicate.NewReplicaWithClient(db, client)
 		db.ShutdownSyncTimeout = 5 * time.Second
 		db.ShutdownSyncInterval = 50 * time.Millisecond
 

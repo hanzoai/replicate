@@ -22,20 +22,20 @@ fi
 
 # Configuration
 DB="/tmp/retention-test.db"
-LITESTREAM="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 
 # S3 Configuration (modify these for your bucket)
-S3_BUCKET="${LITESTREAM_S3_BUCKET:-your-test-bucket}"
-S3_PREFIX="${LITESTREAM_S3_PREFIX:-litestream-retention-test}"
-S3_REGION="${LITESTREAM_S3_REGION:-us-east-1}"
+S3_BUCKET="${REPLICATE_S3_BUCKET:-your-test-bucket}"
+S3_PREFIX="${REPLICATE_S3_PREFIX:-replicate-retention-test}"
+S3_REGION="${REPLICATE_S3_REGION:-us-east-1}"
 
 if [ "$S3_BUCKET" = "your-test-bucket" ]; then
     echo "⚠️  Please set S3 environment variables:"
-    echo "   export LITESTREAM_S3_BUCKET=your-bucket-name"
-    echo "   export LITESTREAM_S3_ACCESS_KEY_ID=your-key"
-    echo "   export LITESTREAM_S3_SECRET_ACCESS_KEY=your-secret"
-    echo "   export LITESTREAM_S3_REGION=your-region"
+    echo "   export REPLICATE_S3_BUCKET=your-bucket-name"
+    echo "   export REPLICATE_S3_ACCESS_KEY_ID=your-key"
+    echo "   export REPLICATE_S3_SECRET_ACCESS_KEY=your-secret"
+    echo "   export REPLICATE_S3_REGION=your-region"
     echo ""
     echo "Or update the script with your S3 bucket details"
     echo ""
@@ -54,7 +54,7 @@ echo ""
 
 # Cleanup function
 cleanup() {
-    pkill -f "litestream replicate.*retention-test.db" 2>/dev/null || true
+    pkill -f "replicate replicate.*retention-test.db" 2>/dev/null || true
     rm -f "$DB"* /tmp/retention-*.log /tmp/retention-*.yml
 }
 
@@ -94,7 +94,7 @@ EOF
 
 echo ""
 echo "[2] Starting replication with 2-minute retention..."
-$LITESTREAM replicate -config /tmp/retention-config.yml > /tmp/retention-test.log 2>&1 &
+$REPLICATE replicate -config /tmp/retention-config.yml > /tmp/retention-test.log 2>&1 &
 REPL_PID=$!
 sleep 5
 
@@ -169,7 +169,7 @@ if [ "$CLEANUP_MSGS" -gt "0" ]; then
 else
     echo ""
     echo "⚠️  No explicit cleanup messages found"
-    echo "   Note: Litestream may perform silent cleanup"
+    echo "   Note: Replicate may perform silent cleanup"
 fi
 
 if [ "$TOTAL_ERRORS" -gt "0" ]; then
@@ -249,6 +249,6 @@ echo ""
 echo "If no cleanup was observed:"
 echo "  1. Check if retention period is working correctly"
 echo "  2. Verify S3 bucket policy allows DELETE operations"
-echo "  3. Increase logging verbosity in Litestream"
+echo "  3. Increase logging verbosity in Replicate"
 echo "  4. Use longer test duration for larger retention periods"
 echo "=========================================="

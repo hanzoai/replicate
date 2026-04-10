@@ -20,7 +20,7 @@ const debounceInterval = 250 * time.Millisecond
 // DirectoryMonitor watches a directory tree for SQLite databases and dynamically
 // manages database instances within the store as files are created or removed.
 type DirectoryMonitor struct {
-	store     *litestream.Store
+	store     *replicate.Store
 	config    *DBConfig
 	dirPath   string
 	pattern   string
@@ -33,7 +33,7 @@ type DirectoryMonitor struct {
 	logger *slog.Logger
 
 	mu          sync.Mutex
-	dbs         map[string]*litestream.DB
+	dbs         map[string]*replicate.DB
 	watchedDirs map[string]struct{}
 
 	// Only accessed from the run() goroutine, so no mutex is needed.
@@ -44,7 +44,7 @@ type DirectoryMonitor struct {
 }
 
 // NewDirectoryMonitor returns a new monitor for directory-based replication.
-func NewDirectoryMonitor(ctx context.Context, store *litestream.Store, dbc *DBConfig, existing []*litestream.DB) (*DirectoryMonitor, error) {
+func NewDirectoryMonitor(ctx context.Context, store *replicate.Store, dbc *DBConfig, existing []*replicate.DB) (*DirectoryMonitor, error) {
 	if dbc == nil {
 		return nil, errors.New("database config required")
 	}
@@ -77,7 +77,7 @@ func NewDirectoryMonitor(ctx context.Context, store *litestream.Store, dbc *DBCo
 		ctx:           monitorCtx,
 		cancel:        cancel,
 		logger:        slog.With("dir", dirPath),
-		dbs:           make(map[string]*litestream.DB),
+		dbs:           make(map[string]*replicate.DB),
 		watchedDirs:   make(map[string]struct{}),
 		pendingEvents: make(map[string]fsnotify.Op),
 	}
@@ -281,7 +281,7 @@ func (dm *DirectoryMonitor) handlePotentialDatabase(path string) {
 	dm.dbs[path] = nil
 	dm.mu.Unlock()
 
-	var db *litestream.DB
+	var db *replicate.DB
 	success := false
 	defer func() {
 		if !success {
@@ -343,7 +343,7 @@ func (dm *DirectoryMonitor) removeDatabasesUnder(dir string) {
 	prefix := dir + string(os.PathSeparator)
 
 	dm.mu.Lock()
-	var toClose []*litestream.DB
+	var toClose []*replicate.DB
 	var toClosePaths []string
 	for path, db := range dm.dbs {
 		if path == dir || strings.HasPrefix(path, prefix) {

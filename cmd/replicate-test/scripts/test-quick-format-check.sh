@@ -17,7 +17,7 @@ rm -rf "$DB"* "$REPLICA" "$RESTORED"*
 echo "1. Creating v0.3.x backup..."
 sqlite3 "$DB" "PRAGMA journal_mode=WAL; CREATE TABLE test(id INTEGER, data TEXT); INSERT INTO test VALUES(1,'v0.3.x data');"
 
-/opt/homebrew/bin/litestream replicate "$DB" "file://$REPLICA" &
+/opt/homebrew/bin/replicate replicate "$DB" "file://$REPLICA" &
 PID=$!
 sleep 3
 sqlite3 "$DB" "INSERT INTO test VALUES(2,'more v0.3.x data');"
@@ -33,7 +33,7 @@ rm -f "$DB"*
 
 # 3. Try to restore with v0.5.0 from PURE v0.3.x files
 echo "3. Testing v0.5.0 restore from pure v0.3.x..."
-./bin/litestream restore -o "$RESTORED" "file://$REPLICA" 2>&1
+./bin/replicate restore -o "$RESTORED" "file://$REPLICA" 2>&1
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then

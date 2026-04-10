@@ -1,6 +1,6 @@
 # CLAUDE.md - Claude Code Configuration
 
-Claude-specific optimizations for Litestream. See [AGENTS.md](AGENTS.md) for project documentation.
+Claude-specific optimizations for Replicate. See [AGENTS.md](AGENTS.md) for project documentation.
 
 ## Critical Coding Rules
 
@@ -40,7 +40,7 @@ With Claude's large context window, load documentation as needed:
 ## Quick Commands
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
+go build -o bin/replicate ./cmd/replicate
 go test -race -v ./...
 pre-commit run --all-files
 ```

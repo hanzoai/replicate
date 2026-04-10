@@ -1,10 +1,10 @@
 ---
-description: Fix common Litestream issues
+description: Fix common Replicate issues
 ---
 
 # Fix Common Issues Command
 
-Diagnose and fix common issues in Litestream deployments.
+Diagnose and fix common issues in Replicate deployments.
 
 ## Issue 1: Lock Page Not Being Skipped
 
@@ -166,25 +166,25 @@ defer func() {
 **Check**:
 ```bash
 # Look for LTXError messages in logs
-rg -i "ltx.*error|reset.*local|auto.recover" /var/log/litestream.log
+rg -i "ltx.*error|reset.*local|auto.recover" /var/log/replicate.log
 
 # Check if meta directory has corrupted state (note dot prefix)
-ls -la /path/to/.database.db-litestream/ltx/
+ls -la /path/to/.database.db-replicate/ltx/
 ```
 
 **Fix - Manual Reset**:
 ```bash
 # Clears local LTX state, forces fresh snapshot on next sync
 # Database file is NOT modified
-litestream reset /path/to/database.db
+replicate reset /path/to/database.db
 
 # With explicit config file
-litestream reset -config /etc/litestream.yml /path/to/database.db
+replicate reset -config /etc/replicate.yml /path/to/database.db
 ```
 
 **Fix - Automatic Recovery**:
 ```yaml
-# Add to replica config in litestream.yml
+# Add to replica config in replicate.yml
 dbs:
   - path: /path/to/database.db
     replicas:
@@ -197,7 +197,7 @@ is preferred over manual intervention. Use manual `reset` when you want to inves
 corruption first. `auto-recover` is disabled by default because resetting discards local LTX
 history, which may reduce point-in-time restore granularity.
 
-**Reference**: `cmd/litestream/reset.go`, `replica.go` (auto-recover logic), `db.go` (`ResetLocalState`)
+**Reference**: `cmd/replicate/reset.go`, `replica.go` (auto-recover logic), `db.go` (`ResetLocalState`)
 
 ## Issue 9: IPC Socket Connection Failures
 
@@ -206,27 +206,27 @@ history, which may reduce point-in-time restore granularity.
 **Check**:
 ```bash
 # Verify socket exists and has correct permissions
-ls -la /var/run/litestream.sock
+ls -la /var/run/replicate.sock
 
 # Verify socket is enabled in config
-rg -A3 'socket:' /etc/litestream.yml
+rg -A3 'socket:' /etc/replicate.yml
 
-# Check if litestream process is running
-pgrep -a litestream
+# Check if replicate process is running
+pgrep -a replicate
 ```
 
 **Fix**:
 ```yaml
-# Enable socket in litestream.yml
+# Enable socket in replicate.yml
 socket:
   enabled: true
-  path: /var/run/litestream.sock
+  path: /var/run/replicate.sock
   permissions: 0600
 ```
 
-**Stale socket**: If litestream crashed, the socket file may still exist. The process creates a new socket on startup and will fail if the stale file exists. Remove it manually:
+**Stale socket**: If replicate crashed, the socket file may still exist. The process creates a new socket on startup and will fail if the stale file exists. Remove it manually:
 ```bash
-rm /var/run/litestream.sock
+rm /var/run/replicate.sock
 ```
 
 **Reference**: `server.go` (`SocketConfig`, `Server.Start`)
@@ -238,12 +238,12 @@ rm /var/run/litestream.sock
 **Check**:
 ```bash
 # Look for retention warning in logs
-rg "retention disabled" /var/log/litestream.log
+rg "retention disabled" /var/log/replicate.log
 ```
 
 **Fix**:
 ```yaml
-# Option 1: Re-enable Litestream retention (default)
+# Option 1: Re-enable Replicate retention (default)
 retention:
   enabled: true
 
@@ -251,7 +251,7 @@ retention:
 # Example: S3 lifecycle rule to expire objects in ltx/ prefix after 30 days
 ```
 
-**Reference**: `store.go` (`SetRetentionEnabled`), `compactor.go` (`RetentionEnabled`), `cmd/litestream/replicate.go:295`
+**Reference**: `store.go` (`SetRetentionEnabled`), `compactor.go` (`RetentionEnabled`), `cmd/replicate/replicate.go:295`
 
 ## Issue 11: v0.3.x Restore Not Finding Backups
 
@@ -274,21 +274,21 @@ aws s3 ls s3://bucket/path/generations/ --recursive | head -20
 sqlite3 database.db "PRAGMA integrity_check;"
 
 # List replicated LTX files
-litestream ltx /path/to/db.sqlite
+replicate ltx /path/to/db.sqlite
 
 # Check replication status
-litestream databases
+replicate databases
 
 # Reset corrupted local state
-litestream reset /path/to/database.db
+replicate reset /path/to/database.db
 
 # Test restoration
-litestream restore -o test.db [replica-url]
+replicate restore -o test.db [replica-url]
 
 # IPC socket diagnostics (requires socket.enabled: true)
-curl --unix-socket /var/run/litestream.sock http://localhost/info
-curl --unix-socket /var/run/litestream.sock http://localhost/list
-curl --unix-socket /var/run/litestream.sock "http://localhost/txid?path=/path/to/db"
+curl --unix-socket /var/run/replicate.sock http://localhost/info
+curl --unix-socket /var/run/replicate.sock http://localhost/list
+curl --unix-socket /var/run/replicate.sock "http://localhost/txid?path=/path/to/db"
 ```
 
 ## Prevention Checklist

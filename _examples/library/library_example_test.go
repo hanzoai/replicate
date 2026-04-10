@@ -23,17 +23,17 @@ func TestLibraryExampleFileBackend(t *testing.T) {
 	dbPath := filepath.Join(rootDir, "example.db")
 	replicaPath := filepath.Join(rootDir, "replica")
 
-	db := litestream.NewDB(dbPath)
+	db := replicate.NewDB(dbPath)
 	client := file.NewReplicaClient(replicaPath)
-	replica := litestream.NewReplicaWithClient(db, client)
+	replica := replicate.NewReplicaWithClient(db, client)
 	db.Replica = replica
 	client.Replica = replica
 
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: 10 * time.Second},
 	}
-	store := litestream.NewStore([]*litestream.DB{db}, levels)
+	store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 	closed := false
 	t.Cleanup(func() {
@@ -79,10 +79,10 @@ func TestLibraryExampleFileBackend(t *testing.T) {
 	closed = true
 
 	restoreClient := file.NewReplicaClient(replicaPath)
-	restoreReplica := litestream.NewReplicaWithClient(nil, restoreClient)
+	restoreReplica := replicate.NewReplicaWithClient(nil, restoreClient)
 
 	restorePath := filepath.Join(rootDir, "restored.db")
-	opt := litestream.NewRestoreOptions()
+	opt := replicate.NewRestoreOptions()
 	opt.OutputPath = restorePath
 	if err := restoreReplica.Restore(ctx, opt); err != nil {
 		t.Fatalf("restore: %v", err)

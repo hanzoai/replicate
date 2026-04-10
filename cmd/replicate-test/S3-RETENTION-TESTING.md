@@ -41,7 +41,7 @@ This document describes the comprehensive S3 LTX file retention testing scripts 
 
 **Usage**:
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-small-db.sh
+./cmd/replicate-test/scripts/test-s3-retention-small-db.sh
 ```
 
 **Duration**: ~8 minutes
@@ -60,7 +60,7 @@ This document describes the comprehensive S3 LTX file retention testing scripts 
 
 **Usage**:
 ```bash
-./cmd/litestream-test/scripts/test-s3-retention-large-db.sh
+./cmd/replicate-test/scripts/test-s3-retention-large-db.sh
 ```
 
 **Duration**: ~15-20 minutes
@@ -79,16 +79,16 @@ This document describes the comprehensive S3 LTX file retention testing scripts 
 **Usage**:
 ```bash
 # Run all tests
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh
 
 # Run only small database test
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh --small-only
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh --small-only
 
 # Run only large database test
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh --large-only
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh --large-only
 
 # Keep test files after completion
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh --no-cleanup
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh --no-cleanup
 ```
 
 **Duration**: ~25-30 minutes for full suite
@@ -97,7 +97,7 @@ This document describes the comprehensive S3 LTX file retention testing scripts 
 
 ### Why It Matters
 
-SQLite reserves a special lock page at exactly 1GB (offset 0x40000000) that cannot contain data. This creates a critical edge case that Litestream must handle correctly.
+SQLite reserves a special lock page at exactly 1GB (offset 0x40000000) that cannot contain data. This creates a critical edge case that Replicate must handle correctly.
 
 ### What We Test
 
@@ -129,17 +129,17 @@ SQLite reserves a special lock page at exactly 1GB (offset 0x40000000) that cann
 The tests use the existing `./etc/s3_mock.py` script which:
 1. Starts a local moto S3 server
 2. Creates a test bucket with unique name
-3. Runs Litestream with S3 configuration
+3. Runs Replicate with S3 configuration
 4. Automatically cleans up after test completion
 
 ### Environment Variables Set by Mock
 
 ```bash
-LITESTREAM_S3_ACCESS_KEY_ID="lite"
-LITESTREAM_S3_SECRET_ACCESS_KEY="stream"
-LITESTREAM_S3_BUCKET="test{timestamp}"
-LITESTREAM_S3_ENDPOINT="http://127.0.0.1:5000"
-LITESTREAM_S3_FORCE_PATH_STYLE="true"
+REPLICATE_S3_ACCESS_KEY_ID="lite"
+REPLICATE_S3_SECRET_ACCESS_KEY="stream"
+REPLICATE_S3_BUCKET="test{timestamp}"
+REPLICATE_S3_ENDPOINT="http://127.0.0.1:5000"
+REPLICATE_S3_FORCE_PATH_STYLE="true"
 ```
 
 ## Test Execution Flow
@@ -148,7 +148,7 @@ LITESTREAM_S3_FORCE_PATH_STYLE="true"
 
 1. **Setup**: Build binaries, check dependencies
 2. **Database Creation**: 50MB with indexed tables
-3. **Replication Start**: Begin S3 mock and Litestream
+3. **Replication Start**: Begin S3 mock and Replicate
 4. **Data Generation**: Create LTX files over time (6 batches, 20s apart)
 5. **Retention Monitoring**: Watch for cleanup activity (4 minutes)
 6. **Validation**: Test restoration and integrity
@@ -190,7 +190,7 @@ The scripts monitor logs for these cleanup indicators:
 
 ### Required Tools
 
-- **Go**: For building Litestream binaries
+- **Go**: For building Replicate binaries
 - **Python 3**: For S3 mock server
 - **sqlite3**: For database operations
 - **bc**: For calculations
@@ -204,7 +204,7 @@ pip3 install moto boto3
 ### Auto-Installation
 
 The scripts automatically:
-- Build missing Litestream binaries
+- Build missing Replicate binaries
 - Install missing Python packages
 - Check for required tools
 
@@ -241,13 +241,13 @@ These tests complement the existing test infrastructure:
 
 - **`test-s3-retention-cleanup.sh`**: Original retention test (more basic)
 - **`test-754-s3-scenarios.sh`**: Issue #754 specific testing
-- **Testing Framework**: Uses `litestream-test` CLI for data generation
+- **Testing Framework**: Uses `replicate-test` CLI for data generation
 
 ### Consistent Patterns
 
 - Use existing `etc/s3_mock.py` for S3 simulation
 - Follow naming conventions from existing scripts
-- Integrate with `litestream-test` populate/load/validate commands
+- Integrate with `replicate-test` populate/load/validate commands
 - Generate structured output for analysis
 
 ## Production Validation Recommendations
@@ -286,8 +286,8 @@ pip3 install moto boto3
 #### 2. Binaries Not Found
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 ```
 
 #### 3. Large Database Test Slow
@@ -298,7 +298,7 @@ go build -o bin/litestream-test ./cmd/litestream-test
 
 #### 4. No Cleanup Activity Detected
 
-- May be normal: Litestream might clean up silently
+- May be normal: Replicate might clean up silently
 - Check S3 bucket contents manually (if using real S3)
 - Verify retention period has elapsed
 
@@ -313,15 +313,15 @@ go build -o bin/litestream-test ./cmd/litestream-test
 For more verbose output:
 ```bash
 # Enable debug logging
-export LITESTREAM_DEBUG=1
+export REPLICATE_DEBUG=1
 
 # Run with debug
-./cmd/litestream-test/scripts/test-s3-retention-comprehensive.sh
+./cmd/replicate-test/scripts/test-s3-retention-comprehensive.sh
 ```
 
 ## Summary
 
-These retention testing scripts provide comprehensive validation of Litestream's S3 LTX file cleanup behavior across different database sizes and scenarios. They specifically address:
+These retention testing scripts provide comprehensive validation of Replicate's S3 LTX file cleanup behavior across different database sizes and scenarios. They specifically address:
 
 1. **Ben's Requirements**: Local testing with Python S3 mock
 2. **SQLite Edge Cases**: Lock page boundary at 1GB
@@ -329,4 +329,4 @@ These retention testing scripts provide comprehensive validation of Litestream's
 4. **Retention Verification**: Multiple retention periods and monitoring
 5. **Production Readiness**: Detailed analysis and recommendations
 
-The scripts are designed to run reliably in isolation while providing detailed insights into Litestream's retention cleanup behavior.
+The scripts are designed to run reliably in isolation while providing detailed insights into Replicate's retention cleanup behavior.

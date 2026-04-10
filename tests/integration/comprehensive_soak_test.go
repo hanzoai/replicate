@@ -11,7 +11,7 @@ import (
 )
 
 // TestComprehensiveSoak runs a comprehensive soak test with aggressive settings
-// to validate all Litestream features: replication, snapshots, compaction, checkpoints.
+// to validate all Replicate features: replication, snapshots, compaction, checkpoints.
 //
 // Default duration: 2 hours
 // Can be shortened with: go test -test.short (runs for 30 minutes)
@@ -40,7 +40,7 @@ func TestComprehensiveSoak(t *testing.T) {
 	}
 
 	t.Logf("================================================")
-	t.Logf("Litestream Comprehensive Soak Test")
+	t.Logf("Replicate Comprehensive Soak Test")
 	t.Logf("================================================")
 	t.Logf("Duration: %v", duration)
 	t.Logf("Start time: %s", time.Now().Format(time.RFC3339))
@@ -80,12 +80,12 @@ func TestComprehensiveSoak(t *testing.T) {
 	t.Logf("✓ Configuration created: %s", configPath)
 	t.Log("")
 
-	// Start Litestream
-	t.Log("Starting Litestream replication...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	// Start Replicate
+	t.Log("Starting Replicate replication...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
-	t.Logf("✓ Litestream running (PID: %d)", db.LitestreamPID)
+	t.Logf("✓ Replicate running (PID: %d)", db.ReplicatePID)
 	t.Log("")
 
 	// Start load generator with heavy sustained load
@@ -134,8 +134,8 @@ func TestComprehensiveSoak(t *testing.T) {
 
 	logMetrics := func() {
 		LogSoakMetrics(t, db, "comprehensive")
-		if db.LitestreamCmd != nil && db.LitestreamCmd.ProcessState != nil {
-			t.Error("✗ Litestream stopped unexpectedly!")
+		if db.ReplicateCmd != nil && db.ReplicateCmd.ProcessState != nil {
+			t.Error("✗ Replicate stopped unexpectedly!")
 			if testInfo.cancel != nil {
 				testInfo.cancel()
 			}
@@ -159,10 +159,10 @@ func TestComprehensiveSoak(t *testing.T) {
 	t.Log("================================================")
 	t.Log("")
 
-	// Stop Litestream
-	t.Log("Stopping Litestream...")
-	if err := db.StopLitestream(); err != nil {
-		t.Logf("Warning: Failed to stop Litestream cleanly: %v", err)
+	// Stop Replicate
+	t.Log("Stopping Replicate...")
+	if err := db.StopReplicate(); err != nil {
+		t.Logf("Warning: Failed to stop Replicate cleanly: %v", err)
 	}
 
 	// Final statistics
@@ -247,7 +247,7 @@ func TestComprehensiveSoak(t *testing.T) {
 		}
 		t.Log("")
 		t.Log("Review the logs for details:")
-		logPath, _ := db.GetLitestreamLog()
+		logPath, _ := db.GetReplicateLog()
 		t.Logf("  %s", logPath)
 		t.Fail()
 	}

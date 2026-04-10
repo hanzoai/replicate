@@ -17,20 +17,20 @@ echo ""
 # Configuration
 DB="/tmp/large-retention-test.db"
 RESTORED_DB="/tmp/large-retention-restored.db"
-LITESTREAM="./bin/litestream"
-LITESTREAM_TEST="./bin/litestream-test"
+REPLICATE="./bin/replicate"
+REPLICATE_TEST="./bin/replicate-test"
 S3_MOCK="./etc/s3_mock.py"
 PAGE_SIZE=4096
 
 # Build binaries if needed
-if [ ! -f "$LITESTREAM" ]; then
-    echo "Building litestream binary..."
-    go build -o bin/litestream ./cmd/litestream
+if [ ! -f "$REPLICATE" ]; then
+    echo "Building replicate binary..."
+    go build -o bin/replicate ./cmd/replicate
 fi
 
-if [ ! -f "$LITESTREAM_TEST" ]; then
-    echo "Building litestream-test binary..."
-    go build -o bin/litestream-test ./cmd/litestream-test
+if [ ! -f "$REPLICATE_TEST" ]; then
+    echo "Building replicate-test binary..."
+    go build -o bin/replicate-test ./cmd/replicate-test
 fi
 
 # Check for Python S3 mock dependencies
@@ -48,7 +48,7 @@ LOCK_PAGE=$((0x40000000 / PAGE_SIZE + 1))
 # Cleanup function
 cleanup() {
     # Kill any running processes
-    pkill -f "litestream replicate.*large-retention-test.db" 2>/dev/null || true
+    pkill -f "replicate replicate.*large-retention-test.db" 2>/dev/null || true
     pkill -f "python.*s3_mock.py" 2>/dev/null || true
 
     # Clean up temp files
@@ -94,7 +94,7 @@ EOF
 echo "[1.2] Populating database to 1.5GB (this may take several minutes)..."
 echo "      Progress will be shown every 100MB..."
 
-$LITESTREAM_TEST populate \
+$REPLICATE_TEST populate \
     -db "$DB" \
     -target-size 1.5GB \
     -row-size 4096 \
@@ -126,17 +126,17 @@ echo "=========================================="
 echo "Step 2: Starting Local S3 Mock and Replication"
 echo "=========================================="
 
-# Create Litestream config for S3 mock with longer retention for large DB
+# Create Replicate config for S3 mock with longer retention for large DB
 cat > /tmp/large-retention-config.yml <<EOF
 dbs:
   - path: $DB
     replicas:
       - type: s3
-        bucket: \${LITESTREAM_S3_BUCKET}
+        bucket: \${REPLICATE_S3_BUCKET}
         path: large-retention-test
-        endpoint: \${LITESTREAM_S3_ENDPOINT}
-        access-key-id: \${LITESTREAM_S3_ACCESS_KEY_ID}
-        secret-access-key: \${LITESTREAM_S3_SECRET_ACCESS_KEY}
+        endpoint: \${REPLICATE_S3_ENDPOINT}
+        access-key-id: \${REPLICATE_S3_ACCESS_KEY_ID}
+        secret-access-key: \${REPLICATE_S3_SECRET_ACCESS_KEY}
         force-path-style: true
         retention: 3m
         sync-interval: 10s
@@ -145,7 +145,7 @@ EOF
 echo "[2.1] Starting S3 mock and replication..."
 echo "      Initial replication of 1.5GB may take several minutes..."
 
-$S3_MOCK $LITESTREAM replicate -config /tmp/large-retention-config.yml > /tmp/large-retention-test.log 2>&1 &
+$S3_MOCK $REPLICATE replicate -config /tmp/large-retention-config.yml > /tmp/large-retention-test.log 2>&1 &
 REPL_PID=$!
 
 # Wait longer for large database initial sync
@@ -353,8 +353,8 @@ echo "Attempting restoration from S3 mock (may take several minutes)..."
 RESTORE_SUCCESS=true
 RESTORE_START_TIME=$(date +%s)
 
-if ! timeout 300 $S3_MOCK $LITESTREAM restore -o "$RESTORED_DB" \
-    "s3://\${LITESTREAM_S3_BUCKET}/large-retention-test" 2>/tmp/large-restore.log; then
+if ! timeout 300 $S3_MOCK $REPLICATE restore -o "$RESTORED_DB" \
+    "s3://\${REPLICATE_S3_BUCKET}/large-retention-test" 2>/tmp/large-restore.log; then
     echo "  ✗ Restoration failed or timed out after 5 minutes"
     RESTORE_SUCCESS=false
     echo "Restoration log:"

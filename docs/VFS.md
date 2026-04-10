@@ -1,7 +1,7 @@
-# Litestream VFS
+# Replicate VFS
 
-The Litestream VFS (Virtual File System) is a SQLite extension that allows applications to read directly
-from Litestream replica storage (S3, GCS, Azure Blob, etc.) without restoring to local disk. It also
+The Replicate VFS (Virtual File System) is a SQLite extension that allows applications to read directly
+from Replicate replica storage (S3, GCS, Azure Blob, etc.) without restoring to local disk. It also
 supports write mode for remote-first SQLite databases.
 
 ## Table of Contents
@@ -49,27 +49,27 @@ make vfs
 ```
 
 This creates:
-- `dist/litestream-vfs.a` - Static library
-- `dist/litestream-vfs.so` - Loadable SQLite extension
+- `dist/replicate-vfs.a` - Static library
+- `dist/replicate-vfs.so` - Loadable SQLite extension
 
 **Platform-specific builds:**
 
 ```bash
 # macOS ARM64 (Apple Silicon)
 make vfs-darwin-arm64
-# Output: dist/litestream-vfs-darwin-arm64.dylib
+# Output: dist/replicate-vfs-darwin-arm64.dylib
 
 # macOS AMD64 (Intel)
 make vfs-darwin-amd64
-# Output: dist/litestream-vfs-darwin-amd64.dylib
+# Output: dist/replicate-vfs-darwin-amd64.dylib
 
 # Linux AMD64
 make vfs-linux-amd64
-# Output: dist/litestream-vfs-linux-amd64.so
+# Output: dist/replicate-vfs-linux-amd64.so
 
 # Linux ARM64
 make vfs-linux-arm64
-# Output: dist/litestream-vfs-linux-arm64.so
+# Output: dist/replicate-vfs-linux-arm64.so
 ```
 
 ### Running Tests
@@ -84,11 +84,11 @@ The VFS is configured via environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LITESTREAM_REPLICA_URL` | Replica storage URL (required) | - |
-| `LITESTREAM_LOG_LEVEL` | Log level: `DEBUG` or `INFO` | `INFO` |
-| `LITESTREAM_WRITE_ENABLED` | Enable write mode: `true` or `false` | `false` |
-| `LITESTREAM_SYNC_INTERVAL` | Write sync interval (e.g., `1s`, `500ms`) | `1s` |
-| `LITESTREAM_BUFFER_PATH` | Local write buffer file path | temp file |
+| `REPLICATE_REPLICA_URL` | Replica storage URL (required) | - |
+| `REPLICATE_LOG_LEVEL` | Log level: `DEBUG` or `INFO` | `INFO` |
+| `REPLICATE_WRITE_ENABLED` | Enable write mode: `true` or `false` | `false` |
+| `REPLICATE_SYNC_INTERVAL` | Write sync interval (e.g., `1s`, `500ms`) | `1s` |
+| `REPLICATE_BUFFER_PATH` | Local write buffer file path | temp file |
 
 ### Replica URL Format
 
@@ -124,7 +124,7 @@ webdav://host:port/path/to/db
 
 ```sql
 -- Load the extension (adjust path as needed)
-.load ./dist/litestream-vfs.so
+.load ./dist/replicate-vfs.so
 ```
 
 ### Opening a Database
@@ -132,14 +132,14 @@ webdav://host:port/path/to/db
 Before loading the extension, set the replica URL:
 
 ```bash
-export LITESTREAM_REPLICA_URL="s3://my-bucket/mydb"
+export REPLICATE_REPLICA_URL="s3://my-bucket/mydb"
 ```
 
 Then in SQLite:
 
 ```sql
-.load ./dist/litestream-vfs.so
-.open file:mydb.db?vfs=litestream
+.load ./dist/replicate-vfs.so
+.open file:mydb.db?vfs=replicate
 SELECT * FROM my_table;
 ```
 
@@ -149,14 +149,14 @@ SELECT * FROM my_table;
 import os
 import sqlite3
 
-os.environ["LITESTREAM_REPLICA_URL"] = "s3://my-bucket/mydb"
+os.environ["REPLICATE_REPLICA_URL"] = "s3://my-bucket/mydb"
 
 conn = sqlite3.connect(":memory:")
 conn.enable_load_extension(True)
-conn.load_extension("./dist/litestream-vfs.so")
+conn.load_extension("./dist/replicate-vfs.so")
 
-# Open database using the litestream VFS
-conn = sqlite3.connect("file:mydb.db?vfs=litestream")
+# Open database using the replicate VFS
+conn = sqlite3.connect("file:mydb.db?vfs=replicate")
 cursor = conn.execute("SELECT * FROM users")
 for row in cursor:
     print(row)
@@ -173,9 +173,9 @@ import (
 )
 
 func main() {
-    os.Setenv("LITESTREAM_REPLICA_URL", "s3://my-bucket/mydb")
+    os.Setenv("REPLICATE_REPLICA_URL", "s3://my-bucket/mydb")
 
-    db, err := sql.Open("sqlite3", "file:mydb.db?vfs=litestream")
+    db, err := sql.Open("sqlite3", "file:mydb.db?vfs=replicate")
     if err != nil {
         panic(err)
     }
@@ -190,34 +190,34 @@ func main() {
 
 The VFS extension provides SQL functions for observability and time travel:
 
-### `litestream_txid()`
+### `replicate_txid()`
 
 Returns the current transaction ID as a hex string.
 
 ```sql
-SELECT litestream_txid();
+SELECT replicate_txid();
 -- Returns: "0000000000000042"
 ```
 
-### `litestream_time()`
+### `replicate_time()`
 
 Returns the current view timestamp (RFC3339 format) or `"latest"`.
 
 ```sql
-SELECT litestream_time();
+SELECT replicate_time();
 -- Returns: "2024-01-15T10:30:00.123456789Z" or "latest"
 ```
 
-### `litestream_lag()`
+### `replicate_lag()`
 
 Returns seconds since the last successful poll for new LTX files. Returns `-1` if no successful poll has occurred.
 
 ```sql
-SELECT litestream_lag();
+SELECT replicate_lag();
 -- Returns: 2 (seconds behind primary)
 ```
 
-### `litestream_set_time(timestamp)`
+### `replicate_set_time(timestamp)`
 
 Sets the view time for time travel queries. See [Time Travel](#time-travel) for details.
 
@@ -229,15 +229,15 @@ The VFS supports querying historical database states by setting a target timesta
 
 ```sql
 -- View database as of a specific timestamp (RFC3339 format)
-SELECT litestream_set_time('2024-01-15T10:30:00Z');
+SELECT replicate_set_time('2024-01-15T10:30:00Z');
 
 -- Relative time expressions are also supported
-SELECT litestream_set_time('5 minutes ago');
-SELECT litestream_set_time('yesterday');
-SELECT litestream_set_time('2 hours ago');
+SELECT replicate_set_time('5 minutes ago');
+SELECT replicate_set_time('yesterday');
+SELECT replicate_set_time('2 hours ago');
 
 -- Return to latest state
-SELECT litestream_set_time('LATEST');
+SELECT replicate_set_time('LATEST');
 ```
 
 ### Example: Comparing Historical Data
@@ -248,14 +248,14 @@ SELECT COUNT(*) FROM orders;
 -- Returns: 1000
 
 -- Go back in time
-SELECT litestream_set_time('1 hour ago');
+SELECT replicate_set_time('1 hour ago');
 
 -- Check historical count
 SELECT COUNT(*) FROM orders;
 -- Returns: 950
 
 -- Return to present
-SELECT litestream_set_time('LATEST');
+SELECT replicate_set_time('LATEST');
 ```
 
 ### Time Travel Limitations
@@ -272,9 +272,9 @@ Write mode allows the VFS to accept writes and sync them back to remote storage.
 ### Enabling Write Mode
 
 ```bash
-export LITESTREAM_REPLICA_URL="s3://my-bucket/mydb"
-export LITESTREAM_WRITE_ENABLED="true"
-export LITESTREAM_SYNC_INTERVAL="1s"
+export REPLICATE_REPLICA_URL="s3://my-bucket/mydb"
+export REPLICATE_WRITE_ENABLED="true"
+export REPLICATE_SYNC_INTERVAL="1s"
 ```
 
 ### How Write Mode Works
@@ -299,8 +299,8 @@ export LITESTREAM_SYNC_INTERVAL="1s"
 With write mode enabled, you can create a new database that doesn't exist yet:
 
 ```sql
-.load ./dist/litestream-vfs.so
-.open file:newdb.db?vfs=litestream
+.load ./dist/replicate-vfs.so
+.open file:newdb.db?vfs=replicate
 
 CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
 INSERT INTO users (name) VALUES ('Alice');
@@ -309,7 +309,7 @@ INSERT INTO users (name) VALUES ('Alice');
 
 ## Supported Storage Backends
 
-The VFS supports all Litestream storage backends:
+The VFS supports all Replicate storage backends:
 
 | Backend | URL Scheme | Notes |
 |---------|-----------|-------|
@@ -332,14 +332,14 @@ export AWS_SECRET_ACCESS_KEY="your-secret"
 export AWS_REGION="us-east-1"
 
 # For S3-compatible services:
-export LITESTREAM_REPLICA_URL="s3://bucket/path?endpoint=https://custom.endpoint.com"
+export REPLICATE_REPLICA_URL="s3://bucket/path?endpoint=https://custom.endpoint.com"
 ```
 
 ### GCS Configuration
 
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-export LITESTREAM_REPLICA_URL="gs://bucket/path"
+export REPLICATE_REPLICA_URL="gs://bucket/path"
 ```
 
 ## Troubleshooting
@@ -354,7 +354,7 @@ Ensure the extension file matches your platform:
 
 The VFS waits for LTX files to become available. Ensure:
 1. The replica URL is correct
-2. Litestream has replicated at least one transaction
+2. Replicate has replicated at least one transaction
 3. Credentials are properly configured
 
 ### High latency reads
@@ -366,7 +366,7 @@ The VFS waits for LTX files to become available. Ensure:
 ### Debug logging
 
 ```bash
-export LITESTREAM_LOG_LEVEL="DEBUG"
+export REPLICATE_LOG_LEVEL="DEBUG"
 ```
 
 This enables verbose logging of VFS operations, page fetches, and cache hits/misses.

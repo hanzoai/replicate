@@ -1,6 +1,6 @@
 # GEMINI.md - Gemini Code Assist Configuration
 
-Gemini-specific configuration for Litestream. See [AGENTS.md](AGENTS.md) for project documentation.
+Gemini-specific configuration for Replicate. See [AGENTS.md](AGENTS.md) for project documentation.
 
 ## Before Contributing
 
@@ -36,7 +36,7 @@ Load as needed:
 ## Quick Commands
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
+go build -o bin/replicate ./cmd/replicate
 go test -race -v ./...
 pre-commit run --all-files
 ```

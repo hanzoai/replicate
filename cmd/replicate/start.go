@@ -30,9 +30,9 @@ func (c *StartCommand) Run(ctx context.Context, args []string) error {
 
 	if fs.NArg() == 0 {
 		os.Stderr.WriteString(`
-Note: 'litestream start' enables replication for a single database on a running daemon.
-To start the replication daemon, use 'litestream replicate' instead.
-Run 'litestream start -h' for usage details.
+Note: 'replicate start' enables replication for a single database on a running daemon.
+To start the replication daemon, use 'replicate replicate' instead.
+Run 'replicate start -h' for usage details.
 `)
 		return fmt.Errorf("database path required")
 	}
@@ -53,7 +53,7 @@ Run 'litestream start -h' for usage details.
 		},
 	}
 
-	req := litestream.StartRequest{
+	req := replicate.StartRequest{
 		Path:    dbPath,
 		Timeout: *timeout,
 	}
@@ -74,14 +74,14 @@ Run 'litestream start -h' for usage details.
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("start failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("start failed: %s", string(body))
 	}
 
-	var result litestream.StartResponse
+	var result replicate.StartResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -98,7 +98,7 @@ Run 'litestream start -h' for usage details.
 // Usage prints the help text for the start command.
 func (c *StartCommand) Usage() {
 	fmt.Println(`
-usage: litestream start [OPTIONS] DB_PATH
+usage: replicate start [OPTIONS] DB_PATH
 
 Start replication for a database.
 

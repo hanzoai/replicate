@@ -43,14 +43,14 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("s3", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("s3", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
 const ReplicaClientType = "s3"
 
 // MetadataKeyTimestamp is the metadata key for storing LTX file timestamps in S3.
-const MetadataKeyTimestamp = "litestream-timestamp"
+const MetadataKeyTimestamp = "replicate-timestamp"
 
 // MaxKeys is the number of keys S3 can operate on per batch.
 const MaxKeys = 1000
@@ -71,8 +71,8 @@ const DefaultR2Concurrency = 2
 // through the middleware stack from Serialize to Finalize phase.
 type contentMD5StackKey struct{}
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
-var _ litestream.ReplicaClientV3 = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClientV3 = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files to S3.
 type ReplicaClient struct {
@@ -130,7 +130,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	client := NewReplicaClient()
 
 	var (
@@ -151,7 +151,7 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 	// Parse host for bucket and region
 	if strings.HasPrefix(host, "arn:") {
 		bucket = host
-		region = litestream.RegionFromS3ARN(host)
+		region = replicate.RegionFromS3ARN(host)
 	} else {
 		bucket, region, endpoint, forcePathStyle = ParseHost(host)
 	}
@@ -159,27 +159,27 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 	// Override with query parameters if provided
 	if qEndpoint := query.Get("endpoint"); qEndpoint != "" {
 		// Ensure endpoint has a scheme (defaults to https:// for cloud, http:// for local)
-		qEndpoint, _ = litestream.EnsureEndpointScheme(qEndpoint)
+		qEndpoint, _ = replicate.EnsureEndpointScheme(qEndpoint)
 		endpoint = qEndpoint
 		// Default to path style for custom endpoints unless explicitly set to false
-		if v, ok := litestream.BoolQueryValue(query, "forcePathStyle", "force-path-style"); !ok || v {
+		if v, ok := replicate.BoolQueryValue(query, "forcePathStyle", "force-path-style"); !ok || v {
 			forcePathStyle = true
 		}
 	}
 	if qRegion := query.Get("region"); qRegion != "" {
 		region = qRegion
 	}
-	if v, ok := litestream.BoolQueryValue(query, "forcePathStyle", "force-path-style"); ok {
+	if v, ok := replicate.BoolQueryValue(query, "forcePathStyle", "force-path-style"); ok {
 		forcePathStyle = v
 	}
-	if v, ok := litestream.BoolQueryValue(query, "skipVerify", "skip-verify"); ok {
+	if v, ok := replicate.BoolQueryValue(query, "skipVerify", "skip-verify"); ok {
 		skipVerify = v
 	}
-	if v, ok := litestream.BoolQueryValue(query, "signPayload", "sign-payload"); ok {
+	if v, ok := replicate.BoolQueryValue(query, "signPayload", "sign-payload"); ok {
 		signPayload = v
 		signPayloadSet = true
 	}
-	if v, ok := litestream.BoolQueryValue(query, "requireContentMD5", "require-content-md5"); ok {
+	if v, ok := replicate.BoolQueryValue(query, "requireContentMD5", "require-content-md5"); ok {
 		requireMD5 = v
 		requireMD5Set = true
 	}
@@ -210,18 +210,18 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 	// Read authentication from environment variables
 	if v := os.Getenv("AWS_ACCESS_KEY_ID"); v != "" {
 		client.AccessKeyID = v
-	} else if v := os.Getenv("LITESTREAM_ACCESS_KEY_ID"); v != "" {
+	} else if v := os.Getenv("REPLICATE_ACCESS_KEY_ID"); v != "" {
 		client.AccessKeyID = v
 	}
 	if v := os.Getenv("AWS_SECRET_ACCESS_KEY"); v != "" {
 		client.SecretAccessKey = v
-	} else if v := os.Getenv("LITESTREAM_SECRET_ACCESS_KEY"); v != "" {
+	} else if v := os.Getenv("REPLICATE_SECRET_ACCESS_KEY"); v != "" {
 		client.SecretAccessKey = v
 	}
 
 	if endpoint == "" {
-		if v := os.Getenv("LITESTREAM_S3_ENDPOINT"); v != "" {
-			endpoint, _ = litestream.EnsureEndpointScheme(v)
+		if v := os.Getenv("REPLICATE_S3_ENDPOINT"); v != "" {
+			endpoint, _ = replicate.EnsureEndpointScheme(v)
 			if !forcePathStyleSet {
 				forcePathStyle = true
 			}
@@ -229,15 +229,15 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 	}
 
 	// Detect S3-compatible provider endpoints for applying appropriate defaults.
-	isHetzner := litestream.IsHetznerEndpoint(endpoint)
-	isTigris := litestream.IsTigrisEndpoint(endpoint)
-	isDigitalOcean := litestream.IsDigitalOceanEndpoint(endpoint)
-	isBackblaze := litestream.IsBackblazeEndpoint(endpoint)
-	isFilebase := litestream.IsFilebaseEndpoint(endpoint)
-	isScaleway := litestream.IsScalewayEndpoint(endpoint)
-	isCloudflareR2 := litestream.IsCloudflareR2Endpoint(endpoint)
-	isMinIO := litestream.IsMinIOEndpoint(endpoint)
-	isSupabase := litestream.IsSupabaseEndpoint(endpoint)
+	isHetzner := replicate.IsHetznerEndpoint(endpoint)
+	isTigris := replicate.IsTigrisEndpoint(endpoint)
+	isDigitalOcean := replicate.IsDigitalOceanEndpoint(endpoint)
+	isBackblaze := replicate.IsBackblazeEndpoint(endpoint)
+	isFilebase := replicate.IsFilebaseEndpoint(endpoint)
+	isScaleway := replicate.IsScalewayEndpoint(endpoint)
+	isCloudflareR2 := replicate.IsCloudflareR2Endpoint(endpoint)
+	isMinIO := replicate.IsMinIOEndpoint(endpoint)
+	isSupabase := replicate.IsSupabaseEndpoint(endpoint)
 
 	// Apply provider-specific defaults for S3-compatible providers.
 	if isTigris {
@@ -358,7 +358,7 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 
 	// Always configure custom HTTP Transport with controlled keepalive settings
 	// to reduce idle CPU usage from default transport's aggressive keepalives.
-	// See: https://github.com/benbjohnson/litestream/issues/992
+	// See: https://github.com/benbjohnson/replicate/issues/992
 	httpClient.Transport = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -404,7 +404,7 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 		))
 	}
 
-	// Enable AWS SDK debug logging if LITESTREAM_S3_DEBUG is set.
+	// Enable AWS SDK debug logging if REPLICATE_S3_DEBUG is set.
 	// Useful for debugging S3-compatible providers (signing issues, request/response bodies).
 	// Supports comma-separated values: signing,request,retries
 	// Values: signing, request, request-with-body, response, response-with-body, retries, all
@@ -432,8 +432,8 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 	// support aws-chunked content encoding used by default checksum calculation
 	// in AWS SDK Go v2 v1.73.0+. Disable automatic checksum calculation and
 	// response checksum validation for all custom endpoints.
-	// See: https://github.com/benbjohnson/litestream/issues/918
-	// See: https://github.com/benbjohnson/litestream/issues/947
+	// See: https://github.com/benbjohnson/replicate/issues/918
+	// See: https://github.com/benbjohnson/replicate/issues/947
 	if c.Endpoint != "" {
 		s3Opts = append(s3Opts, func(o *s3.Options) {
 			o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
@@ -453,7 +453,7 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 	// For S3-compatible providers, disable automatic checksum calculation on the Uploader.
 	// The S3 client's RequestChecksumCalculation setting only affects single-part uploads.
 	// Multipart uploads via the Uploader require this separate setting (added in s3/manager v1.20.0).
-	// See: https://github.com/benbjohnson/litestream/issues/948
+	// See: https://github.com/benbjohnson/replicate/issues/948
 	// See: https://github.com/aws/aws-sdk-go-v2/issues/3007
 	if c.Endpoint != "" {
 		uploaderOpts = append(uploaderOpts, func(u *manager.Uploader) {
@@ -731,7 +731,7 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 		if c.RequireContentMD5 {
 			if err := stack.Serialize.Add(
 				middleware.SerializeMiddlewareFunc(
-					"LitestreamComputeDeleteContentMD5",
+					"ReplicateComputeDeleteContentMD5",
 					func(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 						out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 					) {
@@ -763,16 +763,16 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 
 		if err := stack.Build.Add(
 			middleware.BuildMiddlewareFunc(
-				"LitestreamUserAgent",
+				"ReplicateUserAgent",
 				func(ctx context.Context, in middleware.BuildInput, next middleware.BuildHandler) (
 					out middleware.BuildOutput, metadata middleware.Metadata, err error,
 				) {
 					if req, ok := in.Request.(*smithyhttp.Request); ok {
 						current := req.Header.Get("User-Agent")
 						if current == "" {
-							req.Header.Set("User-Agent", "litestream")
-						} else if !strings.Contains(current, "litestream") {
-							req.Header.Set("User-Agent", "litestream "+current)
+							req.Header.Set("User-Agent", "replicate")
+						} else if !strings.Contains(current, "replicate") {
+							req.Header.Set("User-Agent", "replicate "+current)
 						}
 					}
 					return next.HandleBuild(ctx, in)
@@ -783,10 +783,10 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 			return err
 		}
 
-		if litestream.IsTigrisEndpoint(c.Endpoint) {
+		if replicate.IsTigrisEndpoint(c.Endpoint) {
 			if err := stack.Build.Add(
 				middleware.BuildMiddlewareFunc(
-					"LitestreamTigrisConsistent",
+					"ReplicateTigrisConsistent",
 					func(ctx context.Context, in middleware.BuildInput, next middleware.BuildHandler) (
 						out middleware.BuildOutput, metadata middleware.Metadata, err error,
 					) {
@@ -804,7 +804,7 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 
 		// Many S3-compatible providers (e.g. Filebase) do not support SigV4
 		// payload hashing. Switching to unsigned payload matches the behavior
-		// of the AWS SDK v1 client used in Litestream v0.3.x and restores
+		// of the AWS SDK v1 client used in Replicate v0.3.x and restores
 		// compatibility.
 		if !c.SignPayload {
 			_ = v4.RemoveComputePayloadSHA256Middleware(stack)
@@ -823,7 +823,7 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 		// 2. S3-compatible providers (Filebase, MinIO, Backblaze B2, etc.) that don't
 		//    support aws-chunked encoding at all
 		// See: https://github.com/aws/aws-sdk-go-v2/discussions/2960
-		// See: https://github.com/benbjohnson/litestream/issues/895
+		// See: https://github.com/benbjohnson/replicate/issues/895
 		if !c.SignPayload || c.Endpoint != "" {
 			stack.Finalize.Remove("addInputChecksumTrailer")
 		}
@@ -832,7 +832,7 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 		// so all headers (including X-Tigris-Consistent) are set
 		if err := stack.Finalize.Add(
 			middleware.FinalizeMiddlewareFunc(
-				"LitestreamDebugLogging",
+				"ReplicateDebugLogging",
 				func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
 					out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
 				) {
@@ -857,7 +857,7 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 
 		md5Middleware := func() middleware.FinalizeMiddleware {
 			return middleware.FinalizeMiddlewareFunc(
-				"LitestreamDeleteContentMD5",
+				"ReplicateDeleteContentMD5",
 				func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
 					out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
 				) {
@@ -1153,7 +1153,7 @@ func (c *ReplicaClient) GenerationsV3(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	prefix := litestream.GenerationsPathV3(c.Path) + "/"
+	prefix := replicate.GenerationsPathV3(c.Path) + "/"
 
 	// Use CommonPrefixes with delimiter to list "directories"
 	paginator := s3.NewListObjectsV2Paginator(c.s3, &s3.ListObjectsV2Input{
@@ -1174,7 +1174,7 @@ func (c *ReplicaClient) GenerationsV3(ctx context.Context) ([]string, error) {
 			p := aws.ToString(cp.Prefix)
 			p = strings.TrimPrefix(p, prefix)
 			p = strings.TrimSuffix(p, "/")
-			if litestream.IsGenerationIDV3(p) {
+			if replicate.IsGenerationIDV3(p) {
 				generations = append(generations, p)
 			}
 		}
@@ -1185,19 +1185,19 @@ func (c *ReplicaClient) GenerationsV3(ctx context.Context) ([]string, error) {
 }
 
 // SnapshotsV3 returns snapshots for a generation, sorted by index.
-func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]litestream.SnapshotInfoV3, error) {
+func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]replicate.SnapshotInfoV3, error) {
 	if err := c.Init(ctx); err != nil {
 		return nil, err
 	}
 
-	prefix := litestream.SnapshotsPathV3(c.Path, generation) + "/"
+	prefix := replicate.SnapshotsPathV3(c.Path, generation) + "/"
 
 	paginator := s3.NewListObjectsV2Paginator(c.s3, &s3.ListObjectsV2Input{
 		Bucket: aws.String(c.Bucket),
 		Prefix: aws.String(prefix),
 	})
 
-	var snapshots []litestream.SnapshotInfoV3
+	var snapshots []replicate.SnapshotInfoV3
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
@@ -1206,12 +1206,12 @@ func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]l
 
 		for _, obj := range page.Contents {
 			key := path.Base(aws.ToString(obj.Key))
-			index, err := litestream.ParseSnapshotFilenameV3(key)
+			index, err := replicate.ParseSnapshotFilenameV3(key)
 			if err != nil {
 				continue // skip invalid filenames
 			}
 
-			snapshots = append(snapshots, litestream.SnapshotInfoV3{
+			snapshots = append(snapshots, replicate.SnapshotInfoV3{
 				Generation: generation,
 				Index:      index,
 				Size:       aws.ToInt64(obj.Size),
@@ -1220,26 +1220,26 @@ func (c *ReplicaClient) SnapshotsV3(ctx context.Context, generation string) ([]l
 		}
 	}
 
-	slices.SortFunc(snapshots, func(a, b litestream.SnapshotInfoV3) int {
+	slices.SortFunc(snapshots, func(a, b replicate.SnapshotInfoV3) int {
 		return a.Index - b.Index
 	})
 	return snapshots, nil
 }
 
 // WALSegmentsV3 returns WAL segments for a generation, sorted by index then offset.
-func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([]litestream.WALSegmentInfoV3, error) {
+func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([]replicate.WALSegmentInfoV3, error) {
 	if err := c.Init(ctx); err != nil {
 		return nil, err
 	}
 
-	prefix := litestream.WALPathV3(c.Path, generation) + "/"
+	prefix := replicate.WALPathV3(c.Path, generation) + "/"
 
 	paginator := s3.NewListObjectsV2Paginator(c.s3, &s3.ListObjectsV2Input{
 		Bucket: aws.String(c.Bucket),
 		Prefix: aws.String(prefix),
 	})
 
-	var segments []litestream.WALSegmentInfoV3
+	var segments []replicate.WALSegmentInfoV3
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
@@ -1248,12 +1248,12 @@ func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([
 
 		for _, obj := range page.Contents {
 			key := path.Base(aws.ToString(obj.Key))
-			index, offset, err := litestream.ParseWALSegmentFilenameV3(key)
+			index, offset, err := replicate.ParseWALSegmentFilenameV3(key)
 			if err != nil {
 				continue // skip invalid filenames
 			}
 
-			segments = append(segments, litestream.WALSegmentInfoV3{
+			segments = append(segments, replicate.WALSegmentInfoV3{
 				Generation: generation,
 				Index:      index,
 				Offset:     offset,
@@ -1263,7 +1263,7 @@ func (c *ReplicaClient) WALSegmentsV3(ctx context.Context, generation string) ([
 		}
 	}
 
-	slices.SortFunc(segments, func(a, b litestream.WALSegmentInfoV3) int {
+	slices.SortFunc(segments, func(a, b replicate.WALSegmentInfoV3) int {
 		if a.Index != b.Index {
 			return a.Index - b.Index
 		}
@@ -1279,7 +1279,7 @@ func (c *ReplicaClient) OpenSnapshotV3(ctx context.Context, generation string, i
 		return nil, err
 	}
 
-	key := litestream.SnapshotPathV3(c.Path, generation, index)
+	key := replicate.SnapshotPathV3(c.Path, generation, index)
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(c.Bucket),
@@ -1311,7 +1311,7 @@ func (c *ReplicaClient) OpenWALSegmentV3(ctx context.Context, generation string,
 		return nil, err
 	}
 
-	key := litestream.WALSegmentPathV3(c.Path, generation, index, offset)
+	key := replicate.WALSegmentPathV3(c.Path, generation, index, offset)
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(c.Bucket),
@@ -1681,10 +1681,10 @@ func deleteOutputError(out *s3.DeleteObjectsOutput) error {
 	return errors.New(b.String())
 }
 
-// parseS3DebugEnv parses the LITESTREAM_S3_DEBUG environment variable and returns
+// parseS3DebugEnv parses the REPLICATE_S3_DEBUG environment variable and returns
 // the corresponding AWS SDK ClientLogMode. Supports comma-separated values.
 func parseS3DebugEnv() aws.ClientLogMode {
-	v := os.Getenv("LITESTREAM_S3_DEBUG")
+	v := os.Getenv("REPLICATE_S3_DEBUG")
 	if v == "" {
 		return 0
 	}
@@ -1708,7 +1708,7 @@ func parseS3DebugEnv() aws.ClientLogMode {
 			logMode |= aws.LogSigning | aws.LogRequest | aws.LogRequestWithBody |
 				aws.LogResponse | aws.LogResponseWithBody | aws.LogRetries
 		default:
-			slog.Warn("unknown LITESTREAM_S3_DEBUG value, expected: signing, request, request-with-body, response, response-with-body, retries, all", "value", mode)
+			slog.Warn("unknown REPLICATE_S3_DEBUG value, expected: signing, request, request-with-body, response, response-with-body, retries, all", "value", mode)
 		}
 	}
 	return logMode

@@ -21,8 +21,8 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("webdav", NewReplicaClientFromURL)
-	litestream.RegisterReplicaClientFactory("webdavs", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("webdav", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("webdavs", NewReplicaClientFromURL)
 }
 
 const ReplicaClientType = "webdav"
@@ -31,7 +31,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 )
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 type ReplicaClient struct {
 	mu     sync.Mutex
@@ -59,7 +59,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
 // URL format: webdav://[user[:password]@]host[:port]/path or webdavs://... (for HTTPS)
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	client := NewReplicaClient()
 
 	// Determine HTTP or HTTPS based on scheme
@@ -139,7 +139,7 @@ func (c *ReplicaClient) LTXFiles(ctx context.Context, level int, seek ltx.TXID, 
 		return nil, err
 	}
 
-	dir := litestream.LTXLevelDir(c.Path, level)
+	dir := replicate.LTXLevelDir(c.Path, level)
 	files, err := client.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) || gowebdav.IsErrNotFound(err) {
@@ -239,7 +239,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 		return nil, err
 	}
 
-	filename := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	filename := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
 	var buf bytes.Buffer
 	teeReader := io.TeeReader(rd, &buf)
@@ -254,7 +254,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 	// This ensures compatibility with all WebDAV servers and avoids the
 	// unreliable chunked transfer encoding that causes silent data loss
 	// on common configurations (Nginx+FastCGI, Lighttpd, Apache+FastCGI).
-	tmpFile, err := os.CreateTemp("", "litestream-webdav-*.ltx")
+	tmpFile, err := os.CreateTemp("", "replicate-webdav-*.ltx")
 	if err != nil {
 		return nil, fmt.Errorf("webdav: cannot create temp file: %w", err)
 	}
@@ -304,7 +304,7 @@ func (c *ReplicaClient) OpenLTXFile(ctx context.Context, level int, minTXID, max
 		return nil, err
 	}
 
-	filename := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	filename := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
 	internal.OperationTotalCounterVec.WithLabelValues(ReplicaClientType, "GET").Inc()
 
@@ -357,7 +357,7 @@ func (c *ReplicaClient) DeleteLTXFiles(ctx context.Context, a []*ltx.FileInfo) e
 	}
 
 	for _, info := range a {
-		filename := litestream.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
+		filename := replicate.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
 
 		c.logger.Debug("deleting ltx file", "level", info.Level, "minTXID", info.MinTXID, "maxTXID", info.MaxTXID, "path", filename)
 

@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"math/rand"
@@ -29,7 +29,7 @@ func FuzzRestoreWithMissingCompactedFile(f *testing.F) {
 
 		db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "db"))
 		db.MonitorInterval = 20 * time.Millisecond
-		db.Replica = litestream.NewReplica(db)
+		db.Replica = replicate.NewReplica(db)
 		db.Replica.SyncInterval = 20 * time.Millisecond
 		client := file.NewReplicaClient(t.TempDir())
 		db.Replica.Client = client
@@ -40,7 +40,7 @@ func FuzzRestoreWithMissingCompactedFile(f *testing.F) {
 		sqldb := testingutil.MustOpenSQLDB(t, db.Path())
 		defer testingutil.MustCloseDBs(t, db, sqldb)
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{
 			{Level: 0},
 			{Level: 1, Interval: 50 * time.Millisecond},
 			{Level: 2, Interval: 150 * time.Millisecond},
@@ -109,7 +109,7 @@ func FuzzRestoreWithMissingCompactedFile(f *testing.F) {
 		}
 
 		outputPath := filepath.Join(t.TempDir(), "restore.db")
-		if err := db.Replica.Restore(ctx, litestream.RestoreOptions{
+		if err := db.Replica.Restore(ctx, replicate.RestoreOptions{
 			OutputPath: outputPath,
 		}); err != nil {
 			t.Fatalf("restore failed after deleting L%d %s: %v", toDelete.Level, ltx.FormatFilename(toDelete.MinTXID, toDelete.MaxTXID), err)

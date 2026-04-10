@@ -115,7 +115,7 @@ jobs:
       - name: Check for required secrets
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.LITESTREAM_S3_ACCESS_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.REPLICATE_S3_ACCESS_KEY_ID }}" ]; then
             echo "::notice title=Skipped::S3 integration tests skipped - credentials not configured"
             echo "has_secrets=false" >> $GITHUB_OUTPUT
           else
@@ -136,18 +136,18 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run S3 integration tests
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go test -v ./replica_client_test.go -integration -replica-clients=s3
         env:
-          LITESTREAM_S3_ACCESS_KEY_ID: ${{ secrets.LITESTREAM_S3_ACCESS_KEY_ID }}
-          LITESTREAM_S3_SECRET_ACCESS_KEY: ${{ secrets.LITESTREAM_S3_SECRET_ACCESS_KEY }}
-          LITESTREAM_S3_REGION: us-east-1
-          LITESTREAM_S3_BUCKET: integration.litestream.io
+          REPLICATE_S3_ACCESS_KEY_ID: ${{ secrets.REPLICATE_S3_ACCESS_KEY_ID }}
+          REPLICATE_S3_SECRET_ACCESS_KEY: ${{ secrets.REPLICATE_S3_SECRET_ACCESS_KEY }}
+          REPLICATE_S3_REGION: us-east-1
+          REPLICATE_S3_BUCKET: integration.replicate.io
 
       - name: Create test results directory
         if: always()
@@ -176,7 +176,7 @@ jobs:
       - name: Check for required secrets
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.LITESTREAM_TIGRIS_ACCESS_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.REPLICATE_TIGRIS_ACCESS_KEY_ID }}" ]; then
             echo "::notice title=Skipped::Tigris integration tests skipped - credentials not configured"
             echo "has_secrets=false" >> $GITHUB_OUTPUT
           else
@@ -197,16 +197,16 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run Tigris integration tests
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go test -v ./replica_client_test.go -integration -replica-clients=tigris
         env:
-          LITESTREAM_TIGRIS_ACCESS_KEY_ID: ${{ secrets.LITESTREAM_TIGRIS_ACCESS_KEY_ID }}
-          LITESTREAM_TIGRIS_SECRET_ACCESS_KEY: ${{ secrets.LITESTREAM_TIGRIS_SECRET_ACCESS_KEY }}
+          REPLICATE_TIGRIS_ACCESS_KEY_ID: ${{ secrets.REPLICATE_TIGRIS_ACCESS_KEY_ID }}
+          REPLICATE_TIGRIS_SECRET_ACCESS_KEY: ${{ secrets.REPLICATE_TIGRIS_SECRET_ACCESS_KEY }}
 
       - name: Create test results directory
         if: always()
@@ -235,7 +235,7 @@ jobs:
       - name: Check for required secrets
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.LITESTREAM_R2_ACCESS_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.REPLICATE_R2_ACCESS_KEY_ID }}" ]; then
             echo "::notice title=Skipped::R2 integration tests skipped - credentials not configured"
             echo "has_secrets=false" >> $GITHUB_OUTPUT
           else
@@ -256,18 +256,18 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run R2 integration tests
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go test -v ./replica_client_test.go -integration -replica-clients=r2
         env:
-          LITESTREAM_R2_ACCESS_KEY_ID: ${{ secrets.LITESTREAM_R2_ACCESS_KEY_ID }}
-          LITESTREAM_R2_SECRET_ACCESS_KEY: ${{ secrets.LITESTREAM_R2_SECRET_ACCESS_KEY }}
-          LITESTREAM_R2_ENDPOINT: ${{ secrets.LITESTREAM_R2_ENDPOINT }}
-          LITESTREAM_R2_BUCKET: ${{ secrets.LITESTREAM_R2_BUCKET }}
+          REPLICATE_R2_ACCESS_KEY_ID: ${{ secrets.REPLICATE_R2_ACCESS_KEY_ID }}
+          REPLICATE_R2_SECRET_ACCESS_KEY: ${{ secrets.REPLICATE_R2_SECRET_ACCESS_KEY }}
+          REPLICATE_R2_ENDPOINT: ${{ secrets.REPLICATE_R2_ENDPOINT }}
+          REPLICATE_R2_BUCKET: ${{ secrets.REPLICATE_R2_BUCKET }}
 
       - name: Create test results directory
         if: always()
@@ -296,7 +296,7 @@ jobs:
       - name: Check for required secrets
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.LITESTREAM_B2_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.REPLICATE_B2_KEY_ID }}" ]; then
             echo "::notice title=Skipped::B2 integration tests skipped - credentials not configured"
             echo "has_secrets=false" >> $GITHUB_OUTPUT
           else
@@ -317,18 +317,18 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run B2 integration tests
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go test -v ./replica_client_test.go -integration -replica-clients=b2
         env:
-          LITESTREAM_B2_KEY_ID: ${{ secrets.LITESTREAM_B2_KEY_ID }}
-          LITESTREAM_B2_APPLICATION_KEY: ${{ secrets.LITESTREAM_B2_APPLICATION_KEY }}
-          LITESTREAM_B2_ENDPOINT: ${{ secrets.LITESTREAM_B2_ENDPOINT }}
-          LITESTREAM_B2_BUCKET: ${{ secrets.LITESTREAM_B2_BUCKET }}
+          REPLICATE_B2_KEY_ID: ${{ secrets.REPLICATE_B2_KEY_ID }}
+          REPLICATE_B2_APPLICATION_KEY: ${{ secrets.REPLICATE_B2_APPLICATION_KEY }}
+          REPLICATE_B2_ENDPOINT: ${{ secrets.REPLICATE_B2_ENDPOINT }}
+          REPLICATE_B2_BUCKET: ${{ secrets.REPLICATE_B2_BUCKET }}
 
       - name: Create test results directory
         if: always()
@@ -357,7 +357,7 @@ jobs:
       - name: Check for required secrets
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.LITESTREAM_S3_ACCESS_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.REPLICATE_S3_ACCESS_KEY_ID }}" ]; then
             echo "::notice title=Skipped::Multipart stress tests skipped - S3 credentials not configured"
             echo "has_secrets=false" >> $GITHUB_OUTPUT
           else
@@ -378,9 +378,9 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run multipart threshold tests (AWS S3)
         if: steps.check-secrets.outputs.has_secrets == 'true'
@@ -389,10 +389,10 @@ jobs:
             -run "TestReplicaClient_S3_Multipart|TestReplicaClient_S3_Concurrency" \
             -timeout 30m
         env:
-          LITESTREAM_S3_ACCESS_KEY_ID: ${{ secrets.LITESTREAM_S3_ACCESS_KEY_ID }}
-          LITESTREAM_S3_SECRET_ACCESS_KEY: ${{ secrets.LITESTREAM_S3_SECRET_ACCESS_KEY }}
-          LITESTREAM_S3_REGION: us-east-1
-          LITESTREAM_S3_BUCKET: integration.litestream.io
+          REPLICATE_S3_ACCESS_KEY_ID: ${{ secrets.REPLICATE_S3_ACCESS_KEY_ID }}
+          REPLICATE_S3_SECRET_ACCESS_KEY: ${{ secrets.REPLICATE_S3_SECRET_ACCESS_KEY }}
+          REPLICATE_S3_REGION: us-east-1
+          REPLICATE_S3_BUCKET: integration.replicate.io
 
       - name: Create test results directory
         if: always()
@@ -449,16 +449,16 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run GCS integration tests
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go test -v ./replica_client_test.go -integration -replica-clients=gs
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /opt/gcp.json
-          LITESTREAM_GS_BUCKET: litestream-github-workflows
+          REPLICATE_GS_BUCKET: replicate-github-workflows
 
       - name: Create test results directory
         if: always()
@@ -487,7 +487,7 @@ jobs:
       - name: Check for required secrets
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.LITESTREAM_ABS_ACCOUNT_NAME }}" ]; then
+          if [ -z "${{ secrets.REPLICATE_ABS_ACCOUNT_NAME }}" ]; then
             echo "::notice title=Skipped::Azure Blob Storage integration tests skipped - credentials not configured"
             echo "has_secrets=false" >> $GITHUB_OUTPUT
           else
@@ -508,17 +508,17 @@ jobs:
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go env
 
-      - name: Install litestream
+      - name: Install replicate
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        run: go install ./cmd/litestream
+        run: go install ./cmd/replicate
 
       - name: Run Azure Blob Storage integration tests
         if: steps.check-secrets.outputs.has_secrets == 'true'
         run: go test -v ./replica_client_test.go -integration -replica-clients=abs
         env:
-          LITESTREAM_ABS_ACCOUNT_NAME: ${{ secrets.LITESTREAM_ABS_ACCOUNT_NAME }}
-          LITESTREAM_ABS_ACCOUNT_KEY: ${{ secrets.LITESTREAM_ABS_ACCOUNT_KEY }}
-          LITESTREAM_ABS_BUCKET: integration
+          REPLICATE_ABS_ACCOUNT_NAME: ${{ secrets.REPLICATE_ABS_ACCOUNT_NAME }}
+          REPLICATE_ABS_ACCOUNT_KEY: ${{ secrets.REPLICATE_ABS_ACCOUNT_KEY }}
+          REPLICATE_ABS_BUCKET: integration
 
       - name: Create test results directory
         if: always()

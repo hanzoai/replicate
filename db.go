@@ -1,4 +1,4 @@
-package litestream
+package replicate
 
 import (
 	"bytes"
@@ -45,7 +45,7 @@ const (
 // DB represents a managed instance of a SQLite database in the file system.
 //
 // Checkpoint Strategy:
-// Litestream uses a progressive 3-tier checkpoint approach to balance WAL size
+// Replicate uses a progressive 3-tier checkpoint approach to balance WAL size
 // management with write availability:
 //
 //  1. MinCheckpointPageN (PASSIVE): Non-blocking checkpoint at ~1k pages (~4MB).
@@ -169,7 +169,7 @@ type DB struct {
 	// contiguous TXID ranges after each compaction.
 	VerifyCompaction bool
 
-	// RetentionEnabled controls whether Litestream actively deletes old files
+	// RetentionEnabled controls whether Replicate actively deletes old files
 	// during retention enforcement. When false, cloud provider lifecycle
 	// policies handle retention instead. Local file cleanup still occurs.
 	RetentionEnabled bool
@@ -307,7 +307,7 @@ func (db *DB) LTXDir() string {
 // This is useful for recovering from corrupted or missing LTX files.
 // The database file itself is not modified.
 func (db *DB) ResetLocalState(ctx context.Context) error {
-	db.Logger.Info("resetting local litestream state",
+	db.Logger.Info("resetting local replicate state",
 		"meta_path", db.metaPath,
 		"ltx_dir", db.LTXDir())
 
@@ -863,14 +863,14 @@ func (db *DB) init(ctx context.Context) (err error) {
 
 	// Create a table to force writes to the WAL when empty.
 	// There should only ever be one row with id=1.
-	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _litestream_seq (id INTEGER PRIMARY KEY, seq INTEGER);`); err != nil {
-		return fmt.Errorf("create _litestream_seq table: %w", err)
+	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _replicate_seq (id INTEGER PRIMARY KEY, seq INTEGER);`); err != nil {
+		return fmt.Errorf("create _replicate_seq table: %w", err)
 	}
 
 	// Create a lock table to force write locks during sync.
 	// The sync write transaction always rolls back so no data should be in this table.
-	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _litestream_lock (id INTEGER);`); err != nil {
-		return fmt.Errorf("create _litestream_lock table: %w", err)
+	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _replicate_lock (id INTEGER);`); err != nil {
+		return fmt.Errorf("create _replicate_lock table: %w", err)
 	}
 
 	// Start a long-running read transaction to prevent other transactions
@@ -974,7 +974,7 @@ func (db *DB) acquireReadLock(ctx context.Context) error {
 	}
 
 	// Execute read query to obtain read lock.
-	if _, err := tx.ExecContext(ctx, `SELECT COUNT(1) FROM _litestream_seq;`); err != nil {
+	if _, err := tx.ExecContext(ctx, `SELECT COUNT(1) FROM _replicate_seq;`); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
@@ -1105,7 +1105,7 @@ func (db *DB) verifyAndSync(ctx context.Context, checkpointing bool) (origWALSiz
 //
 // Time-based checkpoints only trigger if db.syncedSinceCheckpoint is true, indicating
 // that data has been synced since the last checkpoint. This prevents creating unnecessary
-// LTX files when the only WAL data is from internal bookkeeping (like _litestream_seq
+// LTX files when the only WAL data is from internal bookkeeping (like _replicate_seq
 // updates from previous checkpoints). See issue #896.
 func (db *DB) checkpointIfNeeded(ctx context.Context, origWALSize, newWALSize int64) error {
 	if db.pageSize == 0 {
@@ -1138,7 +1138,7 @@ func (db *DB) checkpointIfNeeded(ctx context.Context, origWALSize, newWALSize in
 	// Priority 3: Time-based checkpoint (PASSIVE mode, non-blocking)
 	// Only trigger if there have been actual changes synced since the last
 	// checkpoint. This prevents creating unnecessary LTX files when the only
-	// WAL data is from internal bookkeeping (like _litestream_seq updates).
+	// WAL data is from internal bookkeeping (like _replicate_seq updates).
 	if db.CheckpointInterval > 0 && db.syncedSinceCheckpoint {
 		// Get database file modification time
 		fi, err := db.f.Stat()
@@ -1212,8 +1212,8 @@ func (db *DB) ensureWALExists(ctx context.Context) (err error) {
 		return nil
 	}
 
-	// Otherwise create transaction that updates the internal litestream table.
-	_, err = db.db.ExecContext(ctx, `INSERT INTO _litestream_seq (id, seq) VALUES (1, 1) ON CONFLICT (id) DO UPDATE SET seq = seq + 1`)
+	// Otherwise create transaction that updates the internal replicate table.
+	_, err = db.db.ExecContext(ctx, `INSERT INTO _replicate_seq (id, seq) VALUES (1, 1) ON CONFLICT (id) DO UPDATE SET seq = seq + 1`)
 	return err
 }
 
@@ -1380,7 +1380,7 @@ func (db *DB) verify(ctx context.Context) (info syncInfo, err error) {
 	// This can happen when an LTX file represents a state at the beginning of the WAL
 	// with no frames written yet. We must check this before computing prevWALOffset
 	// to avoid underflow (32 - 4120 = -4088).
-	// See: https://github.com/benbjohnson/litestream/issues/900
+	// See: https://github.com/benbjohnson/replicate/issues/900
 	if info.offset == WALHeaderSize {
 		db.Logger.Debug("verify", "saltMatch", saltMatch, "atWALHeader", true)
 		if saltMatch {
@@ -1838,7 +1838,7 @@ func (db *DB) checkpoint(ctx context.Context, mode string) error {
 	// a new page is written.
 	if err := db.execCheckpoint(ctx, mode); err != nil {
 		return err
-	} else if _, err = db.db.ExecContext(ctx, `INSERT INTO _litestream_seq (id, seq) VALUES (1, 1) ON CONFLICT (id) DO UPDATE SET seq = seq + 1`); err != nil {
+	} else if _, err = db.db.ExecContext(ctx, `INSERT INTO _replicate_seq (id, seq) VALUES (1, 1) ON CONFLICT (id) DO UPDATE SET seq = seq + 1`); err != nil {
 		return err
 	}
 
@@ -1861,8 +1861,8 @@ func (db *DB) checkpoint(ctx context.Context, mode string) error {
 	// insert will never actually occur because our tx will be rolled back,
 	// however, it will ensure our tx grabs the write lock. Unfortunately,
 	// we can't call "BEGIN IMMEDIATE" as we are already in a transaction.
-	if _, err := tx.ExecContext(ctx, `INSERT INTO _litestream_lock (id) VALUES (1);`); err != nil {
-		return fmt.Errorf("_litestream_lock: %w", err)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO _replicate_lock (id) VALUES (1);`); err != nil {
+		return fmt.Errorf("_replicate_lock: %w", err)
 	}
 
 	// Copy anything that may have occurred after the checkpoint.
@@ -2442,57 +2442,57 @@ func NewRestoreOptions() RestoreOptions {
 // Database metrics.
 var (
 	dbSizeGaugeVec = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "litestream_db_size",
+		Name: "replicate_db_size",
 		Help: "The current size of the real DB",
 	}, []string{"db"})
 
 	walSizeGaugeVec = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "litestream_wal_size",
+		Name: "replicate_wal_size",
 		Help: "The current size of the real WAL",
 	}, []string{"db"})
 
 	totalWALBytesCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_total_wal_bytes",
+		Name: "replicate_total_wal_bytes",
 		Help: "Total number of bytes written to shadow WAL",
 	}, []string{"db"})
 
 	txIDIndexGaugeVec = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "litestream_txid",
+		Name: "replicate_txid",
 		Help: "The current transaction ID",
 	}, []string{"db"})
 
 	syncNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_sync_count",
+		Name: "replicate_sync_count",
 		Help: "Number of sync operations performed",
 	}, []string{"db"})
 
 	syncErrorNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_sync_error_count",
+		Name: "replicate_sync_error_count",
 		Help: "Number of sync errors that have occurred",
 	}, []string{"db"})
 
 	syncSecondsCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_sync_seconds",
+		Name: "replicate_sync_seconds",
 		Help: "Time spent syncing shadow WAL, in seconds",
 	}, []string{"db"})
 
 	checkpointNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_checkpoint_count",
+		Name: "replicate_checkpoint_count",
 		Help: "Number of checkpoint operations performed",
 	}, []string{"db", "mode"})
 
 	checkpointErrorNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_checkpoint_error_count",
+		Name: "replicate_checkpoint_error_count",
 		Help: "Number of checkpoint errors that have occurred",
 	}, []string{"db", "mode"})
 
 	checkpointSecondsCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_checkpoint_seconds",
+		Name: "replicate_checkpoint_seconds",
 		Help: "Time spent checkpointing WAL, in seconds",
 	}, []string{"db", "mode"})
 
 	compactionVerifyErrorCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "litestream_compaction_verify_error_count",
+		Name: "replicate_compaction_verify_error_count",
 		Help: "Number of post-compaction verification failures",
 	}, []string{"db"})
 )

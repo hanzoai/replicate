@@ -63,7 +63,7 @@ func TestOpenConfigFile(t *testing.T) {
 func TestReadConfigFile(t *testing.T) {
 	// Ensure global AWS settings are propagated down to replica configurations.
 	t.Run("PropagateGlobalSettings", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 access-key-id: XXX
 secret-access-key: YYY
@@ -92,16 +92,16 @@ dbs:
 
 	// Ensure environment variables are expanded.
 	t.Run("ExpandEnv", func(t *testing.T) {
-		os.Setenv("LITESTREAM_TEST_0129380", "/path/to/db")
-		os.Setenv("LITESTREAM_TEST_1872363", "s3://foo/bar")
+		os.Setenv("REPLICATE_TEST_0129380", "/path/to/db")
+		os.Setenv("REPLICATE_TEST_1872363", "s3://foo/bar")
 
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
-  - path: $LITESTREAM_TEST_0129380
+  - path: $REPLICATE_TEST_0129380
     replicas:
-      - url: ${LITESTREAM_TEST_1872363}
-      - url: ${LITESTREAM_TEST_NO_SUCH_ENV}
+      - url: ${REPLICATE_TEST_1872363}
+      - url: ${REPLICATE_TEST_NO_SUCH_ENV}
 `[1:]), 0666); err != nil {
 			t.Fatal(err)
 		}
@@ -120,14 +120,14 @@ dbs:
 
 	// Ensure environment variables are not expanded.
 	t.Run("NoExpandEnv", func(t *testing.T) {
-		os.Setenv("LITESTREAM_TEST_9847533", "s3://foo/bar")
+		os.Setenv("REPLICATE_TEST_9847533", "s3://foo/bar")
 
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /path/to/db
     replicas:
-      - url: ${LITESTREAM_TEST_9847533}
+      - url: ${REPLICATE_TEST_9847533}
 `[1:]), 0666); err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +135,7 @@ dbs:
 		config, err := main.ReadConfigFile(filename, false)
 		if err != nil {
 			t.Fatal(err)
-		} else if got, want := config.DBs[0].Replicas[0].URL, `${LITESTREAM_TEST_9847533}`; got != want {
+		} else if got, want := config.DBs[0].Replicas[0].URL, `${REPLICATE_TEST_9847533}`; got != want {
 			t.Fatalf("Replica.URL=%v, want %v", got, want)
 		}
 	})
@@ -157,7 +157,7 @@ func TestNewDBFromConfig_MetaPathExpansion(t *testing.T) {
 		t.Fatalf("failed to create replica directory: %v", err)
 	}
 
-	metaPath := filepath.Join("~", "litestream-meta")
+	metaPath := filepath.Join("~", "replicate-meta")
 	config := &main.DBConfig{
 		Path:     dbPath,
 		MetaPath: &metaPath,
@@ -172,7 +172,7 @@ func TestNewDBFromConfig_MetaPathExpansion(t *testing.T) {
 		t.Fatalf("NewDBFromConfig failed: %v", err)
 	}
 
-	expectedMetaPath := filepath.Join(u.HomeDir, "litestream-meta")
+	expectedMetaPath := filepath.Join(u.HomeDir, "replicate-meta")
 	if got := db.MetaPath(); got != expectedMetaPath {
 		t.Fatalf("MetaPath not expanded: got %s, want %s", got, expectedMetaPath)
 	}
@@ -600,7 +600,7 @@ dbs:
 
 func TestParseReplicaURL_AccessPoint(t *testing.T) {
 	t.Run("WithPrefix", func(t *testing.T) {
-		scheme, host, urlPath, err := litestream.ParseReplicaURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/db-access/backups/prod")
+		scheme, host, urlPath, err := replicate.ParseReplicaURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/db-access/backups/prod")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -616,7 +616,7 @@ func TestParseReplicaURL_AccessPoint(t *testing.T) {
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
-		if _, _, _, err := litestream.ParseReplicaURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/"); err == nil {
+		if _, _, _, err := replicate.ParseReplicaURL("s3://arn:aws:s3:us-east-1:123456789012:accesspoint/"); err == nil {
 			t.Fatal("expected error")
 		}
 	})
@@ -671,14 +671,14 @@ dbs:
 		if config.L0Retention == nil {
 			t.Fatal("expected default l0 retention to be set")
 		}
-		if *config.L0Retention != litestream.DefaultL0Retention {
-			t.Errorf("expected default l0 retention %v, got %v", litestream.DefaultL0Retention, *config.L0Retention)
+		if *config.L0Retention != replicate.DefaultL0Retention {
+			t.Errorf("expected default l0 retention %v, got %v", replicate.DefaultL0Retention, *config.L0Retention)
 		}
 		if config.L0RetentionCheckInterval == nil {
 			t.Fatal("expected default l0 retention check interval to be set")
 		}
-		if *config.L0RetentionCheckInterval != litestream.DefaultL0RetentionCheckInterval {
-			t.Errorf("expected default l0 retention check interval %v, got %v", litestream.DefaultL0RetentionCheckInterval, *config.L0RetentionCheckInterval)
+		if *config.L0RetentionCheckInterval != replicate.DefaultL0RetentionCheckInterval {
+			t.Errorf("expected default l0 retention check interval %v, got %v", replicate.DefaultL0RetentionCheckInterval, *config.L0RetentionCheckInterval)
 		}
 	})
 }
@@ -1061,7 +1061,7 @@ func TestParseByteSizeOverflow(t *testing.T) {
 func TestS3ReplicaConfig_PartSizeAndConcurrency(t *testing.T) {
 	t.Run("WithPartSize_IEC", func(t *testing.T) {
 		// Test IEC unit (MiB) - the main fix addressing PR feedback
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /path/to/db
@@ -1111,7 +1111,7 @@ dbs:
 
 	t.Run("WithPartSize_SI", func(t *testing.T) {
 		// Test SI unit (MB) - uses base 1000
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /path/to/db
@@ -1160,7 +1160,7 @@ dbs:
 	})
 
 	t.Run("WithConcurrency", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /path/to/db
@@ -1209,7 +1209,7 @@ dbs:
 
 	t.Run("WithBoth", func(t *testing.T) {
 		// Test both part-size (using IEC unit) and concurrency together
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /path/to/db
@@ -1271,7 +1271,7 @@ dbs:
 	})
 
 	t.Run("NotSpecified", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /path/to/db
@@ -1329,7 +1329,7 @@ dbs:
 // are properly parsed from YAML and applied to the DB instance.
 func TestDBConfig_CheckpointFields(t *testing.T) {
 	t.Run("MinCheckpointPageN", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /tmp/test.db
@@ -1369,7 +1369,7 @@ dbs:
 	})
 
 	t.Run("TruncatePageN", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /tmp/test.db
@@ -1409,7 +1409,7 @@ dbs:
 	})
 
 	t.Run("BothCheckpointFields", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /tmp/test.db
@@ -1460,7 +1460,7 @@ dbs:
 	})
 
 	t.Run("NotSpecified_UsesDefaults", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: /tmp/test.db
@@ -1493,10 +1493,10 @@ dbs:
 			t.Fatal(err)
 		}
 
-		if got, want := db.MinCheckpointPageN, litestream.DefaultMinCheckpointPageN; got != want {
+		if got, want := db.MinCheckpointPageN, replicate.DefaultMinCheckpointPageN; got != want {
 			t.Errorf("db.MinCheckpointPageN = %d, want default %d", got, want)
 		}
-		if got, want := db.TruncatePageN, litestream.DefaultTruncatePageN; got != want {
+		if got, want := db.TruncatePageN, replicate.DefaultTruncatePageN; got != want {
 			t.Errorf("db.TruncatePageN = %d, want default %d", got, want)
 		}
 	})
@@ -1602,7 +1602,7 @@ func TestFindSQLiteDatabases(t *testing.T) {
 func TestParseReplicaURLWithQuery(t *testing.T) {
 	t.Run("S3WithEndpoint", func(t *testing.T) {
 		url := "s3://mybucket/path/to/db?endpoint=localhost:9000&region=us-east-1&forcePathStyle=true"
-		scheme, host, path, query, _, err := litestream.ParseReplicaURLWithQuery(url)
+		scheme, host, path, query, _, err := replicate.ParseReplicaURLWithQuery(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1628,7 +1628,7 @@ func TestParseReplicaURLWithQuery(t *testing.T) {
 
 	t.Run("S3WithoutQuery", func(t *testing.T) {
 		url := "s3://mybucket/path/to/db"
-		scheme, host, path, query, _, err := litestream.ParseReplicaURLWithQuery(url)
+		scheme, host, path, query, _, err := replicate.ParseReplicaURLWithQuery(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1648,7 +1648,7 @@ func TestParseReplicaURLWithQuery(t *testing.T) {
 
 	t.Run("FileURL", func(t *testing.T) {
 		url := "file:///path/to/db"
-		scheme, host, path, query, _, err := litestream.ParseReplicaURLWithQuery(url)
+		scheme, host, path, query, _, err := replicate.ParseReplicaURLWithQuery(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1669,7 +1669,7 @@ func TestParseReplicaURLWithQuery(t *testing.T) {
 	t.Run("BackwardCompatibility", func(t *testing.T) {
 		// Test that ParseReplicaURL still works as before
 		url := "s3://mybucket/path/to/db?endpoint=localhost:9000"
-		scheme, host, path, err := litestream.ParseReplicaURL(url)
+		scheme, host, path, err := replicate.ParseReplicaURL(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1686,7 +1686,7 @@ func TestParseReplicaURLWithQuery(t *testing.T) {
 
 	t.Run("S3TigrisExample", func(t *testing.T) {
 		url := "s3://mybucket/db?endpoint=fly.storage.tigris.dev&region=auto"
-		scheme, host, path, query, _, err := litestream.ParseReplicaURLWithQuery(url)
+		scheme, host, path, query, _, err := replicate.ParseReplicaURLWithQuery(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1709,7 +1709,7 @@ func TestParseReplicaURLWithQuery(t *testing.T) {
 
 	t.Run("S3WithSkipVerify", func(t *testing.T) {
 		url := "s3://mybucket/db?endpoint=self-signed.local&skipVerify=true"
-		_, _, _, query, _, err := litestream.ParseReplicaURLWithQuery(url)
+		_, _, _, query, _, err := replicate.ParseReplicaURLWithQuery(url)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1943,8 +1943,8 @@ func TestNewDBsFromDirectoryConfig_MetaPathPerDatabase(t *testing.T) {
 	}
 
 	expectedMetaPaths := map[string]string{
-		rootDB:   filepath.Join(expandedMetaRoot, ".primary.db"+litestream.MetaDirSuffix),
-		nestedDB: filepath.Join(expandedMetaRoot, "team", "nested", ".analytics.db"+litestream.MetaDirSuffix),
+		rootDB:   filepath.Join(expandedMetaRoot, ".primary.db"+replicate.MetaDirSuffix),
+		nestedDB: filepath.Join(expandedMetaRoot, "team", "nested", ".analytics.db"+replicate.MetaDirSuffix),
 	}
 
 	metaSeen := make(map[string]struct{})
@@ -2337,7 +2337,7 @@ func TestDirectoryMonitor_DetectsDatabaseLifecycle(t *testing.T) {
 	}
 
 	storeConfig := main.DefaultConfig()
-	store := litestream.NewStore(dbs, storeConfig.CompactionLevels())
+	store := replicate.NewStore(dbs, storeConfig.CompactionLevels())
 	store.CompactionMonitorEnabled = false
 
 	if err := store.Open(ctx); err != nil {
@@ -2385,7 +2385,7 @@ func TestDirectoryMonitor_RecursiveDetectsNestedDatabases(t *testing.T) {
 	}
 
 	storeConfig := main.DefaultConfig()
-	store := litestream.NewStore(nil, storeConfig.CompactionLevels())
+	store := replicate.NewStore(nil, storeConfig.CompactionLevels())
 	store.CompactionMonitorEnabled = false
 	if err := store.Open(ctx); err != nil {
 		t.Fatalf("unexpected error opening store: %v", err)
@@ -2664,7 +2664,7 @@ func TestNewS3ReplicaClientFromConfig(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				urlClient, err := litestream.NewReplicaClientFromURL(
+				urlClient, err := replicate.NewReplicaClientFromURL(
 					"s3://mybucket/path?endpoint=" + tt.endpoint + "&region=us-east-1",
 				)
 				if err != nil {
@@ -2725,7 +2725,7 @@ func TestNewS3ReplicaClientFromConfig(t *testing.T) {
 func TestGlobalDefaults(t *testing.T) {
 	// Test comprehensive global defaults functionality
 	t.Run("GlobalReplicaDefaults", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 		syncInterval := "30s"
 		validationInterval := "1h"
 
@@ -2877,7 +2877,7 @@ dbs:
 
 	// Test different replica types inherit appropriate defaults
 	t.Run("MultipleReplicaTypes", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "litestream.yml")
+		filename := filepath.Join(t.TempDir(), "replicate.yml")
 
 		if err := os.WriteFile(filename, []byte(`
 # Global defaults that apply to all supported replica types
@@ -2999,7 +2999,7 @@ func TestReadConfigFile_SQLiteConnectionString(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test.db")
 
-		filename := filepath.Join(dir, "litestream.yml")
+		filename := filepath.Join(dir, "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: sqlite3://`+dbPath+`
@@ -3027,7 +3027,7 @@ dbs:
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test.db")
 
-		filename := filepath.Join(dir, "litestream.yml")
+		filename := filepath.Join(dir, "replicate.yml")
 		if err := os.WriteFile(filename, []byte(`
 dbs:
   - path: sqlite://`+dbPath+`
@@ -3082,7 +3082,7 @@ func TestX509FallbackRoots(t *testing.T) {
 	}
 }
 
-func hasDBPath(dbs []*litestream.DB, path string) bool {
+func hasDBPath(dbs []*replicate.DB, path string) bool {
 	for _, db := range dbs {
 		if db.Path() == path {
 			return true

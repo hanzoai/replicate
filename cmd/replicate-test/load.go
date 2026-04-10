@@ -40,7 +40,7 @@ type LoadStats struct {
 }
 
 func (c *LoadCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-test load", flag.ExitOnError)
+	fs := flag.NewFlagSet("replicate-test load", flag.ExitOnError)
 	fs.StringVar(&c.DB, "db", "", "Database path (required)")
 	fs.IntVar(&c.WriteRate, "write-rate", 100, "Writes per second")
 	fs.DurationVar(&c.Duration, "duration", 1*time.Minute, "How long to run")
@@ -288,7 +288,7 @@ Generate continuous load on a SQLite database for testing.
 
 Usage:
 
-	litestream-test load [options]
+	replicate-test load [options]
 
 Options:
 
@@ -322,12 +322,12 @@ Options:
 Examples:
 
 	# Generate constant load for 10 minutes
-	litestream-test load -db /tmp/test.db -write-rate 100 -duration 10m
+	replicate-test load -db /tmp/test.db -write-rate 100 -duration 10m
 
 	# Generate burst pattern load
-	litestream-test load -db /tmp/test.db -pattern burst -duration 1h
+	replicate-test load -db /tmp/test.db -pattern burst -duration 1h
 
 	# Heavy write load with multiple workers
-	litestream-test load -db /tmp/test.db -write-rate 1000 -workers 4 -read-ratio 0.1
+	replicate-test load -db /tmp/test.db -write-rate 1000 -workers 4 -read-ratio 0.1
 `[1:])
 }

@@ -1,4 +1,4 @@
-package litestream
+package replicate
 
 import (
 	"fmt"

@@ -8,7 +8,7 @@ STORAGE_API="http://localhost:5555"
 ACCESS_KEY="supabase-s3-access-key"
 SECRET_KEY="supabase-s3-secret-key-that-is-long-enough"
 SERVICE_KEY="eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJpc3MiOiAic3VwYWJhc2UiLCAicm9sZSI6ICJzZXJ2aWNlX3JvbGUifQ.lRaC0LUy-3mILAj_17hVWOBnaft3QPpK-pqAs8h2MRI"
-BUCKET="litestream-test"
+BUCKET="replicate-test"
 REGION="us-east-1"
 TMPDIR_BASE=$(mktemp -d)
 
@@ -22,15 +22,15 @@ cleanup() {
 trap cleanup EXIT
 
 echo "================================================"
-echo "Supabase S3 Integration Test for Litestream"
+echo "Supabase S3 Integration Test for Replicate"
 echo "================================================"
 echo ""
 
-# Step 1: Build litestream
-echo "[1/6] Building litestream..."
+# Step 1: Build replicate
+echo "[1/6] Building replicate..."
 cd "$PROJECT_ROOT"
-go build -o "$TMPDIR_BASE/litestream" ./cmd/litestream
-echo "  OK: Binary built at $TMPDIR_BASE/litestream"
+go build -o "$TMPDIR_BASE/replicate" ./cmd/replicate
+echo "  OK: Binary built at $TMPDIR_BASE/replicate"
 echo ""
 
 # Step 2: Start Supabase stack
@@ -80,8 +80,8 @@ echo "  (Auto-detection should apply force-path-style=true and sign-payload=true
 
 AWS_ACCESS_KEY_ID="$ACCESS_KEY" \
 AWS_SECRET_ACCESS_KEY="$SECRET_KEY" \
-"$TMPDIR_BASE/litestream" replicate "$DB_PATH" "$REPLICA_URL" &
-LITESTREAM_PID=$!
+"$TMPDIR_BASE/replicate" replicate "$DB_PATH" "$REPLICA_URL" &
+REPLICATE_PID=$!
 
 # Wait for initial sync, then write more data
 sleep 5
@@ -93,8 +93,8 @@ echo "  OK: Wrote 2 additional rows during replication"
 
 # Give time for WAL sync
 sleep 10
-kill "$LITESTREAM_PID" 2>/dev/null || true
-wait "$LITESTREAM_PID" 2>/dev/null || true
+kill "$REPLICATE_PID" 2>/dev/null || true
+wait "$REPLICATE_PID" 2>/dev/null || true
 echo "  OK: Replication completed"
 echo ""
 
@@ -103,7 +103,7 @@ echo "[6/6] Restoring database from Supabase S3..."
 RESTORE_PATH="$TMPDIR_BASE/restored.db"
 AWS_ACCESS_KEY_ID="$ACCESS_KEY" \
 AWS_SECRET_ACCESS_KEY="$SECRET_KEY" \
-"$TMPDIR_BASE/litestream" restore -o "$RESTORE_PATH" "$REPLICA_URL"
+"$TMPDIR_BASE/replicate" restore -o "$RESTORE_PATH" "$REPLICA_URL"
 
 RESTORED_COUNT=$(sqlite3 "$RESTORE_PATH" "SELECT COUNT(*) FROM users;")
 echo "  Restored row count: $RESTORED_COUNT"

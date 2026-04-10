@@ -1,6 +1,6 @@
 # Utility Scripts
 
-Utility scripts for Litestream testing and distribution.
+Utility scripts for Replicate testing and distribution.
 
 ## Overview
 
@@ -11,8 +11,8 @@ This directory contains utility scripts for post-test analysis and packaging. Al
 ## Prerequisites
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 ```
 
 ## Available Scripts
@@ -22,7 +22,7 @@ go build -o bin/litestream-test ./cmd/litestream-test
 Post-test analysis tool for examining overnight test results.
 
 ```bash
-./scripts/analyze-test-results.sh /tmp/litestream-overnight-<timestamp>
+./scripts/analyze-test-results.sh /tmp/replicate-overnight-<timestamp>
 ```
 
 **Analyzes:**
@@ -66,16 +66,16 @@ Homebrew tap setup script for packaging and distribution.
 ./scripts/setup-homebrew-tap.sh
 ```
 
-**Purpose:** Automates Homebrew tap setup for Litestream distribution. Not a test script per se, but part of the release process.
+**Purpose:** Automates Homebrew tap setup for Replicate distribution. Not a test script per se, but part of the release process.
 
 ## Usage
 
 ### Analyzing Test Results
 
 ```bash
-ls /tmp/litestream-overnight-* -dt | head -1
+ls /tmp/replicate-overnight-* -dt | head -1
 
-./scripts/analyze-test-results.sh $(ls /tmp/litestream-overnight-* -dt | head -1)
+./scripts/analyze-test-results.sh $(ls /tmp/replicate-overnight-* -dt | head -1)
 ```
 
 ## Test Duration Guide
@@ -95,9 +95,9 @@ ls /tmp/litestream-overnight-* -dt | head -1
 All tests create timestamped directories in `/tmp/`:
 
 ```bash
-LATEST=$(ls /tmp/litestream-* -dt | head -1)
+LATEST=$(ls /tmp/replicate-* -dt | head -1)
 tail -f $LATEST/logs/monitor.log
-tail -f $LATEST/logs/litestream.log
+tail -f $LATEST/logs/replicate.log
 ```
 
 ### Key Metrics to Watch
@@ -127,13 +127,13 @@ tail -f $LATEST/logs/litestream.log
 
 Check binaries:
 ```bash
-ls -la bin/litestream bin/litestream-test
+ls -la bin/replicate bin/replicate-test
 ```
 
 Rebuild if needed:
 ```bash
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 ```
 
 #### S3 Test Fails
@@ -154,15 +154,15 @@ echo $S3_BUCKET
 
 Check log for error details:
 ```bash
-grep -i error /tmp/litestream-*/logs/litestream.log | head -20
+grep -i error /tmp/replicate-*/logs/replicate.log | head -20
 ```
 
 #### Validation Fails
 
 Compare databases manually:
 ```bash
-sqlite3 /tmp/litestream-*/test.db "SELECT COUNT(*) FROM test_data"
-sqlite3 /tmp/litestream-*/restored.db "SELECT COUNT(*) FROM test_data"
+sqlite3 /tmp/replicate-*/test.db "SELECT COUNT(*) FROM test_data"
+sqlite3 /tmp/replicate-*/restored.db "SELECT COUNT(*) FROM test_data"
 ```
 
 ### Stopping Tests Early
@@ -174,9 +174,9 @@ Go tests can be interrupted with Ctrl+C. They will cleanup gracefully via defer 
 All tests create timestamped directories with comprehensive artifacts:
 
 ```
-/tmp/litestream-overnight-<timestamp>/
+/tmp/replicate-overnight-<timestamp>/
 ├── logs/
-│   ├── litestream.log      # Litestream replication log
+│   ├── replicate.log      # Replicate replication log
 │   ├── load.log            # Load generator log
 │   ├── monitor.log         # Real-time monitoring log
 │   ├── populate.log        # Initial population log
@@ -195,7 +195,7 @@ These utility scripts complement the Go integration test suite:
 
 **Test Locations:**
 - `tests/integration/` → All integration and soak tests (Go-based)
-- `cmd/litestream-test/scripts/` → Scenario and debugging tests (bash, being phased out)
+- `cmd/replicate-test/scripts/` → Scenario and debugging tests (bash, being phased out)
 - `scripts/` → Utilities only (this directory)
 
 **Testing Workflow:**
@@ -207,6 +207,6 @@ These utility scripts complement the Go integration test suite:
 ## Related Documentation
 
 - [Go Integration Tests](../tests/integration/README.md) - Complete Go-based test suite including soak tests
-- [litestream-test CLI Tool](../cmd/litestream-test/README.md) - Testing harness documentation
-- [Scenario Test Scripts](../cmd/litestream-test/scripts/README.md) - Focused test scenarios
-- [S3 Retention Testing](../cmd/litestream-test/S3-RETENTION-TESTING.md) - S3-specific testing
+- [replicate-test CLI Tool](../cmd/replicate-test/README.md) - Testing harness documentation
+- [Scenario Test Scripts](../cmd/replicate-test/scripts/README.md) - Focused test scenarios
+- [S3 Retention Testing](../cmd/replicate-test/S3-RETENTION-TESTING.md) - S3-specific testing

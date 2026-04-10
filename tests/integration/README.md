@@ -1,6 +1,6 @@
 # Integration Tests
 
-Go-based integration tests for Litestream. These tests replace the previous bash-based test scripts with proper Go testing infrastructure.
+Go-based integration tests for Replicate. These tests replace the previous bash-based test scripts with proper Go testing infrastructure.
 
 ## Overview
 
@@ -19,8 +19,8 @@ This package contains comprehensive integration tests organized by test type:
 Build the required binaries:
 
 ```bash
-go build -o bin/litestream ./cmd/litestream
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate ./cmd/replicate
+go build -o bin/replicate-test ./cmd/replicate-test
 ```
 
 ## Running Tests
@@ -59,7 +59,7 @@ Long-running soak tests live alongside the other integration tests and share the
 
 | Test | Tags | Defaults | Purpose | Extra Requirements |
 | --- | --- | --- | --- | --- |
-| `TestComprehensiveSoak` | `integration,soak` | 2h duration, 50 MB DB, 500 writes/s | File-backed end-to-end stress | Litestream binaries in `./bin` |
+| `TestComprehensiveSoak` | `integration,soak` | 2h duration, 50 MB DB, 500 writes/s | File-backed end-to-end stress | Replicate binaries in `./bin` |
 | `TestMinIOSoak` | `integration,soak,docker` | 2h duration, 5 MB DB (short=2 m), 100 writes/s | S3-compatible replication via MinIO | Docker daemon, `docker` CLI |
 | `TestOvernightS3Soak` | `integration,soak,aws` | 8h duration, 50 MB DB | Real S3 replication & restore | AWS credentials, `aws` CLI |
 
@@ -217,8 +217,8 @@ workflow_dispatch → test_type: long
 - `SetupTestDB(t, name)` - Create test database instance
 - `TestDB.Create()` - Create database with WAL mode
 - `TestDB.Populate(size)` - Populate to target size
-- `TestDB.StartLitestream()` - Start replication
-- `TestDB.StopLitestream()` - Stop replication
+- `TestDB.StartReplicate()` - Start replication
+- `TestDB.StopReplicate()` - Stop replication
 - `TestDB.Restore(path)` - Restore from replica
 - `TestDB.Validate(path)` - Full validation (integrity, checksum, data)
 - `TestDB.QuickValidate(path)` - Quick validation
@@ -246,7 +246,7 @@ Tests create temporary directories via `t.TempDir()`:
 ├── <name>.db-shm      # Shared memory
 ├── replica/           # Replica directory
 │   └── ltx/0/        # LTX files
-├── litestream.log     # Litestream output
+├── replicate.log     # Replicate output
 └── *-restored.db      # Restored databases
 ```
 
@@ -254,10 +254,10 @@ Artifacts are automatically cleaned up after tests complete.
 
 ## Debugging Tests
 
-### View Litestream Logs
+### View Replicate Logs
 
 ```go
-log, err := db.GetLitestreamLog()
+log, err := db.GetReplicateLog()
 fmt.Println(log)
 ```
 
@@ -301,7 +301,7 @@ Three distinct test locations serve different purposes:
 - `analyze-test-results.sh` - Post-test analysis utility
 - `setup-homebrew-tap.sh` - Packaging script (not a test)
 
-**`cmd/litestream-test/scripts/`** - Scenario and debugging bash scripts (being phased out):
+**`cmd/replicate-test/scripts/`** - Scenario and debugging bash scripts (being phased out):
 - Bug reproduction scripts for specific issues (#752, #754)
 - Format & upgrade tests for version compatibility
 - S3 retention tests with Python mock
@@ -316,11 +316,11 @@ Three distinct test locations serve different purposes:
 - `test-minio-s3.sh` → `minio_soak_test.go::TestMinIOSoak` (CI: ❌ soak test, requires Docker)
 - `test-overnight-s3.sh` → `overnight_s3_soak_test.go::TestOvernightS3Soak` (CI: ❌ soak test, 8 hours)
 
-**Migrated from `cmd/litestream-test/scripts/` (9 scripts):**
+**Migrated from `cmd/replicate-test/scripts/` (9 scripts):**
 - `test-fresh-start.sh` → `scenario_test.go::TestFreshStart`
 - `test-database-integrity.sh` → `scenario_test.go::TestDatabaseIntegrity`
 - `test-database-deletion.sh` → `scenario_test.go::TestDatabaseDeletion`
-- `test-replica-failover.sh` → NOT MIGRATED (feature removed from Litestream)
+- `test-replica-failover.sh` → NOT MIGRATED (feature removed from Replicate)
 - `test-rapid-checkpoints.sh` → `concurrent_test.go::TestRapidCheckpoints`
 - `test-wal-growth.sh` → `concurrent_test.go::TestWALGrowth`
 - `test-concurrent-operations.sh` → `concurrent_test.go::TestConcurrentOperations`
@@ -333,7 +333,7 @@ _scripts/_ (2 scripts remaining):
 - `analyze-test-results.sh` - Post-test analysis utility (may stay as bash)
 - `setup-homebrew-tap.sh` - Packaging script (not a test)
 
-_cmd/litestream-test/scripts/_ (16 scripts remaining):
+_cmd/replicate-test/scripts/_ (16 scripts remaining):
 - Bug reproduction scripts: `reproduce-critical-bug.sh`, `test-754-*.sh`, `test-v0.5-*.sh`
 - Format & upgrade tests: `test-format-isolation.sh`, `test-upgrade-*.sh`, `test-massive-upgrade.sh`
 - S3 retention tests: `test-s3-retention-*.sh` (4 scripts, use Python S3 mock)
@@ -469,6 +469,6 @@ When adding new integration tests:
 
 ## Related Documentation
 
-- [cmd/litestream-test README](../../cmd/litestream-test/README.md) - Testing harness CLI
+- [cmd/replicate-test README](../../cmd/replicate-test/README.md) - Testing harness CLI
 - [scripts/README.md](../../scripts/README.md) - Legacy bash test scripts
-- [GitHub Issue #798](https://github.com/benbjohnson/litestream/issues/798) - Migration tracking
+- [GitHub Issue #798](https://github.com/benbjohnson/replicate/issues/798) - Migration tracking

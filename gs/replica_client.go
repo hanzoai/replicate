@@ -22,16 +22,16 @@ import (
 )
 
 func init() {
-	litestream.RegisterReplicaClientFactory("gs", NewReplicaClientFromURL)
+	replicate.RegisterReplicaClientFactory("gs", NewReplicaClientFromURL)
 }
 
 // ReplicaClientType is the client type for this package.
 const ReplicaClientType = "gs"
 
 // MetadataKeyTimestamp is the metadata key for storing LTX file timestamps in GCS.
-const MetadataKeyTimestamp = "litestream-timestamp"
+const MetadataKeyTimestamp = "replicate-timestamp"
 
-var _ litestream.ReplicaClient = (*ReplicaClient)(nil)
+var _ replicate.ReplicaClient = (*ReplicaClient)(nil)
 
 // ReplicaClient is a client for writing LTX files to Google Cloud Storage.
 type ReplicaClient struct {
@@ -58,7 +58,7 @@ func (c *ReplicaClient) SetLogger(logger *slog.Logger) {
 
 // NewReplicaClientFromURL creates a new ReplicaClient from URL components.
 // This is used by the replica client factory registration.
-func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (litestream.ReplicaClient, error) {
+func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, userinfo *url.Userinfo) (replicate.ReplicaClient, error) {
 	if host == "" {
 		return nil, fmt.Errorf("bucket required for gs replica URL")
 	}
@@ -128,7 +128,7 @@ func (c *ReplicaClient) LTXFiles(ctx context.Context, level int, seek ltx.TXID, 
 		return nil, err
 	}
 
-	dir := litestream.LTXLevelDir(c.Path, level)
+	dir := replicate.LTXLevelDir(c.Path, level)
 	prefix := dir + "/"
 	if seek != 0 {
 		prefix += seek.String()
@@ -143,7 +143,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 		return info, err
 	}
 
-	key := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	key := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
 	// Use TeeReader to peek at LTX header while preserving data for upload
 	var buf bytes.Buffer
@@ -193,7 +193,7 @@ func (c *ReplicaClient) OpenLTXFile(ctx context.Context, level int, minTXID, max
 		return nil, err
 	}
 
-	key := litestream.LTXFilePath(c.Path, level, minTXID, maxTXID)
+	key := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
 	// In the GCS client, a length of -1 reads to EOF while 0 returns no data.
 	// Callers pass size=0 to indicate "entire object" so translate that here.
@@ -223,7 +223,7 @@ func (c *ReplicaClient) DeleteLTXFiles(ctx context.Context, a []*ltx.FileInfo) e
 	}
 
 	for _, info := range a {
-		key := litestream.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
+		key := replicate.LTXFilePath(c.Path, info.Level, info.MinTXID, info.MaxTXID)
 
 		c.logger.Debug("deleting ltx file", "level", info.Level, "minTXID", info.MinTXID, "maxTXID", info.MaxTXID, "key", key)
 

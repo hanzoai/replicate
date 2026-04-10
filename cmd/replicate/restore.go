@@ -19,7 +19,7 @@ type RestoreCommand struct{}
 
 // Run executes the command.
 func (c *RestoreCommand) Run(ctx context.Context, args []string) (err error) {
-	opt := litestream.NewRestoreOptions()
+	opt := replicate.NewRestoreOptions()
 
 	fs := flag.NewFlagSet("replicate-restore", flag.ContinueOnError)
 	configPath, noExpandEnv := registerConfigFlag(fs)
@@ -61,11 +61,11 @@ func (c *RestoreCommand) Run(ctx context.Context, args []string) (err error) {
 
 	switch *integrityCheck {
 	case "none":
-		opt.IntegrityCheck = litestream.IntegrityCheckNone
+		opt.IntegrityCheck = replicate.IntegrityCheckNone
 	case "quick":
-		opt.IntegrityCheck = litestream.IntegrityCheckQuick
+		opt.IntegrityCheck = replicate.IntegrityCheckQuick
 	case "full":
-		opt.IntegrityCheck = litestream.IntegrityCheckFull
+		opt.IntegrityCheck = replicate.IntegrityCheckFull
 	default:
 		return fmt.Errorf("invalid -integrity-check value: %s", *integrityCheck)
 	}
@@ -78,8 +78,8 @@ func (c *RestoreCommand) Run(ctx context.Context, args []string) (err error) {
 	}
 
 	// Determine replica to restore from.
-	var r *litestream.Replica
-	if litestream.IsURL(fs.Arg(0)) {
+	var r *replicate.Replica
+	if replicate.IsURL(fs.Arg(0)) {
 		if *configPath != "" {
 			return fmt.Errorf("cannot specify a replica URL and the -config flag")
 		}
@@ -101,7 +101,7 @@ func (c *RestoreCommand) Run(ctx context.Context, args []string) (err error) {
 		}
 	}
 
-	if err := r.Restore(ctx, opt); errors.Is(err, litestream.ErrTxNotAvailable) {
+	if err := r.Restore(ctx, opt); errors.Is(err, replicate.ErrTxNotAvailable) {
 		if *ifReplicaExists {
 			slog.Info("no matching backups found")
 			return nil
@@ -114,7 +114,7 @@ func (c *RestoreCommand) Run(ctx context.Context, args []string) (err error) {
 }
 
 // loadFromURL creates a replica & updates the restore options from a replica URL.
-func (c *RestoreCommand) loadFromURL(ctx context.Context, replicaURL string, ifDBNotExists bool, opt *litestream.RestoreOptions) (*litestream.Replica, error) {
+func (c *RestoreCommand) loadFromURL(ctx context.Context, replicaURL string, ifDBNotExists bool, opt *replicate.RestoreOptions) (*replicate.Replica, error) {
 	if opt.OutputPath == "" {
 		return nil, fmt.Errorf("output path required")
 	}
@@ -124,7 +124,7 @@ func (c *RestoreCommand) loadFromURL(ctx context.Context, replicaURL string, ifD
 		return nil, errSkipDBExists
 	}
 
-	syncInterval := litestream.DefaultSyncInterval
+	syncInterval := replicate.DefaultSyncInterval
 	r, err := NewReplicaFromConfig(&ReplicaConfig{
 		URL: replicaURL,
 		ReplicaSettings: ReplicaSettings{
@@ -139,7 +139,7 @@ func (c *RestoreCommand) loadFromURL(ctx context.Context, replicaURL string, ifD
 }
 
 // loadFromConfig returns a replica & updates the restore options from a DB reference.
-func (c *RestoreCommand) loadFromConfig(_ context.Context, dbPath, configPath string, expandEnv, ifDBNotExists bool, opt *litestream.RestoreOptions) (*litestream.Replica, error) {
+func (c *RestoreCommand) loadFromConfig(_ context.Context, dbPath, configPath string, expandEnv, ifDBNotExists bool, opt *replicate.RestoreOptions) (*replicate.Replica, error) {
 	// Load configuration.
 	config, err := ReadConfigFile(configPath, expandEnv)
 	if err != nil {
@@ -222,7 +222,7 @@ Arguments:
 
 	-parallelism NUM
 	    Determines the number of WAL files downloaded in parallel.
-	    Defaults to `+strconv.Itoa(litestream.DefaultRestoreParallelism)+`.
+	    Defaults to `+strconv.Itoa(replicate.DefaultRestoreParallelism)+`.
 
 	-integrity-check MODE
 	    Run a post-restore integrity check on the database.
@@ -233,19 +233,19 @@ Arguments:
 Examples:
 
 	# Restore latest replica for database to original location.
-	$ litestream restore /path/to/db
+	$ replicate restore /path/to/db
 
 	# Restore replica for database to a given point in time.
-	$ litestream restore -timestamp 2020-01-01T00:00:00Z /path/to/db
+	$ replicate restore -timestamp 2020-01-01T00:00:00Z /path/to/db
 
 	# Restore latest replica for database to new /tmp directory
-	$ litestream restore -o /tmp/db /path/to/db
+	$ replicate restore -o /tmp/db /path/to/db
 
 	# Restore database from S3 replica URL.
-	$ litestream restore -o /tmp/db s3://mybucket/db
+	$ replicate restore -o /tmp/db s3://mybucket/db
 
 	# Continuously restore (follow) a database from a replica.
-	$ litestream restore -f -o /tmp/read-replica.db s3://mybucket/db
+	$ replicate restore -f -o /tmp/read-replica.db s3://mybucket/db
 
 `[1:],
 		DefaultConfigPath(),

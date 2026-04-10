@@ -25,7 +25,7 @@ import (
 // then exposes pprof and fgprof endpoints for interactive profiling.
 //
 // This test is designed for manual CPU profiling to understand idle overhead
-// when running many Litestream instances on a single machine.
+// when running many Replicate instances on a single machine.
 //
 // Usage:
 //
@@ -67,7 +67,7 @@ func TestIdleCPUProfile(t *testing.T) {
 
 	// Start N databases with monitoring enabled (the idle hot path).
 	type instance struct {
-		db    *litestream.DB
+		db    *replicate.DB
 		sqldb *sql.DB
 	}
 	instances := make([]instance, 0, dbCount)
@@ -95,13 +95,13 @@ func TestIdleCPUProfile(t *testing.T) {
 			t.Fatalf("insert seed db %d: %v", i, err)
 		}
 
-		// Configure Litestream DB with monitoring enabled.
-		db := litestream.NewDB(dbPath)
-		db.Replica = litestream.NewReplica(db)
+		// Configure Replicate DB with monitoring enabled.
+		db := replicate.NewDB(dbPath)
+		db.Replica = replicate.NewReplica(db)
 		db.Replica.Client = file.NewReplicaClient(replicaDir)
 
 		if err := db.Open(); err != nil {
-			t.Fatalf("open litestream db %d: %v", i, err)
+			t.Fatalf("open replicate db %d: %v", i, err)
 		}
 
 		// Do an initial sync so there's a valid LTX baseline.
@@ -112,7 +112,7 @@ func TestIdleCPUProfile(t *testing.T) {
 		instances = append(instances, instance{db: db, sqldb: sqldb})
 	}
 
-	t.Logf("started %d idle databases with monitoring (interval=%s)", dbCount, litestream.DefaultMonitorInterval)
+	t.Logf("started %d idle databases with monitoring (interval=%s)", dbCount, replicate.DefaultMonitorInterval)
 	t.Logf("")
 	t.Logf("profiling endpoints:")
 	t.Logf("  CPU (on-cpu):     go tool pprof http://localhost%s/debug/pprof/profile?seconds=30", addr)
@@ -129,7 +129,7 @@ func TestIdleCPUProfile(t *testing.T) {
 	t.Logf("shutting down %d databases...", dbCount)
 	for i, inst := range instances {
 		if err := inst.db.Close(context.Background()); err != nil {
-			t.Logf("close litestream db %d: %v", i, err)
+			t.Logf("close replicate db %d: %v", i, err)
 		}
 		if err := inst.sqldb.Close(); err != nil {
 			t.Logf("close sql db %d: %v", i, err)

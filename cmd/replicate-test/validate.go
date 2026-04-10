@@ -36,13 +36,13 @@ type ValidationResult struct {
 }
 
 func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-test validate", flag.ExitOnError)
+	fs := flag.NewFlagSet("replicate-test validate", flag.ExitOnError)
 	fs.StringVar(&c.SourceDB, "source-db", "", "Original database path")
 	fs.StringVar(&c.ReplicaURL, "replica-url", "", "Replica URL to validate")
 	fs.StringVar(&c.RestoredDB, "restored-db", "", "Path for restored database")
 	fs.StringVar(&c.CheckType, "check-type", "quick", "Type of check (quick, integrity, checksum, full)")
 	fs.BoolVar(&c.LTXContinuity, "ltx-continuity", false, "Check LTX file continuity")
-	fs.StringVar(&c.ConfigPath, "config", "", "Litestream config file path")
+	fs.StringVar(&c.ConfigPath, "config", "", "Replicate config file path")
 	fs.Usage = c.Usage
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -109,13 +109,13 @@ func (c *ValidateCommand) performRestore(ctx context.Context) ValidationResult {
 
 	var cmd *exec.Cmd
 	if c.ConfigPath != "" {
-		cmd = exec.CommandContext(ctx, "litestream", "restore",
+		cmd = exec.CommandContext(ctx, "replicate", "restore",
 			"-config", c.ConfigPath,
 			"-o", c.RestoredDB,
 			c.SourceDB,
 		)
 	} else {
-		cmd = exec.CommandContext(ctx, "litestream", "restore",
+		cmd = exec.CommandContext(ctx, "replicate", "restore",
 			"-o", c.RestoredDB,
 			c.ReplicaURL,
 		)
@@ -369,7 +369,7 @@ func (c *ValidateCommand) validateLTXContinuity(ctx context.Context) ValidationR
 		Details:   make(map[string]interface{}),
 	}
 
-	cmd := exec.CommandContext(ctx, "litestream", "ltx", c.ReplicaURL)
+	cmd := exec.CommandContext(ctx, "replicate", "ltx", c.ReplicaURL)
 	output, err := cmd.Output()
 	if err != nil {
 		result.Passed = false
@@ -465,7 +465,7 @@ Validate replication integrity by restoring and checking databases.
 
 Usage:
 
-	litestream-test validate [options]
+	replicate-test validate [options]
 
 Options:
 
@@ -488,17 +488,17 @@ Options:
 	    Default: false
 
 	-config PATH
-	    Litestream config file path
+	    Replicate config file path
 
 Examples:
 
 	# Quick validation
-	litestream-test validate -source-db /tmp/test.db -replica-url s3://bucket/test
+	replicate-test validate -source-db /tmp/test.db -replica-url s3://bucket/test
 
 	# Full validation with all checks
-	litestream-test validate -source-db /tmp/test.db -replica-url s3://bucket/test -check-type full
+	replicate-test validate -source-db /tmp/test.db -replica-url s3://bucket/test -check-type full
 
 	# Validate with config file
-	litestream-test validate -source-db /tmp/test.db -config /etc/litestream.yml -check-type integrity
+	replicate-test validate -source-db /tmp/test.db -config /etc/replicate.yml -check-type integrity
 `[1:])
 }

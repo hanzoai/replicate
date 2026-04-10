@@ -1,6 +1,6 @@
 # LTX Format Specification
 
-LTX (Log Transaction) is Litestream's custom format for storing database changes in an immutable, append-only manner.
+LTX (Log Transaction) is Replicate's custom format for storing database changes in an immutable, append-only manner.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -509,19 +509,19 @@ func WriteLTXFile(path string, pages []Page) error {
 sequenceDiagram
     participant SQLite
     participant WAL
-    participant Litestream
+    participant Replicate
     participant LTX
 
     SQLite->>WAL: Write transaction
     WAL->>WAL: Append frames
 
-    Litestream->>WAL: Monitor changes
-    WAL-->>Litestream: Read frames
+    Replicate->>WAL: Monitor changes
+    WAL-->>Replicate: Read frames
 
-    Litestream->>Litestream: Convert frames
-    Note over Litestream: - Skip lock page<br/>- Add checksums<br/>- Build index
+    Replicate->>Replicate: Convert frames
+    Note over Replicate: - Skip lock page<br/>- Add checksums<br/>- Build index
 
-    Litestream->>LTX: Write LTX file
+    Replicate->>LTX: Write LTX file
     LTX->>Storage: Upload
 ```
 
@@ -632,11 +632,11 @@ func readWithRetry(client ReplicaClient, info *FileInfo) ([]byte, error) {
 
 ### Inspect LTX Files
 
-The Litestream CLI currently exposes a single helper for listing LTX files:
+The Replicate CLI currently exposes a single helper for listing LTX files:
 
 ```bash
-litestream ltx /path/to/db.sqlite
-litestream ltx s3://bucket/db
+replicate ltx /path/to/db.sqlite
+replicate ltx s3://bucket/db
 ```
 
 For low-level inspection (page payloads, checksums, etc.), use the Go API:

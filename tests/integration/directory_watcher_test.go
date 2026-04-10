@@ -12,7 +12,7 @@ import (
 
 // TestDirectoryWatcherBasicLifecycle tests the fundamental directory watcher functionality:
 // - Start with empty directory
-// - Create databases while Litestream is running
+// - Create databases while Replicate is running
 // - Verify they are detected and replicated
 // - Delete databases and verify cleanup
 func TestDirectoryWatcherBasicLifecycle(t *testing.T) {
@@ -27,13 +27,13 @@ func TestDirectoryWatcherBasicLifecycle(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream with directory watching...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate with directory watching...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
-	// Give Litestream time to start
+	// Give Replicate time to start
 	time.Sleep(2 * time.Second)
 
 	// Step 1: Create 2 databases in separate tenant directories
@@ -119,11 +119,11 @@ func TestDirectoryWatcherRapidConcurrentCreation(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream with directory watching...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate with directory watching...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(2 * time.Second)
 
@@ -172,9 +172,9 @@ func TestDirectoryWatcherRecursiveMode(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream with recursive directory watching...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate with recursive directory watching...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
 
 	time.Sleep(2 * time.Second)
@@ -215,11 +215,11 @@ func TestDirectoryWatcherRecursiveMode(t *testing.T) {
 		t.Fatalf("dynamically created database not detected: %v", err)
 	}
 
-	// Stop Litestream before deleting directories to release file handles
-	t.Log("Stopping Litestream before directory deletion...")
-	db.StopLitestream()
+	// Stop Replicate before deleting directories to release file handles
+	t.Log("Stopping Replicate before directory deletion...")
+	db.StopReplicate()
 
-	// Delete entire subdirectory (now safe since Litestream released handles)
+	// Delete entire subdirectory (now safe since Replicate released handles)
 	t.Log("Deleting subdirectory with databases...")
 	level1Dir := filepath.Join(db.DirPath, "level1")
 	if err := os.RemoveAll(level1Dir); err != nil {
@@ -240,11 +240,11 @@ func TestDirectoryWatcherPatternMatching(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream with pattern '*.db'...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate with pattern '*.db'...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(2 * time.Second)
 
@@ -300,11 +300,11 @@ func TestDirectoryWatcherNonSQLiteRejection(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(2 * time.Second)
 
@@ -357,7 +357,7 @@ func TestDirectoryWatcherActiveConnections(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	// Create database with active connection before starting Litestream
+	// Create database with active connection before starting Replicate
 	t.Log("Creating database with active connection...")
 	db1Path := CreateDatabaseInDir(t, db.DirPath, "", "active.db")
 
@@ -369,12 +369,12 @@ func TestDirectoryWatcherActiveConnections(t *testing.T) {
 	}
 	defer cancel()
 
-	// Start Litestream
-	t.Log("Starting Litestream with active database...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	// Start Replicate
+	t.Log("Starting Replicate with active database...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(2 * time.Second)
 
@@ -429,7 +429,7 @@ func TestDirectoryWatcherActiveConnections(t *testing.T) {
 	t.Log("✓ Active connections test passed")
 }
 
-// TestDirectoryWatcherRestartBehavior tests behavior across Litestream restarts
+// TestDirectoryWatcherRestartBehavior tests behavior across Replicate restarts
 func TestDirectoryWatcherRestartBehavior(t *testing.T) {
 	RequireBinaries(t)
 
@@ -447,9 +447,9 @@ func TestDirectoryWatcherRestartBehavior(t *testing.T) {
 	}
 
 	// First start
-	t.Log("Starting Litestream (first time)...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate (first time)...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -475,24 +475,24 @@ func TestDirectoryWatcherRestartBehavior(t *testing.T) {
 		}
 	}
 
-	// Stop Litestream
-	t.Log("Stopping Litestream...")
-	if err := db.StopLitestream(); err != nil {
-		t.Fatalf("stop litestream: %v", err)
+	// Stop Replicate
+	t.Log("Stopping Replicate...")
+	if err := db.StopReplicate(); err != nil {
+		t.Fatalf("stop replicate: %v", err)
 	}
 
 	// Add one more database while stopped
-	t.Log("Adding database while Litestream is stopped...")
+	t.Log("Adding database while Replicate is stopped...")
 	db6 := CreateDatabaseInDir(t, db.DirPath, "", "db6.db")
 
 	time.Sleep(2 * time.Second)
 
-	// Restart Litestream
-	t.Log("Restarting Litestream...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("restart litestream: %v", err)
+	// Restart Replicate
+	t.Log("Restarting Replicate...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("restart replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(3 * time.Second)
 
@@ -536,11 +536,11 @@ func TestDirectoryWatcherRenameOperations(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(2 * time.Second)
 
@@ -604,11 +604,11 @@ func TestDirectoryWatcherLoadWithWrites(t *testing.T) {
 		t.Fatalf("create config: %v", err)
 	}
 
-	t.Log("Starting Litestream...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	t.Log("Starting Replicate...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
-	defer db.StopLitestream()
+	defer db.StopReplicate()
 
 	time.Sleep(3 * time.Second)
 

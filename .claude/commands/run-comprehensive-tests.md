@@ -1,5 +1,5 @@
 ---
-description: Run comprehensive test suite for Litestream
+description: Run comprehensive test suite for Replicate
 ---
 
 # Run Comprehensive Tests Command
@@ -75,13 +75,13 @@ INSERT INTO test SELECT value, randomblob(4000) FROM generate_series;
 EOF
 
   # Test replication
-  ./bin/litestream replicate test-${pagesize}.db file:///tmp/replica-${pagesize} &
+  ./bin/replicate replicate test-${pagesize}.db file:///tmp/replica-${pagesize} &
   PID=$!
   sleep 10
   kill $PID
 
   # Test restoration
-  ./bin/litestream restore -o restored-${pagesize}.db file:///tmp/replica-${pagesize}
+  ./bin/replicate restore -o restored-${pagesize}.db file:///tmp/replica-${pagesize}
 
   # Verify integrity
   sqlite3 restored-${pagesize}.db "PRAGMA integrity_check;" | grep -q "ok" || echo "FAILED: Page size $pagesize"
@@ -139,15 +139,15 @@ go tool pprof -top cpu.prof
 echo "=== Testing Builds ==="
 
 # Test main build (no CGO)
-go build -o bin/litestream ./cmd/litestream
+go build -o bin/replicate ./cmd/replicate
 
 # Test VFS build (requires CGO)
 make vfs
 
 # Test cross-compilation
-GOOS=linux GOARCH=amd64 go build -o bin/litestream-linux-amd64 ./cmd/litestream
-GOOS=darwin GOARCH=arm64 go build -o bin/litestream-darwin-arm64 ./cmd/litestream
-GOOS=windows GOARCH=amd64 go build -o bin/litestream-windows-amd64.exe ./cmd/litestream
+GOOS=linux GOARCH=amd64 go build -o bin/replicate-linux-amd64 ./cmd/replicate
+GOOS=darwin GOARCH=arm64 go build -o bin/replicate-darwin-arm64 ./cmd/replicate
+GOOS=windows GOARCH=amd64 go build -o bin/replicate-windows-amd64.exe ./cmd/replicate
 ```
 
 ### 9. Linting and Static Analysis
@@ -156,7 +156,7 @@ echo "=== Running Linters ==="
 
 # Format check
 gofmt -d .
-goimports -local github.com/benbjohnson/litestream -d .
+goimports -local github.com/benbjohnson/replicate -d .
 
 # Vet
 go vet ./...
@@ -189,7 +189,7 @@ open coverage.html  # macOS
 #!/bin/bash
 set -e
 
-echo "Running Litestream Test Suite"
+echo "Running Replicate Test Suite"
 
 # Unit tests with race and coverage
 go test -race -cover -v ./... | tee test_results.txt

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve Litestream
+about: Create a report to help us improve Replicate
 title: ''
 labels: bug
 assignees: ''
@@ -15,8 +15,8 @@ A clear and concise description of the bug.
 
 ## Environment
 
-**Litestream version:**
-<!--- Run `litestream version` and paste output here -->
+**Replicate version:**
+<!--- Run `replicate version` and paste output here -->
 ```text
 paste output here
 ```
@@ -44,9 +44,9 @@ paste output here
 <!--- What actually happened -->
 
 ## Configuration
-<!--- Include relevant parts of your litestream.yml -->
+<!--- Include relevant parts of your replicate.yml -->
 <!--- IMPORTANT: Remove sensitive information like credentials, keys, and URLs -->
-<details><summary>litestream.yml</summary>
+<details><summary>replicate.yml</summary>
 
 ```yaml
 # Paste your configuration here
@@ -56,7 +56,7 @@ paste output here
 
 ## Logs
 <!--- Include relevant error messages or logs -->
-<!--- For more detail, run litestream with -trace flag -->
+<!--- For more detail, run replicate with -trace flag -->
 <!--- For long logs, consider using https://gist.github.com -->
 <details><summary>Log output</summary>
 

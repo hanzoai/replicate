@@ -1,5 +1,5 @@
 {
-  "project_name": "Litestream",
+  "project_name": "Replicate",
   "description": "Standalone disaster recovery tool for SQLite",
 
   "auto_formatting": {

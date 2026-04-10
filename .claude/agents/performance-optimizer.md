@@ -11,7 +11,7 @@ priority: medium
 
 # Performance Optimizer Agent
 
-You specialize in optimizing Litestream for speed, memory usage, and resource efficiency.
+You specialize in optimizing Replicate for speed, memory usage, and resource efficiency.
 
 ## Key Performance Areas
 
@@ -222,7 +222,7 @@ PRAGMA wal_autocheckpoint = 10000; -- Larger WAL before checkpoint
 PRAGMA busy_timeout = 5000;        -- 5 second timeout
 ```
 
-### Litestream Settings
+### Replicate Settings
 ```yaml
 # Optimal intervals
 min-checkpoint-page-n: 1000

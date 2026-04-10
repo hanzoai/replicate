@@ -25,26 +25,26 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// TestShutdownSyncRetry_429Errors tests that Litestream retries syncing LTX files
+// TestShutdownSyncRetry_429Errors tests that Replicate retries syncing LTX files
 // during shutdown when receiving 429 (Too Many Requests) errors.
 //
 // This test:
 // 1. Starts a MinIO container
 // 2. Starts a rate-limiting proxy in front of MinIO that returns 429 for first N PUT requests
-// 3. Starts Litestream replicating to the proxy endpoint
+// 3. Starts Replicate replicating to the proxy endpoint
 // 4. Writes data and syncs
 // 5. Sends SIGTERM to trigger graceful shutdown
-// 6. Verifies that Litestream retries and eventually succeeds despite 429 errors
+// 6. Verifies that Replicate retries and eventually succeeds despite 429 errors
 //
 // Requirements:
 // - Docker must be running
-// - Litestream binary must be built at ../../bin/litestream
+// - Replicate binary must be built at ../../bin/replicate
 func TestShutdownSyncRetry_429Errors(t *testing.T) {
 	RequireBinaries(t)
 	RequireDocker(t)
 
 	t.Log("================================================")
-	t.Log("Litestream Shutdown Sync Retry Test (429 Errors)")
+	t.Log("Replicate Shutdown Sync Retry Test (429 Errors)")
 	t.Log("================================================")
 	t.Log("")
 
@@ -55,7 +55,7 @@ func TestShutdownSyncRetry_429Errors(t *testing.T) {
 	t.Logf("✓ MinIO running at: %s", minioEndpoint)
 
 	// Create MinIO bucket by creating directory in /data (MinIO stores buckets as directories)
-	bucket := "litestream-test"
+	bucket := "replicate-test"
 	t.Logf("Creating bucket '%s'...", bucket)
 
 	// Wait for MinIO to be ready
@@ -99,7 +99,7 @@ func TestShutdownSyncRetry_429Errors(t *testing.T) {
 	// Setup test database
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test.db")
-	configPath := filepath.Join(tempDir, "litestream.yml")
+	configPath := filepath.Join(tempDir, "replicate.yml")
 
 	// Create database with some data
 	t.Log("Creating test database...")
@@ -121,7 +121,7 @@ func TestShutdownSyncRetry_429Errors(t *testing.T) {
 	t.Log("✓ Database created with initial data")
 	t.Log("")
 
-	// Create Litestream config with shutdown retry settings
+	// Create Replicate config with shutdown retry settings
 	s3Path := fmt.Sprintf("test-%d", time.Now().Unix())
 	config := fmt.Sprintf(`
 shutdown-sync-timeout: 10s
@@ -148,19 +148,19 @@ dbs:
 	t.Logf("✓ Config written to: %s", configPath)
 	t.Log("")
 
-	// Start Litestream
-	t.Log("Starting Litestream...")
-	litestreamBin := filepath.Join("..", "..", "bin", "litestream")
-	cmd := exec.Command(litestreamBin, "replicate", "-config", configPath)
+	// Start Replicate
+	t.Log("Starting Replicate...")
+	replicateBin := filepath.Join("..", "..", "bin", "replicate")
+	cmd := exec.Command(replicateBin, "replicate", "-config", configPath)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = io.MultiWriter(os.Stdout, &stdout)
 	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
-	t.Logf("✓ Litestream started (PID: %d)", cmd.Process.Pid)
+	t.Logf("✓ Replicate started (PID: %d)", cmd.Process.Pid)
 
 	// Wait for initial sync
 	t.Log("Waiting for initial sync...")
@@ -205,14 +205,14 @@ dbs:
 		if err != nil {
 			// Check if it's just a signal exit (expected)
 			if exitErr, ok := err.(*exec.ExitError); ok {
-				t.Logf("Litestream exited with: %v", exitErr)
+				t.Logf("Replicate exited with: %v", exitErr)
 			} else {
-				t.Fatalf("Litestream failed: %v", err)
+				t.Fatalf("Replicate failed: %v", err)
 			}
 		}
 	case <-time.After(30 * time.Second):
 		cmd.Process.Kill()
-		t.Fatal("Litestream did not exit within 30 seconds")
+		t.Fatal("Replicate did not exit within 30 seconds")
 	}
 
 	t.Log("")

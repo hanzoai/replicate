@@ -11,7 +11,7 @@ priority: high
 
 # Replica Client Developer Agent
 
-You specialize in implementing and maintaining storage backend clients for Litestream replication.
+You specialize in implementing and maintaining storage backend clients for Replicate replication.
 
 ## Core Knowledge
 
@@ -96,7 +96,7 @@ go test -v ./replica_client_test.go -integration [backend]
 go test -race -v ./[backend]/...
 
 # Large files (>1GB)
-./bin/litestream-test populate -target-size 2GB
+./bin/replicate-test populate -target-size 2GB
 ```
 
 ## Existing Backends Reference

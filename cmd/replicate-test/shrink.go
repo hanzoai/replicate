@@ -23,7 +23,7 @@ type ShrinkCommand struct {
 }
 
 func (c *ShrinkCommand) Run(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("litestream-test shrink", flag.ExitOnError)
+	fs := flag.NewFlagSet("replicate-test shrink", flag.ExitOnError)
 	fs.StringVar(&c.DB, "db", "", "Database path (required)")
 	fs.Float64Var(&c.DeletePercentage, "delete-percentage", 50, "Percentage of data to delete (0-100)")
 	fs.BoolVar(&c.Vacuum, "vacuum", false, "Run VACUUM after deletion")
@@ -290,7 +290,7 @@ Shrink a database by deleting data and optionally running VACUUM.
 
 Usage:
 
-	litestream-test shrink [options]
+	replicate-test shrink [options]
 
 Options:
 
@@ -316,15 +316,15 @@ Options:
 Examples:
 
 	# Delete 50% of data
-	litestream-test shrink -db /tmp/test.db -delete-percentage 50
+	replicate-test shrink -db /tmp/test.db -delete-percentage 50
 
 	# Delete 75% and run VACUUM
-	litestream-test shrink -db /tmp/test.db -delete-percentage 75 -vacuum
+	replicate-test shrink -db /tmp/test.db -delete-percentage 75 -vacuum
 
 	# Delete 30%, checkpoint, then VACUUM
-	litestream-test shrink -db /tmp/test.db -delete-percentage 30 -checkpoint -vacuum
+	replicate-test shrink -db /tmp/test.db -delete-percentage 30 -checkpoint -vacuum
 
 	# Test with FULL checkpoint mode
-	litestream-test shrink -db /tmp/test.db -delete-percentage 50 -checkpoint -checkpoint-mode FULL
+	replicate-test shrink -db /tmp/test.db -delete-percentage 50 -checkpoint -checkpoint-mode FULL
 `[1:])
 }

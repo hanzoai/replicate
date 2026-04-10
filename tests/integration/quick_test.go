@@ -38,9 +38,9 @@ func TestQuickValidation(t *testing.T) {
 
 	t.Log("✓ Database populated to 10MB")
 
-	t.Log("[2] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[2] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(5 * time.Second)
@@ -100,7 +100,7 @@ func TestQuickValidation(t *testing.T) {
 		t.Log("✓ No errors detected")
 	}
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[6] Testing restore...")

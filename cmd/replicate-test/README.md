@@ -1,10 +1,10 @@
-# litestream-test
+# replicate-test
 
-A CLI testing harness for Litestream that provides tools for database population, load generation, and replication validation.
+A CLI testing harness for Replicate that provides tools for database population, load generation, and replication validation.
 
 ## Overview
 
-`litestream-test` is a purpose-built tool for testing Litestream's replication functionality across various scenarios. It provides commands for:
+`replicate-test` is a purpose-built tool for testing Replicate's replication functionality across various scenarios. It provides commands for:
 
 - Quickly populating databases to specific sizes
 - Generating continuous load with configurable patterns
@@ -14,7 +14,7 @@ A CLI testing harness for Litestream that provides tools for database population
 ## Installation
 
 ```bash
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate-test ./cmd/replicate-test
 ```
 
 ## Commands
@@ -24,7 +24,7 @@ go build -o bin/litestream-test ./cmd/litestream-test
 Quickly populate a database to a target size with structured test data.
 
 ```bash
-litestream-test populate -db <path> [options]
+replicate-test populate -db <path> [options]
 ```
 
 **Options:**
@@ -38,9 +38,9 @@ litestream-test populate -db <path> [options]
 
 **Examples:**
 ```bash
-litestream-test populate -db /tmp/test.db -target-size 1GB
-litestream-test populate -db /tmp/test.db -target-size 50MB -batch-size 10000
-litestream-test populate -db /tmp/test.db -target-size 1.5GB -page-size 4096
+replicate-test populate -db /tmp/test.db -target-size 1GB
+replicate-test populate -db /tmp/test.db -target-size 50MB -batch-size 10000
+replicate-test populate -db /tmp/test.db -target-size 1.5GB -page-size 4096
 ```
 
 **Use Cases:**
@@ -53,7 +53,7 @@ litestream-test populate -db /tmp/test.db -target-size 1.5GB -page-size 4096
 Generate continuous write and read load on a database with configurable patterns.
 
 ```bash
-litestream-test load -db <path> [options]
+replicate-test load -db <path> [options]
 ```
 
 **Options:**
@@ -71,9 +71,9 @@ litestream-test load -db <path> [options]
 
 **Examples:**
 ```bash
-litestream-test load -db /tmp/test.db -write-rate 50 -duration 5m
-litestream-test load -db /tmp/test.db -write-rate 100 -duration 2h -pattern wave
-litestream-test load -db /tmp/test.db -write-rate 200 -duration 8h -workers 4 -pattern burst
+replicate-test load -db /tmp/test.db -write-rate 50 -duration 5m
+replicate-test load -db /tmp/test.db -write-rate 100 -duration 2h -pattern wave
+replicate-test load -db /tmp/test.db -write-rate 200 -duration 8h -workers 4 -pattern burst
 ```
 
 **Use Cases:**
@@ -87,7 +87,7 @@ litestream-test load -db /tmp/test.db -write-rate 200 -duration 8h -workers 4 -p
 Shrink a database by deleting data, useful for testing compaction scenarios.
 
 ```bash
-litestream-test shrink -db <path> [options]
+replicate-test shrink -db <path> [options]
 ```
 
 **Use Cases:**
@@ -100,7 +100,7 @@ litestream-test shrink -db <path> [options]
 Validate that a replica can be restored and matches the source database.
 
 ```bash
-litestream-test validate [options]
+replicate-test validate [options]
 ```
 
 **Options:**
@@ -113,13 +113,13 @@ litestream-test validate [options]
   - `checksum` - Full database checksum comparison
   - `full` - All validation types
 - `-ltx-continuity` - Check LTX file continuity (default: false)
-- `-config` - Litestream config file path (alternative to replica-url)
+- `-config` - Replicate config file path (alternative to replica-url)
 
 **Examples:**
 ```bash
-litestream-test validate -source-db /tmp/test.db -replica-url file:///tmp/replica
-litestream-test validate -source-db /tmp/test.db -replica-url s3://bucket/path -check-type full
-litestream-test validate -source-db /tmp/test.db -config /tmp/litestream.yml -ltx-continuity
+replicate-test validate -source-db /tmp/test.db -replica-url file:///tmp/replica
+replicate-test validate -source-db /tmp/test.db -replica-url s3://bucket/path -check-type full
+replicate-test validate -source-db /tmp/test.db -config /tmp/replicate.yml -ltx-continuity
 ```
 
 **Use Cases:**
@@ -133,7 +133,7 @@ litestream-test validate -source-db /tmp/test.db -config /tmp/litestream.yml -lt
 Show version information.
 
 ```bash
-litestream-test version
+replicate-test version
 ```
 
 ## Usage Patterns
@@ -141,27 +141,27 @@ litestream-test version
 ### Basic Test Workflow
 
 ```bash
-litestream-test populate -db /tmp/test.db -target-size 100MB
+replicate-test populate -db /tmp/test.db -target-size 100MB
 
-litestream replicate /tmp/test.db file:///tmp/replica &
-LITESTREAM_PID=$!
+replicate replicate /tmp/test.db file:///tmp/replica &
+REPLICATE_PID=$!
 
-litestream-test load -db /tmp/test.db -duration 5m -write-rate 50
+replicate-test load -db /tmp/test.db -duration 5m -write-rate 50
 
-kill $LITESTREAM_PID
+kill $REPLICATE_PID
 wait
 
-litestream-test validate -source-db /tmp/test.db -replica-url file:///tmp/replica
+replicate-test validate -source-db /tmp/test.db -replica-url file:///tmp/replica
 ```
 
 ### Overnight Test Pattern
 
 ```bash
-litestream-test populate -db /tmp/test.db -target-size 100MB
+replicate-test populate -db /tmp/test.db -target-size 100MB
 
-litestream replicate -config litestream.yml &
+replicate replicate -config replicate.yml &
 
-litestream-test load -db /tmp/test.db \
+replicate-test load -db /tmp/test.db \
   -duration 8h \
   -write-rate 100 \
   -pattern wave \
@@ -171,24 +171,24 @@ litestream-test load -db /tmp/test.db \
 ### Large Database with Lock Page Testing
 
 ```bash
-litestream-test populate -db /tmp/test.db \
+replicate-test populate -db /tmp/test.db \
   -target-size 1.5GB \
   -page-size 4096 \
   -batch-size 10000
 
-litestream replicate /tmp/test.db s3://bucket/path &
+replicate replicate /tmp/test.db s3://bucket/path &
 
-litestream-test validate -source-db /tmp/test.db \
+replicate-test validate -source-db /tmp/test.db \
   -replica-url s3://bucket/path \
   -check-type full
 ```
 
 ## Integration with Test Scripts
 
-The `litestream-test` tool is used by all scripts in the `scripts/` directory. These scripts orchestrate full test scenarios:
+The `replicate-test` tool is used by all scripts in the `scripts/` directory. These scripts orchestrate full test scenarios:
 
-- `scripts/*.sh` - Use litestream-test for database operations
-- `scripts/verify-test-setup.sh` - Checks that litestream-test is built
+- `scripts/*.sh` - Use replicate-test for database operations
+- `scripts/verify-test-setup.sh` - Checks that replicate-test is built
 - See `scripts/README.md` for detailed test scenario documentation
 
 ## Related Documentation
@@ -202,18 +202,18 @@ The `litestream-test` tool is used by all scripts in the `scripts/` directory. T
 ### Building
 
 ```bash
-go build -o bin/litestream-test ./cmd/litestream-test
+go build -o bin/replicate-test ./cmd/replicate-test
 ```
 
 ### Testing
 
 ```bash
-go test ./cmd/litestream-test/...
+go test ./cmd/replicate-test/...
 ```
 
 ### Adding New Commands
 
-1. Create a new file in `cmd/litestream-test/` (e.g., `mycommand.go`)
+1. Create a new file in `cmd/replicate-test/` (e.g., `mycommand.go`)
 2. Implement the command struct and Run method
 3. Add command to switch statement in `main.go`
 4. Update this README with command documentation
