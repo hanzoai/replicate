@@ -28,23 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 	dist/replicate-vfs.a \
 	-lpthread -ldl -lm
 
-# --- Hardened image (Scratch) ---
-FROM alpine:3.21 AS certs
-RUN apk --update add ca-certificates && \
-	echo "nonroot:x:65532:65532:nonroot:/home/nonroot:/sbin/nologin" > /etc/minimal-passwd && \
-	echo "nonroot:x:65532:" > /etc/minimal-group
-
-FROM scratch AS hardened
-COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=certs /etc/minimal-passwd /etc/passwd
-COPY --from=certs /etc/minimal-group /etc/group
-COPY --from=builder /usr/local/bin/replicate /usr/local/bin/replicate
-USER nonroot:nonroot
-ENTRYPOINT ["/usr/local/bin/replicate"]
-CMD []
-
-# --- Default image (Debian) ---
-FROM debian:bookworm-slim AS default
+FROM debian:bookworm-slim
 
 RUN apt-get update && \
 	apt-get install -y ca-certificates sqlite3 && \
