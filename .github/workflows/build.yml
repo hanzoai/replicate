@@ -3,6 +3,7 @@ name: Build replicate
 on:
   push:
     branches: [main, dev, test]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -27,7 +28,8 @@ jobs:
           images: ghcr.io/hanzoai/replicate
           tags: |
             type=ref,event=branch
-            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
       - uses: docker/build-push-action@v6
         with:
