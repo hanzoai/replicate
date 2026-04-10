@@ -111,7 +111,7 @@ func TestCleanSourcePath(t *testing.T) {
 		},
 		{
 			name: "absolute with module path",
-			file: "/Users/dev/go/pkg/mod/github.com/benbjohnson/replicate@v0.5.0/db.go",
+			file: "/Users/dev/go/pkg/mod/github.com/hanzoai/replicate@v0.5.0/db.go",
 			want: "db.go",
 		},
 		{
