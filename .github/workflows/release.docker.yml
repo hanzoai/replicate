@@ -24,57 +24,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Default (Debian) image
-      - id: meta-default
+      - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/hanzoai/replicate
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha
-            type=sha,format=long
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
       - uses: docker/build-push-action@v6
         with:
           context: .
-          target: default
           push: true
           provenance: true
           sbom: true
           platforms: ${{ env.PLATFORMS }}
-          tags: ${{ steps.meta-default.outputs.tags }}
-          labels: ${{ steps.meta-default.outputs.labels }}
-          build-args: |
-            REPLICATE_VERSION=${{ env.VERSION }}
-
-      # Hardened (Scratch) image
-      - id: meta-scratch
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/hanzoai/replicate
-          flavor: |
-            latest=auto
-            suffix=-scratch
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha
-            type=sha,format=long
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: hardened
-          push: true
-          provenance: true
-          sbom: true
-          platforms: ${{ env.PLATFORMS }}
-          tags: ${{ steps.meta-scratch.outputs.tags }}
-          labels: ${{ steps.meta-scratch.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             REPLICATE_VERSION=${{ env.VERSION }}
