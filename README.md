@@ -8,9 +8,6 @@ will not corrupt your database.
 
 Module: `github.com/hanzoai/replicate`
 
-This is a fork of [Litestream](https://github.com/benbjohnson/litestream) by
-Ben Johnson, rebranded and extended for the Hanzo infrastructure stack.
-
 ## Docker
 
 ```
@@ -51,16 +48,6 @@ replicate restore [arguments] DB_PATH
 replicate version
 ```
 
-## Upstream
-
-For the original documentation and installation instructions, visit the
-[Litestream web site](https://litestream.io).
-
 ## License
 
 See [LICENSE](LICENSE).
-
-## Acknowledgements
-
-All credit to [Ben Johnson](https://github.com/benbjohnson) and the Litestream
-contributors for the original project.
