@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	_ litestream.Leaser = (*Leaser)(nil)
+	_ replicate.Leaser = (*Leaser)(nil)
 
 	ErrLeaseRequired        = errors.New("lease required")
 	ErrLeaseETagRequired    = errors.New("lease etag required")
@@ -87,14 +87,14 @@ func (l *Leaser) lockKey() string {
 	return l.Path + "/" + DefaultLeasePath
 }
 
-func (l *Leaser) AcquireLease(ctx context.Context) (*litestream.Lease, error) {
+func (l *Leaser) AcquireLease(ctx context.Context) (*replicate.Lease, error) {
 	existing, etag, err := l.readLease(ctx)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("read existing lease: %w", err)
 	}
 
 	if existing != nil && !existing.IsExpired() {
-		return nil, &litestream.LeaseExistsError{
+		return nil, &replicate.LeaseExistsError{
 			Owner:     existing.Owner,
 			ExpiresAt: existing.ExpiresAt,
 		}
@@ -105,7 +105,7 @@ func (l *Leaser) AcquireLease(ctx context.Context) (*litestream.Lease, error) {
 		generation = existing.Generation + 1
 	}
 
-	newLease := &litestream.Lease{
+	newLease := &replicate.Lease{
 		Generation: generation,
 		ExpiresAt:  time.Now().Add(l.TTL),
 		Owner:      l.Owner,
@@ -113,10 +113,10 @@ func (l *Leaser) AcquireLease(ctx context.Context) (*litestream.Lease, error) {
 
 	newETag, err := l.writeLease(ctx, newLease, etag)
 	if err != nil {
-		var leaseErr *litestream.LeaseExistsError
+		var leaseErr *replicate.LeaseExistsError
 		if errors.As(err, &leaseErr) {
 			if current, _, readErr := l.readLease(ctx); readErr == nil && current != nil {
-				return nil, &litestream.LeaseExistsError{
+				return nil, &replicate.LeaseExistsError{
 					Owner:     current.Owner,
 					ExpiresAt: current.ExpiresAt,
 				}
@@ -135,7 +135,7 @@ func (l *Leaser) AcquireLease(ctx context.Context) (*litestream.Lease, error) {
 	return newLease, nil
 }
 
-func (l *Leaser) RenewLease(ctx context.Context, lease *litestream.Lease) (*litestream.Lease, error) {
+func (l *Leaser) RenewLease(ctx context.Context, lease *replicate.Lease) (*replicate.Lease, error) {
 	if lease == nil {
 		return nil, ErrLeaseRequired
 	}
@@ -143,7 +143,7 @@ func (l *Leaser) RenewLease(ctx context.Context, lease *litestream.Lease) (*lite
 		return nil, ErrLeaseETagRequired
 	}
 
-	newLease := &litestream.Lease{
+	newLease := &replicate.Lease{
 		Generation: lease.Generation,
 		ExpiresAt:  time.Now().Add(l.TTL),
 		Owner:      l.Owner,
@@ -151,9 +151,9 @@ func (l *Leaser) RenewLease(ctx context.Context, lease *litestream.Lease) (*lite
 
 	newETag, err := l.writeLease(ctx, newLease, lease.ETag)
 	if err != nil {
-		var leaseErr *litestream.LeaseExistsError
+		var leaseErr *replicate.LeaseExistsError
 		if errors.As(err, &leaseErr) {
-			return nil, litestream.ErrLeaseNotHeld
+			return nil, replicate.ErrLeaseNotHeld
 		}
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (l *Leaser) RenewLease(ctx context.Context, lease *litestream.Lease) (*lite
 	return newLease, nil
 }
 
-func (l *Leaser) ReleaseLease(ctx context.Context, lease *litestream.Lease) error {
+func (l *Leaser) ReleaseLease(ctx context.Context, lease *replicate.Lease) error {
 	if lease == nil {
 		return ErrLeaseRequired
 	}
@@ -187,7 +187,7 @@ func (l *Leaser) ReleaseLease(ctx context.Context, lease *litestream.Lease) erro
 			return ErrLeaseAlreadyReleased
 		}
 		if isPreconditionFailed(err) {
-			return litestream.ErrLeaseNotHeld
+			return replicate.ErrLeaseNotHeld
 		}
 		return fmt.Errorf("delete lease: %w", err)
 	}
@@ -199,7 +199,7 @@ func (l *Leaser) ReleaseLease(ctx context.Context, lease *litestream.Lease) erro
 	return nil
 }
 
-func (l *Leaser) readLease(ctx context.Context) (*litestream.Lease, string, error) {
+func (l *Leaser) readLease(ctx context.Context) (*replicate.Lease, string, error) {
 	key := l.lockKey()
 
 	out, err := l.s3.GetObject(ctx, &s3.GetObjectInput{
@@ -214,7 +214,7 @@ func (l *Leaser) readLease(ctx context.Context) (*litestream.Lease, string, erro
 	}
 	defer out.Body.Close()
 
-	var lease litestream.Lease
+	var lease replicate.Lease
 	if err := json.NewDecoder(out.Body).Decode(&lease); err != nil {
 		return nil, "", fmt.Errorf("decode lock file: %w", err)
 	}
@@ -228,7 +228,7 @@ func (l *Leaser) readLease(ctx context.Context) (*litestream.Lease, string, erro
 	return &lease, etag, nil
 }
 
-func (l *Leaser) writeLease(ctx context.Context, lease *litestream.Lease, etag string) (string, error) {
+func (l *Leaser) writeLease(ctx context.Context, lease *replicate.Lease, etag string) (string, error) {
 	key := l.lockKey()
 
 	data, err := json.Marshal(lease)
@@ -252,7 +252,7 @@ func (l *Leaser) writeLease(ctx context.Context, lease *litestream.Lease, etag s
 	out, err := l.s3.PutObject(ctx, input)
 	if err != nil {
 		if isPreconditionFailed(err) {
-			return "", &litestream.LeaseExistsError{}
+			return "", &replicate.LeaseExistsError{}
 		}
 		return "", fmt.Errorf("put lock file: %w", err)
 	}

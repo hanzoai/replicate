@@ -10,7 +10,7 @@ import (
 	"github.com/hanzoai/replicate"
 )
 
-// ResetCommand is a command for resetting local Litestream state for a database.
+// ResetCommand is a command for resetting local Replicate state for a database.
 type ResetCommand struct{}
 
 // Run executes the command.
@@ -67,14 +67,14 @@ func (c *ResetCommand) Run(ctx context.Context, args []string) (err error) {
 	}
 
 	// Create DB instance
-	var db *litestream.DB
+	var db *replicate.DB
 	if dbConfig != nil {
 		db, err = NewDBFromConfig(dbConfig)
 		if err != nil {
 			return fmt.Errorf("cannot create database from config: %w", err)
 		}
 	} else {
-		db = litestream.NewDB(dbPath)
+		db = replicate.NewDB(dbPath)
 	}
 
 	// Check if meta path exists
@@ -86,7 +86,7 @@ func (c *ResetCommand) Run(ctx context.Context, args []string) (err error) {
 	}
 
 	// Perform the reset
-	fmt.Printf("Resetting local Litestream state for: %s\n", dbPath)
+	fmt.Printf("Resetting local Replicate state for: %s\n", dbPath)
 	fmt.Printf("Removing: %s\n", db.LTXDir())
 
 	if err := db.ResetLocalState(ctx); err != nil {
@@ -100,10 +100,10 @@ func (c *ResetCommand) Run(ctx context.Context, args []string) (err error) {
 // Usage prints the help screen to STDOUT.
 func (c *ResetCommand) Usage() {
 	fmt.Printf(`
-The reset command clears local Litestream state for a database.
+The reset command clears local Replicate state for a database.
 
 This is useful for recovering from corrupted or missing LTX files. The reset
-removes local LTX files from the metadata directory, forcing Litestream to
+removes local LTX files from the metadata directory, forcing Replicate to
 create a fresh snapshot on the next sync. The database file itself is not
 modified.
 
@@ -126,7 +126,7 @@ Examples:
 	replicate reset /path/to/database.db
 
 	# Reset using a specific configuration file
-	replicate reset -config /etc/litestream.yml /path/to/database.db
+	replicate reset -config /etc/replicate.yml /path/to/database.db
 
 `[1:],
 		DefaultConfigPath(),

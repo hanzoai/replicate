@@ -53,7 +53,7 @@ func (c *RegisterCommand) Run(ctx context.Context, args []string) error {
 		},
 	}
 
-	req := litestream.RegisterDatabaseRequest{
+	req := replicate.RegisterDatabaseRequest{
 		Path:       dbPath,
 		ReplicaURL: replicaURL,
 	}
@@ -74,14 +74,14 @@ func (c *RegisterCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("register failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("register failed: %s", string(body))
 	}
 
-	var result litestream.RegisterDatabaseResponse
+	var result replicate.RegisterDatabaseResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *RegisterCommand) Run(ctx context.Context, args []string) error {
 
 func (c *RegisterCommand) Usage() {
 	fmt.Println(`
-usage: litestream register [OPTIONS] DB_PATH
+usage: replicate register [OPTIONS] DB_PATH
 
 Register a database for replication.
 

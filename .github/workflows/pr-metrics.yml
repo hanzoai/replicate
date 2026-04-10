@@ -31,15 +31,15 @@ jobs:
         id: cache-base
         uses: actions/cache@v4
         with:
-          path: litestream-base
+          path: replicate-base
           key: pr-metrics-base-${{ github.event.pull_request.base.sha }}-${{ steps.setup-go.outputs.go-version }}
 
       - name: Build base binary
         if: steps.cache-base.outputs.cache-hit != 'true'
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o litestream-base ./cmd/litestream
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o replicate-base ./cmd/replicate
 
       - name: Record base binary size
-        run: stat --format=%s litestream-base > base-size.txt
+        run: stat --format=%s replicate-base > base-size.txt
 
       - name: Upload base size
         uses: actions/upload-artifact@v4
@@ -61,12 +61,12 @@ jobs:
       - name: Build PR binary
         run: |
           START=$SECONDS
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o litestream-pr ./cmd/litestream
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o replicate-pr ./cmd/replicate
           echo "$((SECONDS - START))" > build-time.txt
           go version | awk '{print $3}' > go-version.txt
 
       - name: Record PR binary size
-        run: stat --format=%s litestream-pr > pr-size.txt
+        run: stat --format=%s replicate-pr > pr-size.txt
 
       - name: Upload PR size
         uses: actions/upload-artifact@v4

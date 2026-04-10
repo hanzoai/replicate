@@ -48,7 +48,7 @@ func (c *UnregisterCommand) Run(ctx context.Context, args []string) error {
 		},
 	}
 
-	req := litestream.UnregisterDatabaseRequest{
+	req := replicate.UnregisterDatabaseRequest{
 		Path:    dbPath,
 		Timeout: *timeout,
 	}
@@ -69,14 +69,14 @@ func (c *UnregisterCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp litestream.ErrorResponse
+		var errResp replicate.ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != "" {
 			return fmt.Errorf("unregister failed: %s", errResp.Error)
 		}
 		return fmt.Errorf("unregister failed: %s", string(body))
 	}
 
-	var result litestream.UnregisterDatabaseResponse
+	var result replicate.UnregisterDatabaseResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -92,7 +92,7 @@ func (c *UnregisterCommand) Run(ctx context.Context, args []string) error {
 
 func (c *UnregisterCommand) Usage() {
 	fmt.Println(`
-usage: litestream unregister [OPTIONS] DB_PATH
+usage: replicate unregister [OPTIONS] DB_PATH
 
 Unregister a database from replication.
 

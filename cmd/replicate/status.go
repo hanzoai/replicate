@@ -76,7 +76,7 @@ type DBStatus struct {
 }
 
 // getDBStatus gathers status information for a database.
-func (c *StatusCommand) getDBStatus(db *litestream.DB) DBStatus {
+func (c *StatusCommand) getDBStatus(db *replicate.DB) DBStatus {
 	status := DBStatus{
 		Status:    "unknown",
 		LocalTXID: "-",

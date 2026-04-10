@@ -23,7 +23,7 @@ import (
 func TestVFS_FuzzSeedCorpus(t *testing.T) {
 	seeds := [][]byte{
 		[]byte{0x00, 0x01, 0x02},
-		[]byte("litestream vfs fuzz"),
+		[]byte("replicate vfs fuzz"),
 		[]byte{0xFF, 0x10, 0x42, 0x7F},
 	}
 	for _, seed := range seeds {
@@ -34,7 +34,7 @@ func TestVFS_FuzzSeedCorpus(t *testing.T) {
 // FuzzVFSReplicaReadPatterns exercises random combinations of reads,
 // aggregates, and ordering queries against the VFS replica. Enable with:
 //
-//	go test ./cmd/litestream-vfs -tags vfs -fuzz=FuzzVFSReplicaReadPatterns
+//	go test ./cmd/replicate-vfs -tags vfs -fuzz=FuzzVFSReplicaReadPatterns
 func FuzzVFSReplicaReadPatterns(f *testing.F) {
 	f.Add([]byte("seed"))
 	f.Add([]byte{0x1, 0x2, 0x3, 0x4})

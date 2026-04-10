@@ -34,10 +34,10 @@ func TestVFS_WriteAndSync_FileBackend(t *testing.T) {
 	replicaDir := t.TempDir()
 	client := file.NewReplicaClient(replicaDir)
 
-	// First, create initial data using standard litestream replication
+	// First, create initial data using standard replicate replication
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "source.db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 100 * time.Millisecond
 	require.NoError(t, db.Open())
@@ -57,7 +57,7 @@ func TestVFS_WriteAndSync_FileBackend(t *testing.T) {
 
 	// Now open via writable VFS and add more data
 	vfs := newWritableVFS(t, client, 1*time.Second, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-write-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-write-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb1, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -79,7 +79,7 @@ func TestVFS_WriteAndSync_FileBackend(t *testing.T) {
 
 	// Verify data was synced by opening fresh VFS
 	vfs2 := newWritableVFS(t, client, 0, "")
-	vfsName2 := fmt.Sprintf("litestream-write2-%d", time.Now().UnixNano())
+	vfsName2 := fmt.Sprintf("replicate-write2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
 	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
@@ -102,7 +102,7 @@ func TestVFS_ReadYourWrites(t *testing.T) {
 
 	// Open via writable VFS with long sync interval (won't auto-sync)
 	vfs := newWritableVFS(t, client, 1*time.Hour, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-ryw-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-ryw-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -136,7 +136,7 @@ func TestVFS_MultipleTransactions(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-multi-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-multi-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -167,7 +167,7 @@ func TestVFS_LargeTransaction(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 1*time.Second, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-large-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-large-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -191,7 +191,7 @@ func TestVFS_LargeTransaction(t *testing.T) {
 
 	// Verify data persisted
 	vfs2 := newWritableVFS(t, client, 0, "")
-	vfsName2 := fmt.Sprintf("litestream-large2-%d", time.Now().UnixNano())
+	vfsName2 := fmt.Sprintf("replicate-large2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
 	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
@@ -219,7 +219,7 @@ func TestVFS_PeriodicSync(t *testing.T) {
 	initialCount := countLTXFiles(t, client)
 
 	vfs := newWritableVFS(t, client, 200*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-periodic-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-periodic-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -246,7 +246,7 @@ func TestVFS_SyncDuringTransaction(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-txsync-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-txsync-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -291,7 +291,7 @@ func TestVFS_ManualSyncOnly(t *testing.T) {
 
 	// SyncInterval=0 means no auto-sync
 	vfs := newWritableVFS(t, client, 0, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-manual-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-manual-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -332,7 +332,7 @@ func TestVFS_WriteBufferDiscardedOnOpen(t *testing.T) {
 
 	// Open VFS and write data
 	vfs := newWritableVFS(t, client, 1*time.Hour, bufferDir) // Long interval, won't auto-sync
-	vfsName := fmt.Sprintf("litestream-discard1-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-discard1-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -342,7 +342,7 @@ func TestVFS_WriteBufferDiscardedOnOpen(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify write buffer file exists
-	bufferPath := filepath.Join(bufferDir, ".litestream-buffer")
+	bufferPath := filepath.Join(bufferDir, ".replicate-buffer")
 	_, err = os.Stat(bufferPath)
 	require.NoError(t, err, "write buffer file should exist")
 
@@ -351,7 +351,7 @@ func TestVFS_WriteBufferDiscardedOnOpen(t *testing.T) {
 
 	// Reopen with new VFS - buffer should be discarded
 	vfs2 := newWritableVFS(t, client, 1*time.Second, bufferDir)
-	vfsName2 := fmt.Sprintf("litestream-discard2-%d", time.Now().UnixNano())
+	vfsName2 := fmt.Sprintf("replicate-discard2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
 	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
@@ -375,7 +375,7 @@ func TestVFS_WriteBufferDuplicatePages(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 1*time.Hour, bufferDir)
-	vfsName := fmt.Sprintf("litestream-dup1-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-dup1-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -401,7 +401,7 @@ func TestVFS_WriteBufferDuplicatePages(t *testing.T) {
 
 	// Verify data persists in replica after sync
 	vfs2 := newWritableVFS(t, client, 1*time.Second, t.TempDir())
-	vfsName2 := fmt.Sprintf("litestream-dup2-%d", time.Now().UnixNano())
+	vfsName2 := fmt.Sprintf("replicate-dup2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
 	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
@@ -423,12 +423,12 @@ func TestVFS_ExistingBufferDiscarded(t *testing.T) {
 	setupInitialDB(t, client)
 
 	// Create a pre-existing write buffer file with some content
-	bufferPath := filepath.Join(bufferDir, ".litestream-write-buffer")
+	bufferPath := filepath.Join(bufferDir, ".replicate-write-buffer")
 	require.NoError(t, os.WriteFile(bufferPath, []byte("stale data"), 0644))
 
 	// Open VFS - should discard existing buffer
 	vfs := newWritableVFS(t, client, 1*time.Second, bufferDir)
-	vfsName := fmt.Sprintf("litestream-existing-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-existing-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -451,12 +451,12 @@ func TestVFS_WriteBufferCorrupted(t *testing.T) {
 	setupInitialDB(t, client)
 
 	// Create corrupted buffer (invalid magic)
-	bufferPath := filepath.Join(bufferDir, ".litestream-write-buffer")
+	bufferPath := filepath.Join(bufferDir, ".replicate-write-buffer")
 	require.NoError(t, os.WriteFile(bufferPath, []byte("INVALID DATA"), 0644))
 
 	// Open VFS - should handle gracefully
 	vfs := newWritableVFS(t, client, 1*time.Second, bufferDir)
-	vfsName := fmt.Sprintf("litestream-corrupt-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-corrupt-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -483,7 +483,7 @@ func TestVFS_ConflictDetection(t *testing.T) {
 
 	// Open writable VFS
 	vfs := newWritableVFS(t, client, 1*time.Hour, t.TempDir()) // Long interval
-	vfsName := fmt.Sprintf("litestream-conflict-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-conflict-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -514,7 +514,7 @@ func TestVFS_NoConflictWhenRemoteUnchanged(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-noconflict-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-noconflict-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -548,7 +548,7 @@ func TestVFS_ConcurrentReaders(t *testing.T) {
 
 	// Writer VFS
 	writerVFS := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	writerVFSName := fmt.Sprintf("litestream-writer-%d", time.Now().UnixNano())
+	writerVFSName := fmt.Sprintf("replicate-writer-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(writerVFSName, writerVFS))
 
 	writerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", writerVFSName))
@@ -557,7 +557,7 @@ func TestVFS_ConcurrentReaders(t *testing.T) {
 
 	// Reader VFS (read-only)
 	readerVFS := newReadOnlyVFS(t, client)
-	readerVFSName := fmt.Sprintf("litestream-reader-%d", time.Now().UnixNano())
+	readerVFSName := fmt.Sprintf("replicate-reader-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(readerVFSName, readerVFS))
 
 	readerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", readerVFSName))
@@ -589,7 +589,7 @@ func TestVFS_ReadWhileWriting(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 1*time.Second, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-readwrite-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-readwrite-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -646,7 +646,7 @@ func TestVFS_Truncate(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-truncate-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-truncate-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -686,7 +686,7 @@ func TestVFS_EmptyTransaction(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 1*time.Second, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-empty-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-empty-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -716,7 +716,7 @@ func TestVFS_SchemaChanges(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-schema-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-schema-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -762,7 +762,7 @@ func TestVFS_BlobData(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-blob-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-blob-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -803,7 +803,7 @@ func TestVFS_WriteAndRestore(t *testing.T) {
 
 	// Write via VFS
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-restore1-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-restore1-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -840,7 +840,7 @@ func TestVFS_WriteReadVFSOnly(t *testing.T) {
 
 	// Write via writable VFS
 	writerVFS := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	writerVFSName := fmt.Sprintf("litestream-vfsonly-w-%d", time.Now().UnixNano())
+	writerVFSName := fmt.Sprintf("replicate-vfsonly-w-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(writerVFSName, writerVFS))
 
 	writerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", writerVFSName))
@@ -852,7 +852,7 @@ func TestVFS_WriteReadVFSOnly(t *testing.T) {
 
 	// Read via read-only VFS
 	readerVFS := newReadOnlyVFS(t, client)
-	readerVFSName := fmt.Sprintf("litestream-vfsonly-r-%d", time.Now().UnixNano())
+	readerVFSName := fmt.Sprintf("replicate-vfsonly-r-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(readerVFSName, readerVFS))
 
 	readerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", readerVFSName))
@@ -873,7 +873,7 @@ func TestVFS_MixedWorkload(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 200*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-mixed-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-mixed-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -915,7 +915,7 @@ func TestVFS_SyncNetworkError(t *testing.T) {
 	setupInitialDB(t, client)
 
 	vfs := newWritableVFS(t, client, 1*time.Hour, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-neterr-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-neterr-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -941,7 +941,7 @@ func TestVFS_InvalidPageSize(t *testing.T) {
 	// Create database with different page size
 	db := testingutil.NewDB(t, filepath.Join(t.TempDir(), "source.db"))
 	db.MonitorInterval = 100 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	require.NoError(t, db.Open())
 
@@ -958,7 +958,7 @@ func TestVFS_InvalidPageSize(t *testing.T) {
 
 	// Open via VFS (should work with same page size)
 	vfs := newWritableVFS(t, client, 1*time.Second, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-pagesize-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-pagesize-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -979,7 +979,7 @@ func TestVFS_RollbackRestoresOriginalState(t *testing.T) {
 
 	// Create database directly via writable VFS (no external setup needed)
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-rollback-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-rollback-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -1040,7 +1040,7 @@ func TestVFS_RollbackAfterUpdate(t *testing.T) {
 
 	// Create database directly via writable VFS
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-rollback-update-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-rollback-update-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -1091,7 +1091,7 @@ func TestVFS_RollbackAfterDelete(t *testing.T) {
 
 	// Create database directly via writable VFS
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-rollback-delete-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-rollback-delete-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -1148,7 +1148,7 @@ func TestVFS_CommitAfterRollbackWorks(t *testing.T) {
 
 	// Create database directly via writable VFS
 	vfs := newWritableVFS(t, client, 100*time.Millisecond, t.TempDir())
-	vfsName := fmt.Sprintf("litestream-commit-after-rollback-%d", time.Now().UnixNano())
+	vfsName := fmt.Sprintf("replicate-commit-after-rollback-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
@@ -1191,7 +1191,7 @@ func TestVFS_CommitAfterRollbackWorks(t *testing.T) {
 	sqldb.Close()
 
 	vfs2 := newWritableVFS(t, client, 0, "")
-	vfsName2 := fmt.Sprintf("litestream-verify-%d", time.Now().UnixNano())
+	vfsName2 := fmt.Sprintf("replicate-verify-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
 	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
@@ -1208,47 +1208,47 @@ func TestVFS_CommitAfterRollbackWorks(t *testing.T) {
 // =============================================================================
 
 // newWritableVFS creates a VFS with write support enabled.
-func newWritableVFS(tb testing.TB, client litestream.ReplicaClient, syncInterval time.Duration, localPath string) *litestream.VFS {
+func newWritableVFS(tb testing.TB, client replicate.ReplicaClient, syncInterval time.Duration, localPath string) *replicate.VFS {
 	tb.Helper()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
 
-	vfs := litestream.NewVFS(client, logger)
+	vfs := replicate.NewVFS(client, logger)
 	vfs.PollInterval = 100 * time.Millisecond
 	vfs.WriteEnabled = true
 	vfs.WriteSyncInterval = syncInterval
 	// If localPath is provided as a directory, append a buffer filename
 	if localPath != "" {
-		vfs.WriteBufferPath = filepath.Join(localPath, ".litestream-buffer")
+		vfs.WriteBufferPath = filepath.Join(localPath, ".replicate-buffer")
 	}
 
 	return vfs
 }
 
 // newReadOnlyVFS creates a read-only VFS.
-func newReadOnlyVFS(tb testing.TB, client litestream.ReplicaClient) *litestream.VFS {
+func newReadOnlyVFS(tb testing.TB, client replicate.ReplicaClient) *replicate.VFS {
 	tb.Helper()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
 
-	vfs := litestream.NewVFS(client, logger)
+	vfs := replicate.NewVFS(client, logger)
 	vfs.PollInterval = 100 * time.Millisecond
 
 	return vfs
 }
 
 // setupInitialDB creates an initial database with standard schema.
-func setupInitialDB(t *testing.T, client litestream.ReplicaClient) {
+func setupInitialDB(t *testing.T, client replicate.ReplicaClient) {
 	t.Helper()
 
 	dbDir := t.TempDir()
 	db := testingutil.NewDB(t, filepath.Join(dbDir, "source.db"))
 	db.MonitorInterval = 50 * time.Millisecond
-	db.Replica = litestream.NewReplica(db)
+	db.Replica = replicate.NewReplica(db)
 	db.Replica.Client = client
 	db.Replica.SyncInterval = 50 * time.Millisecond
 	require.NoError(t, db.Open())
@@ -1273,7 +1273,7 @@ func setupInitialDB(t *testing.T, client litestream.ReplicaClient) {
 }
 
 // countLTXFiles returns the number of LTX files in the replica.
-func countLTXFiles(t *testing.T, client litestream.ReplicaClient) int {
+func countLTXFiles(t *testing.T, client replicate.ReplicaClient) int {
 	t.Helper()
 
 	itr, err := client.LTXFiles(context.Background(), 0, 0, false)
@@ -1288,7 +1288,7 @@ func countLTXFiles(t *testing.T, client litestream.ReplicaClient) int {
 }
 
 // addExternalLTXFile adds an LTX file to simulate an external writer.
-func addExternalLTXFile(t *testing.T, client litestream.ReplicaClient, replicaDir string) {
+func addExternalLTXFile(t *testing.T, client replicate.ReplicaClient, replicaDir string) {
 	t.Helper()
 
 	// Get current max TXID
@@ -1330,7 +1330,7 @@ func addExternalLTXFile(t *testing.T, client litestream.ReplicaClient, replicaDi
 }
 
 // restoreDB restores a database from the replica to the given path.
-func restoreDB(t *testing.T, client litestream.ReplicaClient, outputPath string) error {
+func restoreDB(t *testing.T, client replicate.ReplicaClient, outputPath string) error {
 	t.Helper()
 
 	// Open output file

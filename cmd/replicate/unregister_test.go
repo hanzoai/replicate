@@ -63,14 +63,14 @@ func TestUnregisterCommand_Run(t *testing.T) {
 	})
 
 	t.Run("NotFoundIsIdempotent", func(t *testing.T) {
-		store := litestream.NewStore(nil, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore(nil, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		if err := store.Open(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 		defer store.Close(context.Background())
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		if err := server.Start(); err != nil {
 			t.Fatal(err)
@@ -90,7 +90,7 @@ func TestUnregisterCommand_Run(t *testing.T) {
 		defer testingutil.MustCloseDBs(t, db, sqldb)
 		dbPath := db.Path()
 
-		store := litestream.NewStore([]*litestream.DB{db}, litestream.CompactionLevels{{Level: 0}})
+		store := replicate.NewStore([]*replicate.DB{db}, replicate.CompactionLevels{{Level: 0}})
 		store.CompactionMonitorEnabled = false
 		if err := store.Open(context.Background()); err != nil {
 			t.Fatal(err)
@@ -102,7 +102,7 @@ func TestUnregisterCommand_Run(t *testing.T) {
 			t.Fatalf("expected 1 database in store, got %d", len(store.DBs()))
 		}
 
-		server := litestream.NewServer(store)
+		server := replicate.NewServer(store)
 		server.SocketPath = testSocketPath(t)
 		if err := server.Start(); err != nil {
 			t.Fatal(err)

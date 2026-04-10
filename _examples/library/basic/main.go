@@ -1,6 +1,6 @@
-// Example: Basic Litestream Library Usage
+// Example: Basic Replicate Library Usage
 //
-// This example demonstrates the simplest way to use Litestream as a Go library.
+// This example demonstrates the simplest way to use Replicate as a Go library.
 // It replicates a SQLite database to the local filesystem.
 //
 // Run: go run main.go
@@ -33,25 +33,25 @@ func run(ctx context.Context) error {
 	dbPath := "./myapp.db"
 	replicaPath := "./replica"
 
-	// 1. Create the Litestream DB wrapper
-	db := litestream.NewDB(dbPath)
+	// 1. Create the Replicate DB wrapper
+	db := replicate.NewDB(dbPath)
 
 	// 2. Create a replica client (file-based for this example)
 	client := file.NewReplicaClient(replicaPath)
 
 	// 3. Create a replica and attach it to the database
-	replica := litestream.NewReplicaWithClient(db, client)
+	replica := replicate.NewReplicaWithClient(db, client)
 	db.Replica = replica
 	client.Replica = replica
 
 	// 4. Create compaction levels (L0 is required, plus at least one more level)
-	levels := litestream.CompactionLevels{
+	levels := replicate.CompactionLevels{
 		{Level: 0},
 		{Level: 1, Interval: 10 * time.Second},
 	}
 
 	// 5. Create a Store to manage the database and background compaction
-	store := litestream.NewStore([]*litestream.DB{db}, levels)
+	store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 	// 6. Open the store (opens all DBs and starts background monitors)
 	if err := store.Open(ctx); err != nil {

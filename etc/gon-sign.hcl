@@ -1,5 +1,5 @@
-source = ["./dist/litestream"]
-bundle_id = "com.middlemost.litestream"
+source = ["./dist/replicate"]
+bundle_id = "ai.hanzo.replicate"
 
 apple_id {
   username = "@env:APPLE_ID_USERNAME"
@@ -13,11 +13,11 @@ sign {
 }
 
 notarize {
-  path = "./dist/litestream.zip"
-  bundle_id = "com.middlemost.litestream"
+  path = "./dist/replicate.zip"
+  bundle_id = "ai.hanzo.replicate"
   staple = true
 }
 
 zip {
-  output_path = "./dist/litestream-signed.zip"
+  output_path = "./dist/replicate-signed.zip"
 }

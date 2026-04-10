@@ -1,4 +1,4 @@
-package litestream
+package replicate
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ const SnapshotLevel = 9
 
 // DefaultCompactionLevels provides the canonical default compaction configuration.
 // Level 0 is raw LTX files, higher levels compact at increasing intervals.
-// These values are also used by cmd/litestream DefaultConfig().
+// These values are also used by cmd/replicate DefaultConfig().
 var DefaultCompactionLevels = CompactionLevels{
 	{Level: 0, Interval: 0},
 	{Level: 1, Interval: 30 * time.Second},

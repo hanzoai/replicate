@@ -21,7 +21,7 @@ func TestRapidCheckpoints(t *testing.T) {
 
 	RequireBinaries(t)
 
-	t.Log("Testing: Litestream under rapid checkpoint pressure")
+	t.Log("Testing: Replicate under rapid checkpoint pressure")
 
 	db := SetupTestDB(t, "rapid-checkpoints")
 	defer db.Cleanup()
@@ -30,9 +30,9 @@ func TestRapidCheckpoints(t *testing.T) {
 		t.Fatalf("Failed to create database: %v", err)
 	}
 
-	t.Log("[1] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[1] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -82,7 +82,7 @@ func TestRapidCheckpoints(t *testing.T) {
 	t.Log("Waiting for final sync/compaction cycle...")
 	time.Sleep(45 * time.Second)
 
-	db.StopLitestream()
+	db.StopReplicate()
 
 	t.Log("[3] Checking for errors...")
 	errors, err := db.CheckForErrors()
@@ -170,9 +170,9 @@ func TestWALGrowth(t *testing.T) {
 
 	t.Log("✓ Table created")
 
-	t.Log("[2] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[2] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -216,7 +216,7 @@ func TestWALGrowth(t *testing.T) {
 
 	t.Logf("Total database size: %.2f MB", float64(dbSize)/(1024*1024))
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[5] Checking for errors...")
@@ -289,15 +289,15 @@ func TestConcurrentOperations(t *testing.T) {
 
 	t.Logf("✓ Created %d databases", dbCount)
 
-	t.Log("[2] Starting Litestream for all databases...")
+	t.Log("[2] Starting Replicate for all databases...")
 	for i, db := range dbs {
-		if err := db.StartLitestream(); err != nil {
-			t.Fatalf("Failed to start Litestream for database %d: %v", i, err)
+		if err := db.StartReplicate(); err != nil {
+			t.Fatalf("Failed to start Replicate for database %d: %v", i, err)
 		}
 		time.Sleep(1 * time.Second)
 	}
 
-	t.Logf("✓ All Litestream instances running")
+	t.Logf("✓ All Replicate instances running")
 
 	t.Log("[3] Generating concurrent load...")
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
@@ -330,9 +330,9 @@ func TestConcurrentOperations(t *testing.T) {
 	t.Log("Waiting for final sync/compaction cycle...")
 	time.Sleep(45 * time.Second)
 
-	t.Log("[4] Stopping all Litestream instances...")
+	t.Log("[4] Stopping all Replicate instances...")
 	for _, db := range dbs {
-		db.StopLitestream()
+		db.StopReplicate()
 	}
 
 	time.Sleep(2 * time.Second)
@@ -399,9 +399,9 @@ func TestBusyTimeout(t *testing.T) {
 
 	t.Log("✓ Created table with 100 rows")
 
-	t.Log("[2] Starting Litestream...")
-	if err := db.StartLitestream(); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	t.Log("[2] Starting Replicate...")
+	if err := db.StartReplicate(); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -440,7 +440,7 @@ func TestBusyTimeout(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	db.StopLitestream()
+	db.StopReplicate()
 	time.Sleep(2 * time.Second)
 
 	t.Log("[4] Checking for errors...")

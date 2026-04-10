@@ -56,7 +56,7 @@ type LTXBehaviorReport struct {
 	L0Sizes []int64
 }
 
-// ParseLTXEvents parses a Litestream log file and extracts LTX-related events.
+// ParseLTXEvents parses a Replicate log file and extracts LTX-related events.
 func ParseLTXEvents(logPath string) ([]LTXEvent, error) {
 	file, err := os.Open(logPath)
 	if err != nil {
@@ -151,7 +151,7 @@ func BuildBehaviorReport(events []LTXEvent, duration time.Duration) *LTXBehavior
 // "snapshot on checkpoint" bug or similar regression.
 //
 // The first snapshot interval is skipped because the initial snapshot always occurs
-// quickly when Litestream starts (it captures the initial database state).
+// quickly when Replicate starts (it captures the initial database state).
 func AssertSnapshotCadence(t *testing.T, report *LTXBehaviorReport, expectedInterval, tolerance time.Duration) {
 	t.Helper()
 

@@ -34,7 +34,7 @@ func TestS3AccessPointLocalStack(t *testing.T) {
 	s3Client := newMinioS3Client(t, configEndpoint, false)
 
 	accountID := "000000000000"
-	accessPointName := fmt.Sprintf("litestream-ap-%d", time.Now().UnixNano())
+	accessPointName := fmt.Sprintf("replicate-ap-%d", time.Now().UnixNano())
 	bucket := fmt.Sprintf("%s-%s", accessPointName, accountID)
 	accessPointARN := fmt.Sprintf("arn:aws:s3:us-east-1:%s:accesspoint/%s", accountID, accessPointName)
 
@@ -65,11 +65,11 @@ func TestS3AccessPointLocalStack(t *testing.T) {
 	configPath := WriteS3AccessPointConfig(t, db.Path, replicaURL, configEndpoint, false, "minioadmin", "minioadmin")
 	db.ConfigPath = configPath
 
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("start litestream: %v", err)
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("start replicate: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = db.StopLitestream()
+		_ = db.StopReplicate()
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -81,10 +81,10 @@ func TestS3AccessPointLocalStack(t *testing.T) {
 	// Wait for uploaded LTX files to appear in the underlying bucket.
 	waitForObjects(t, s3Client, bucket, "test-prefix", 30*time.Second)
 
-	if err := db.StopLitestream(); err != nil {
-		t.Fatalf("stop litestream: %v", err)
+	if err := db.StopReplicate(); err != nil {
+		t.Fatalf("stop replicate: %v", err)
 	}
-	db.LitestreamCmd = nil
+	db.ReplicateCmd = nil
 
 	restoredPath := filepath.Join(db.TempDir, "restored-access-point.db")
 	if err := db.Restore(restoredPath); err != nil {

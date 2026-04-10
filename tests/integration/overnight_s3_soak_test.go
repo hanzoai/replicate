@@ -47,7 +47,7 @@ func TestOvernightS3Soak(t *testing.T) {
 	shortMode := testing.Short()
 
 	t.Logf("================================================")
-	t.Logf("Litestream Overnight S3 Soak Test")
+	t.Logf("Replicate Overnight S3 Soak Test")
 	t.Logf("================================================")
 	t.Logf("Duration: %v", duration)
 	t.Logf("S3 Bucket: %s", bucket)
@@ -72,10 +72,10 @@ func TestOvernightS3Soak(t *testing.T) {
 	}
 
 	// Create S3 configuration
-	s3Path := fmt.Sprintf("litestream-overnight-%d", time.Now().Unix())
+	s3Path := fmt.Sprintf("replicate-overnight-%d", time.Now().Unix())
 	s3URL := fmt.Sprintf("s3://%s/%s", bucket, s3Path)
 	db.ReplicaURL = s3URL
-	t.Log("Creating Litestream configuration for S3...")
+	t.Log("Creating Replicate configuration for S3...")
 	s3Config := &S3Config{
 		Region: region,
 	}
@@ -85,18 +85,18 @@ func TestOvernightS3Soak(t *testing.T) {
 	t.Logf("  S3 URL: %s", s3URL)
 	t.Log("")
 
-	// Start Litestream initially (before population)
-	t.Log("Starting Litestream...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("Failed to start Litestream: %v", err)
+	// Start Replicate initially (before population)
+	t.Log("Starting Replicate...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("Failed to start Replicate: %v", err)
 	}
-	t.Logf("✓ Litestream started (PID: %d)", db.LitestreamPID)
+	t.Logf("✓ Replicate started (PID: %d)", db.ReplicatePID)
 	t.Log("")
 
-	// Stop Litestream to populate database
-	t.Log("Stopping Litestream temporarily for initial population...")
-	if err := db.StopLitestream(); err != nil {
-		t.Fatalf("Failed to stop Litestream: %v", err)
+	// Stop Replicate to populate database
+	t.Log("Stopping Replicate temporarily for initial population...")
+	if err := db.StopReplicate(); err != nil {
+		t.Fatalf("Failed to stop Replicate: %v", err)
 	}
 
 	// Populate with 100MB of initial data
@@ -107,12 +107,12 @@ func TestOvernightS3Soak(t *testing.T) {
 	t.Log("✓ Database populated")
 	t.Log("")
 
-	// Restart Litestream after population
-	t.Log("Restarting Litestream after population...")
-	if err := db.StartLitestreamWithConfig(configPath); err != nil {
-		t.Fatalf("Failed to restart Litestream: %v", err)
+	// Restart Replicate after population
+	t.Log("Restarting Replicate after population...")
+	if err := db.StartReplicateWithConfig(configPath); err != nil {
+		t.Fatalf("Failed to restart Replicate: %v", err)
 	}
-	t.Logf("✓ Litestream restarted (PID: %d)", db.LitestreamPID)
+	t.Logf("✓ Replicate restarted (PID: %d)", db.ReplicatePID)
 	t.Log("")
 
 	// Start load generator for overnight test
@@ -164,8 +164,8 @@ func TestOvernightS3Soak(t *testing.T) {
 
 	logMetrics := func() {
 		logS3Metrics(t, db, s3URL)
-		if db.LitestreamCmd != nil && db.LitestreamCmd.ProcessState != nil {
-			t.Error("✗ Litestream stopped unexpectedly!")
+		if db.ReplicateCmd != nil && db.ReplicateCmd.ProcessState != nil {
+			t.Error("✗ Replicate stopped unexpectedly!")
 			if testInfo.cancel != nil {
 				testInfo.cancel()
 			}
@@ -189,10 +189,10 @@ func TestOvernightS3Soak(t *testing.T) {
 	t.Log("================================================")
 	t.Log("")
 
-	// Stop Litestream
-	t.Log("Stopping Litestream...")
-	if err := db.StopLitestream(); err != nil {
-		t.Logf("Warning: Failed to stop Litestream cleanly: %v", err)
+	// Stop Replicate
+	t.Log("Stopping Replicate...")
+	if err := db.StopReplicate(); err != nil {
+		t.Logf("Warning: Failed to stop Replicate cleanly: %v", err)
 	}
 
 	// Database statistics
@@ -298,7 +298,7 @@ func TestOvernightS3Soak(t *testing.T) {
 		}
 		t.Log("")
 		t.Log("Review the logs for details:")
-		logPath, _ := db.GetLitestreamLog()
+		logPath, _ := db.GetReplicateLog()
 		t.Logf("  %s", logPath)
 		t.Fail()
 	}

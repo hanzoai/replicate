@@ -1,4 +1,4 @@
-package litestream_test
+package replicate_test
 
 import (
 	"testing"
@@ -7,21 +7,21 @@ import (
 )
 
 func TestPosV3_IsZero(t *testing.T) {
-	if !(litestream.PosV3{}).IsZero() {
+	if !(replicate.PosV3{}).IsZero() {
 		t.Error("zero value should return true")
 	}
-	if (litestream.PosV3{Generation: "abc"}).IsZero() {
+	if (replicate.PosV3{Generation: "abc"}).IsZero() {
 		t.Error("non-zero value should return false")
 	}
 }
 
 func TestPosV3_String(t *testing.T) {
 	tests := []struct {
-		pos  litestream.PosV3
+		pos  replicate.PosV3
 		want string
 	}{
-		{litestream.PosV3{}, ""},
-		{litestream.PosV3{Generation: "0123456789abcdef", Index: 1, Offset: 4096}, "0123456789abcdef/00000001:0000000000001000"},
+		{replicate.PosV3{}, ""},
+		{replicate.PosV3{Generation: "0123456789abcdef", Index: 1, Offset: 4096}, "0123456789abcdef/00000001:0000000000001000"},
 	}
 	for _, tt := range tests {
 		if got := tt.pos.String(); got != tt.want {
@@ -31,7 +31,7 @@ func TestPosV3_String(t *testing.T) {
 }
 
 func TestSnapshotInfoV3_Pos(t *testing.T) {
-	info := litestream.SnapshotInfoV3{Generation: "abc", Index: 5}
+	info := replicate.SnapshotInfoV3{Generation: "abc", Index: 5}
 	pos := info.Pos()
 	if pos.Generation != "abc" || pos.Index != 5 || pos.Offset != 0 {
 		t.Errorf("unexpected pos: %+v", pos)
@@ -39,7 +39,7 @@ func TestSnapshotInfoV3_Pos(t *testing.T) {
 }
 
 func TestWALSegmentInfoV3_Pos(t *testing.T) {
-	info := litestream.WALSegmentInfoV3{Generation: "abc", Index: 5, Offset: 100}
+	info := replicate.WALSegmentInfoV3{Generation: "abc", Index: 5, Offset: 100}
 	pos := info.Pos()
 	if pos.Generation != "abc" || pos.Index != 5 || pos.Offset != 100 {
 		t.Errorf("unexpected pos: %+v", pos)
@@ -57,7 +57,7 @@ func TestFormatSnapshotFilenameV3(t *testing.T) {
 		{0x12345678, "12345678.snapshot.lz4"},
 	}
 	for _, tt := range tests {
-		if got := litestream.FormatSnapshotFilenameV3(tt.index); got != tt.want {
+		if got := replicate.FormatSnapshotFilenameV3(tt.index); got != tt.want {
 			t.Errorf("FormatSnapshotFilenameV3(%d) = %q, want %q", tt.index, got, tt.want)
 		}
 	}
@@ -75,7 +75,7 @@ func TestParseSnapshotFilenameV3(t *testing.T) {
 			{"12345678.snapshot.lz4", 0x12345678},
 		}
 		for _, tt := range tests {
-			index, err := litestream.ParseSnapshotFilenameV3(tt.filename)
+			index, err := replicate.ParseSnapshotFilenameV3(tt.filename)
 			if err != nil {
 				t.Errorf("ParseSnapshotFilenameV3(%q) error: %v", tt.filename, err)
 				continue
@@ -98,7 +98,7 @@ func TestParseSnapshotFilenameV3(t *testing.T) {
 			"00000001.snapshot.lz4.bak",
 		}
 		for _, filename := range invalids {
-			_, err := litestream.ParseSnapshotFilenameV3(filename)
+			_, err := replicate.ParseSnapshotFilenameV3(filename)
 			if err == nil {
 				t.Errorf("ParseSnapshotFilenameV3(%q) expected error", filename)
 			}
@@ -117,7 +117,7 @@ func TestFormatWALSegmentFilenameV3(t *testing.T) {
 		{255, 0x12345678, "000000ff_12345678.wal.lz4"},
 	}
 	for _, tt := range tests {
-		if got := litestream.FormatWALSegmentFilenameV3(tt.index, tt.offset); got != tt.want {
+		if got := replicate.FormatWALSegmentFilenameV3(tt.index, tt.offset); got != tt.want {
 			t.Errorf("FormatWALSegmentFilenameV3(%d, %d) = %q, want %q", tt.index, tt.offset, got, tt.want)
 		}
 	}
@@ -135,7 +135,7 @@ func TestParseWALSegmentFilenameV3(t *testing.T) {
 			{"000000ff_12345678.wal.lz4", 255, 0x12345678},
 		}
 		for _, tt := range tests {
-			index, offset, err := litestream.ParseWALSegmentFilenameV3(tt.filename)
+			index, offset, err := replicate.ParseWALSegmentFilenameV3(tt.filename)
 			if err != nil {
 				t.Errorf("ParseWALSegmentFilenameV3(%q) error: %v", tt.filename, err)
 				continue
@@ -157,7 +157,7 @@ func TestParseWALSegmentFilenameV3(t *testing.T) {
 			"00000001_0001000.wal.lz4", // 7 chars offset
 		}
 		for _, filename := range invalids {
-			_, _, err := litestream.ParseWALSegmentFilenameV3(filename)
+			_, _, err := replicate.ParseWALSegmentFilenameV3(filename)
 			if err == nil {
 				t.Errorf("ParseWALSegmentFilenameV3(%q) expected error", filename)
 			}
@@ -183,7 +183,7 @@ func TestIsGenerationIDV3(t *testing.T) {
 		{"generations", false},
 	}
 	for _, tt := range tests {
-		if got := litestream.IsGenerationIDV3(tt.s); got != tt.want {
+		if got := replicate.IsGenerationIDV3(tt.s); got != tt.want {
 			t.Errorf("IsGenerationIDV3(%q) = %v, want %v", tt.s, got, tt.want)
 		}
 	}
@@ -194,7 +194,7 @@ func TestPathsV3(t *testing.T) {
 	gen := "0123456789abcdef"
 
 	t.Run("GenerationsPath", func(t *testing.T) {
-		got := litestream.GenerationsPathV3(root)
+		got := replicate.GenerationsPathV3(root)
 		want := "/data/replica/generations"
 		if got != want {
 			t.Errorf("GenerationsPathV3(%q) = %q, want %q", root, got, want)
@@ -202,7 +202,7 @@ func TestPathsV3(t *testing.T) {
 	})
 
 	t.Run("GenerationPath", func(t *testing.T) {
-		got := litestream.GenerationPathV3(root, gen)
+		got := replicate.GenerationPathV3(root, gen)
 		want := "/data/replica/generations/0123456789abcdef"
 		if got != want {
 			t.Errorf("GenerationPathV3(%q, %q) = %q, want %q", root, gen, got, want)
@@ -210,7 +210,7 @@ func TestPathsV3(t *testing.T) {
 	})
 
 	t.Run("SnapshotsPath", func(t *testing.T) {
-		got := litestream.SnapshotsPathV3(root, gen)
+		got := replicate.SnapshotsPathV3(root, gen)
 		want := "/data/replica/generations/0123456789abcdef/snapshots"
 		if got != want {
 			t.Errorf("SnapshotsPathV3(%q, %q) = %q, want %q", root, gen, got, want)
@@ -218,7 +218,7 @@ func TestPathsV3(t *testing.T) {
 	})
 
 	t.Run("WALPath", func(t *testing.T) {
-		got := litestream.WALPathV3(root, gen)
+		got := replicate.WALPathV3(root, gen)
 		want := "/data/replica/generations/0123456789abcdef/wal"
 		if got != want {
 			t.Errorf("WALPathV3(%q, %q) = %q, want %q", root, gen, got, want)
@@ -226,7 +226,7 @@ func TestPathsV3(t *testing.T) {
 	})
 
 	t.Run("SnapshotPath", func(t *testing.T) {
-		got := litestream.SnapshotPathV3(root, gen, 1)
+		got := replicate.SnapshotPathV3(root, gen, 1)
 		want := "/data/replica/generations/0123456789abcdef/snapshots/00000001.snapshot.lz4"
 		if got != want {
 			t.Errorf("SnapshotPathV3(%q, %q, 1) = %q, want %q", root, gen, got, want)
@@ -234,7 +234,7 @@ func TestPathsV3(t *testing.T) {
 	})
 
 	t.Run("WALSegmentPath", func(t *testing.T) {
-		got := litestream.WALSegmentPathV3(root, gen, 1, 4096)
+		got := replicate.WALSegmentPathV3(root, gen, 1, 4096)
 		want := "/data/replica/generations/0123456789abcdef/wal/00000001_00001000.wal.lz4"
 		if got != want {
 			t.Errorf("WALSegmentPathV3(%q, %q, 1, 4096) = %q, want %q", root, gen, got, want)
@@ -246,8 +246,8 @@ func TestPathsV3(t *testing.T) {
 func TestFormatParseRoundtrip(t *testing.T) {
 	t.Run("Snapshot", func(t *testing.T) {
 		for _, index := range []int{0, 1, 255, 0x12345678} {
-			filename := litestream.FormatSnapshotFilenameV3(index)
-			got, err := litestream.ParseSnapshotFilenameV3(filename)
+			filename := replicate.FormatSnapshotFilenameV3(index)
+			got, err := replicate.ParseSnapshotFilenameV3(filename)
 			if err != nil {
 				t.Errorf("roundtrip failed for index %d: %v", index, err)
 				continue
@@ -268,8 +268,8 @@ func TestFormatParseRoundtrip(t *testing.T) {
 			{255, 0x12345678},
 		}
 		for _, tc := range cases {
-			filename := litestream.FormatWALSegmentFilenameV3(tc.index, tc.offset)
-			gotIndex, gotOffset, err := litestream.ParseWALSegmentFilenameV3(filename)
+			filename := replicate.FormatWALSegmentFilenameV3(tc.index, tc.offset)
+			gotIndex, gotOffset, err := replicate.ParseWALSegmentFilenameV3(filename)
 			if err != nil {
 				t.Errorf("roundtrip failed for (%d, %d): %v", tc.index, tc.offset, err)
 				continue

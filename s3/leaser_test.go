@@ -32,7 +32,7 @@ func TestLeaser_AcquireLease_NewLease(t *testing.T) {
 			body, _ := io.ReadAll(r.Body)
 			r.Body.Close()
 
-			var lease litestream.Lease
+			var lease replicate.Lease
 			if err := json.Unmarshal(body, &lease); err != nil {
 				t.Errorf("failed to unmarshal lock file: %v", err)
 			}
@@ -80,7 +80,7 @@ func TestLeaser_AcquireLease_ExpiredLease(t *testing.T) {
 	newETag := `"new-etag"`
 	var receivedIfMatch string
 
-	expiredLease := litestream.Lease{
+	expiredLease := replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(-1 * time.Hour),
 		Owner:      "previous-owner",
@@ -122,7 +122,7 @@ func TestLeaser_AcquireLease_ExpiredLease(t *testing.T) {
 }
 
 func TestLeaser_AcquireLease_ActiveLease(t *testing.T) {
-	activeLease := litestream.Lease{
+	activeLease := replicate.Lease{
 		Generation: 3,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 		Owner:      "active-owner",
@@ -149,7 +149,7 @@ func TestLeaser_AcquireLease_ActiveLease(t *testing.T) {
 		t.Fatal("expected error for active lease")
 	}
 
-	var leaseErr *litestream.LeaseExistsError
+	var leaseErr *replicate.LeaseExistsError
 	if !errors.As(err, &leaseErr) {
 		t.Fatalf("expected *LeaseExistsError, got %T: %v", err, err)
 	}
@@ -166,7 +166,7 @@ func TestLeaser_AcquireLease_ActiveLease(t *testing.T) {
 
 func TestLeaser_AcquireLease_RaceCondition412(t *testing.T) {
 	var getCalls atomic.Int32
-	winnerLease := litestream.Lease{
+	winnerLease := replicate.Lease{
 		Generation: 1,
 		ExpiresAt:  time.Now().Add(30 * time.Second),
 		Owner:      "race-winner",
@@ -198,7 +198,7 @@ func TestLeaser_AcquireLease_RaceCondition412(t *testing.T) {
 		t.Fatal("expected error for 412 response")
 	}
 
-	var leaseErr *litestream.LeaseExistsError
+	var leaseErr *replicate.LeaseExistsError
 	if !errors.As(err, &leaseErr) {
 		t.Fatalf("expected *LeaseExistsError, got %T: %v", err, err)
 	}
@@ -222,7 +222,7 @@ func TestLeaser_RenewLease(t *testing.T) {
 			body, _ := io.ReadAll(r.Body)
 			r.Body.Close()
 
-			var lease litestream.Lease
+			var lease replicate.Lease
 			if err := json.Unmarshal(body, &lease); err != nil {
 				t.Errorf("failed to unmarshal: %v", err)
 			}
@@ -241,7 +241,7 @@ func TestLeaser_RenewLease(t *testing.T) {
 	leaser.TTL = 30 * time.Second
 
 	ctx := context.Background()
-	oldLease := &litestream.Lease{
+	oldLease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Second),
 		Owner:      "me",
@@ -278,7 +278,7 @@ func TestLeaser_RenewLease_LostLease(t *testing.T) {
 	leaser := newTestLeaser(t, server.URL)
 
 	ctx := context.Background()
-	oldLease := &litestream.Lease{
+	oldLease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Second),
 		Owner:      "me",
@@ -286,7 +286,7 @@ func TestLeaser_RenewLease_LostLease(t *testing.T) {
 	}
 
 	_, err := leaser.RenewLease(ctx, oldLease)
-	if err != litestream.ErrLeaseNotHeld {
+	if err != replicate.ErrLeaseNotHeld {
 		t.Errorf("expected ErrLeaseNotHeld, got %v", err)
 	}
 }
@@ -315,7 +315,7 @@ func TestLeaser_RenewLease_EmptyETag(t *testing.T) {
 	leaser := newTestLeaser(t, server.URL)
 
 	ctx := context.Background()
-	lease := &litestream.Lease{
+	lease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Second),
 		Owner:      "me",
@@ -343,7 +343,7 @@ func TestLeaser_ReleaseLease(t *testing.T) {
 	leaser := newTestLeaser(t, server.URL)
 
 	ctx := context.Background()
-	lease := &litestream.Lease{
+	lease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 		Owner:      "me",
@@ -374,7 +374,7 @@ func TestLeaser_ReleaseLease_StaleETag(t *testing.T) {
 	leaser := newTestLeaser(t, server.URL)
 
 	ctx := context.Background()
-	lease := &litestream.Lease{
+	lease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 		Owner:      "me",
@@ -382,7 +382,7 @@ func TestLeaser_ReleaseLease_StaleETag(t *testing.T) {
 	}
 
 	err := leaser.ReleaseLease(ctx, lease)
-	if err != litestream.ErrLeaseNotHeld {
+	if err != replicate.ErrLeaseNotHeld {
 		t.Errorf("expected ErrLeaseNotHeld for stale ETag, got %v", err)
 	}
 }
@@ -398,7 +398,7 @@ func TestLeaser_ReleaseLease_AlreadyDeleted(t *testing.T) {
 	leaser := newTestLeaser(t, server.URL)
 
 	ctx := context.Background()
-	lease := &litestream.Lease{
+	lease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 		Owner:      "me",
@@ -435,7 +435,7 @@ func TestLeaser_ReleaseLease_EmptyETag(t *testing.T) {
 	leaser := newTestLeaser(t, server.URL)
 
 	ctx := context.Background()
-	lease := &litestream.Lease{
+	lease := &replicate.Lease{
 		Generation: 5,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 		Owner:      "me",
@@ -462,7 +462,7 @@ func TestLeaser_ConcurrentAcquisition(t *testing.T) {
 			if leaseHolder == "" {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
-				lease := litestream.Lease{
+				lease := replicate.Lease{
 					Generation: 1,
 					ExpiresAt:  time.Now().Add(30 * time.Second),
 					Owner:      leaseHolder,
@@ -487,7 +487,7 @@ func TestLeaser_ConcurrentAcquisition(t *testing.T) {
 
 			body, _ := io.ReadAll(r.Body)
 			r.Body.Close()
-			var lease litestream.Lease
+			var lease replicate.Lease
 			json.Unmarshal(body, &lease)
 
 			leaseHolder = lease.Owner

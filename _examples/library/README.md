@@ -1,11 +1,11 @@
-# Litestream Library Usage Examples
+# Replicate Library Usage Examples
 
-These examples demonstrate how to use Litestream as a Go library instead of as a
+These examples demonstrate how to use Replicate as a Go library instead of as a
 standalone CLI tool.
 
 ## API Stability Warning
 
-The Litestream library API is not considered stable and may change between
+The Replicate library API is not considered stable and may change between
 versions. The CLI interface is more stable for production use. Use the library
 API at your own risk, and pin to specific versions.
 
@@ -13,19 +13,19 @@ API at your own risk, and pin to specific versions.
 per-process locks for SQLite, not per-handle locks. If you open the same
 database with two different SQLite driver implementations in the same process
 and close one of them, you can hit locking issues. You **must** use
-`modernc.org/sqlite` for your app since Litestream uses it internally.
+`modernc.org/sqlite` for your app since Replicate uses it internally.
 
 ## Important Constraints
 
-When using Litestream as a library, be aware of these critical requirements:
+When using Replicate as a library, be aware of these critical requirements:
 
-1. **Required Driver**: You must use `modernc.org/sqlite`. Litestream uses this
+1. **Required Driver**: You must use `modernc.org/sqlite`. Replicate uses this
    driver internally, and mixing drivers causes lock conflicts on POSIX systems.
 
-2. **Lifecycle Management**: You cannot call `litestream.DB.Close()` or
+2. **Lifecycle Management**: You cannot call `replicate.DB.Close()` or
    `Replica.Stop(true)` while your application still has open database
    connections. Either close all your app's database connections first, or only
-   close Litestream when your process is shutting down.
+   close Replicate when your process is shutting down.
 
 3. **PRAGMA Configuration**: Use DSN parameters (e.g.,
    `?_pragma=busy_timeout(5000)`) instead of `PRAGMA` statements via
@@ -58,8 +58,8 @@ cd s3
 # Set required environment variables
 export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export LITESTREAM_BUCKET="your-bucket-name"
-export LITESTREAM_PATH="databases/myapp"  # optional, defaults to "litestream"
+export REPLICATE_BUCKET="your-bucket-name"
+export REPLICATE_PATH="databases/myapp"  # optional, defaults to "replicate"
 export AWS_REGION="us-east-1"             # optional, defaults to "us-east-1"
 
 go run main.go
@@ -79,32 +79,32 @@ This example:
 import (
     "context"
     "database/sql"
-    "github.com/benbjohnson/litestream"
-    "github.com/benbjohnson/litestream/file"  // or s3, gs, abs, etc.
+    "github.com/benbjohnson/replicate"
+    "github.com/benbjohnson/replicate/file"  // or s3, gs, abs, etc.
     _ "modernc.org/sqlite"
 )
 
 // 1. Create database wrapper
-db := litestream.NewDB("/path/to/db.sqlite")
+db := replicate.NewDB("/path/to/db.sqlite")
 
 // 2. Create replica client
 client := file.NewReplicaClient("/path/to/replica")
 // OR from URL:
-// client, _ := litestream.NewReplicaClientFromURL("s3://bucket/path")
+// client, _ := replicate.NewReplicaClientFromURL("s3://bucket/path")
 
 // 3. Attach replica to database
-replica := litestream.NewReplicaWithClient(db, client)
+replica := replicate.NewReplicaWithClient(db, client)
 db.Replica = replica
 client.Replica = replica // file backend only; preserves ownership/permissions
 
 // 4. Create compaction levels (L0 required, plus at least one more)
-levels := litestream.CompactionLevels{
+levels := replicate.CompactionLevels{
     {Level: 0},
     {Level: 1, Interval: 10 * time.Second},
 }
 
 // 5. Create Store to manage DB and background compaction
-store := litestream.NewStore([]*litestream.DB{db}, levels)
+store := replicate.NewStore([]*replicate.DB{db}, levels)
 
 // 6. Open Store (opens all DBs, starts background monitors)
 if err := store.Open(ctx); err != nil { ... }
@@ -121,15 +121,15 @@ if err != nil { ... }
 
 ```go
 // Create replica without database for restore
-replica := litestream.NewReplicaWithClient(nil, client)
+replica := replicate.NewReplicaWithClient(nil, client)
 
-opt := litestream.NewRestoreOptions()
+opt := replicate.NewRestoreOptions()
 opt.OutputPath = "/path/to/restored.db"
 // Optional: point-in-time restore
 // opt.Timestamp = time.Now().Add(-1 * time.Hour)
 
 if err := replica.Restore(ctx, opt); err != nil {
-    if errors.Is(err, litestream.ErrTxNotAvailable) || errors.Is(err, litestream.ErrNoSnapshots) {
+    if errors.Is(err, replicate.ErrTxNotAvailable) || errors.Is(err, replicate.ErrNoSnapshots) {
         // No backup available, create fresh database
     }
     return err
@@ -175,5 +175,5 @@ replica.MonitorEnabled = true             // Auto-sync in background
 
 ## Resources
 
-- [Litestream Documentation](https://litestream.io)
-- [GitHub Repository](https://github.com/benbjohnson/litestream)
+- [Replicate Documentation](https://replicate.io)
+- [GitHub Repository](https://github.com/benbjohnson/replicate)

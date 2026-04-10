@@ -1,6 +1,6 @@
 # ReplicaClient Implementation Guide
 
-This guide provides comprehensive instructions for implementing new storage backends for Litestream replication.
+This guide provides comprehensive instructions for implementing new storage backends for Replicate replication.
 
 ## Table of Contents
 
@@ -445,7 +445,7 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 
 ## ReplicaClientV3 Interface (v0.3.x Restore)
 
-Backends that need backward-compatible restore from v0.3.x Litestream backups should implement the optional `ReplicaClientV3` interface (`v3.go`). This enables restoring databases from pre-v0.4 backup formats.
+Backends that need backward-compatible restore from v0.3.x Replicate backups should implement the optional `ReplicaClientV3` interface (`v3.go`). This enables restoring databases from pre-v0.4 backup formats.
 
 ### Interface
 
@@ -502,7 +502,7 @@ generations/
 - `GenerationsV3` returns IDs sorted ascending
 - `SnapshotsV3` returns sorted by index
 - `WALSegmentsV3` returns sorted by index, then offset
-- S3 backend implements this: `var _ litestream.ReplicaClientV3 = (*ReplicaClient)(nil)`
+- S3 backend implements this: `var _ replicate.ReplicaClientV3 = (*ReplicaClient)(nil)`
 
 ### ResumableReader Integration
 
