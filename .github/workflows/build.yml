@@ -2,7 +2,7 @@ name: Build replicate
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev, test]
   workflow_dispatch:
 
 permissions:
@@ -12,9 +12,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        platform: [linux/amd64, linux/arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -24,9 +21,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/hanzoai/replicate
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
       - uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/hanzoai/replicate:latest,ghcr.io/hanzoai/replicate:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
