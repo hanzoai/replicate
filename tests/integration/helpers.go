@@ -23,15 +23,15 @@ import (
 )
 
 type TestDB struct {
-	Path          string
-	ReplicaPath   string
-	ReplicaURL    string
-	ReplicaEnv    []string
-	ConfigPath    string
-	TempDir       string
+	Path         string
+	ReplicaPath  string
+	ReplicaURL   string
+	ReplicaEnv   []string
+	ConfigPath   string
+	TempDir      string
 	ReplicateCmd *exec.Cmd
 	ReplicatePID int
-	t             *testing.T
+	t            *testing.T
 }
 
 // getBinaryPath returns the cross-platform path to a binary.
