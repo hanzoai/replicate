@@ -34,7 +34,7 @@ import (
 	"github.com/aws/smithy-go/middleware"
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 

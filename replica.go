@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/luxfi/age"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate/internal"
 )

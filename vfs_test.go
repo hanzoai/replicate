@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/psanford/sqlite3vfs"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 func TestVFSFile_LockStateMachine(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 var ErrStopIter = errors.New("stop iterator")
