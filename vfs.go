@@ -24,7 +24,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/markusmobius/go-dateparser"
 	"github.com/psanford/sqlite3vfs"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 const (
