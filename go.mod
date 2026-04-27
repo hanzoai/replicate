@@ -18,6 +18,7 @@ require (
 	github.com/aws/smithy-go v1.24.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsouza/fake-gcs-server v1.47.3
+	github.com/hanzoai/ltx v0.5.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/mark3labs/mcp-go v0.32.0
 	github.com/mattn/go-shellwords v1.0.12
@@ -27,7 +28,6 @@ require (
 	github.com/prometheus/client_golang v1.17.0
 	github.com/psanford/sqlite3vfs v0.0.0-20251127171934-4e34e03a991a // direct
 	github.com/studio-b12/gowebdav v0.11.0
-	github.com/superfly/ltx v0.5.1
 	golang.org/x/crypto v0.45.0
 	golang.org/x/sys v0.38.0
 	google.golang.org/api v0.154.0
@@ -58,10 +58,10 @@ require (
 )
 
 require (
+	github.com/hanzoai/lz4/v4 v4.1.22
 	github.com/lmittmann/tint v1.1.3
 	github.com/luxfi/age v1.4.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260209214922-2f26647a795e
 )

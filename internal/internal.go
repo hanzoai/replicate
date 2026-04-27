@@ -5,7 +5,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/pierrec/lz4/v4"
+	"github.com/hanzoai/lz4/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )

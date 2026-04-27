@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/luxfi/age"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/mock"

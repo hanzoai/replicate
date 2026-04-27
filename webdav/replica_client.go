@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/studio-b12/gowebdav"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/internal"
