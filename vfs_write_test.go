@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/psanford/sqlite3vfs"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 // writeTestReplicaClient is a mock ReplicaClient for testing write functionality.
