@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 func TestReplicaClient_Type(t *testing.T) {

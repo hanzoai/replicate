@@ -19,7 +19,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/luxfi/age"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	_ "golang.org/x/crypto/x509roots/fallback"
 	"gopkg.in/yaml.v2"
 	_ "modernc.org/sqlite"
