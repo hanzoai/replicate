@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	"golang.org/x/sync/errgroup"
 )
 

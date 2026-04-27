@@ -17,7 +17,7 @@ import (
 
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 

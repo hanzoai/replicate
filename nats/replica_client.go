@@ -17,7 +17,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/internal"

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/file"

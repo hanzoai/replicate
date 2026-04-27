@@ -24,7 +24,7 @@ import (
 	"github.com/psanford/sqlite3vfs"
 	"github.com/stretchr/testify/require"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/file"
