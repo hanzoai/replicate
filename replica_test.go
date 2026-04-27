@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pierrec/lz4/v4"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/lz4/v4"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/file"

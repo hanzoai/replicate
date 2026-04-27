@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 func TestResumableReader(t *testing.T) {
