@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/hanzoai/replicate"
