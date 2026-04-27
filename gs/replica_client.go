@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	"google.golang.org/api/iterator"
 
 	"github.com/hanzoai/replicate"
