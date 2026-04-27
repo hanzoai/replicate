@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 )
 
 func ltxTestData(tb testing.TB, minTXID, maxTXID ltx.TXID, payload []byte) []byte {

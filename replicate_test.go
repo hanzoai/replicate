@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 	_ "modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate"

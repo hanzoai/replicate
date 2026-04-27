@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	"github.com/hanzoai/replicate"
 )

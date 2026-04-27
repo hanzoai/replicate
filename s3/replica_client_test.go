@@ -23,7 +23,7 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"github.com/superfly/ltx"
+	"github.com/hanzoai/ltx"
 
 	replicate "github.com/hanzoai/replicate"
 )
