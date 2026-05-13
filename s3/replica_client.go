@@ -113,6 +113,13 @@ type ReplicaClient struct {
 	// Server-Side Encryption - AWS KMS (SSE-KMS)
 	// Only works with AWS S3 (not S3-compatible providers)
 	SSEKMSKeyID string // KMS key ID, ARN, or alias
+
+	// HTTPClient overrides the default plain-net/http client used by
+	// the AWS SDK transport. Set this to a luxfi/zap/clienthttp client
+	// to ship LTX uploads + downloads over ZAP-HTTP for the PQ-attested,
+	// zero-copy durability path. Nil = legacy default (plaintext HTTP/1.1
+	// with 24h timeout + the keepalive policy hard-coded below).
+	HTTPClient *http.Client
 }
 
 // NewReplicaClient returns a new instance of ReplicaClient.
@@ -351,31 +358,38 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 		}
 	}
 
-	// Create HTTP client with 24 hour timeout for long-running operations
-	httpClient := &http.Client{
-		Timeout: 24 * time.Hour,
-	}
+	// Prefer the caller-supplied HTTPClient when set (PQ-ZAP path).
+	// Falls back to the legacy plaintext-HTTP transport otherwise.
+	var httpClient *http.Client
+	if c.HTTPClient != nil {
+		httpClient = c.HTTPClient
+	} else {
+		// Create HTTP client with 24 hour timeout for long-running operations
+		httpClient = &http.Client{
+			Timeout: 24 * time.Hour,
+		}
 
-	// Always configure custom HTTP Transport with controlled keepalive settings
-	// to reduce idle CPU usage from default transport's aggressive keepalives.
-	// See: https://github.com/benbjohnson/replicate/issues/992
-	httpClient.Transport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
+		// Always configure custom HTTP Transport with controlled keepalive settings
+		// to reduce idle CPU usage from default transport's aggressive keepalives.
+		// See: https://github.com/benbjohnson/replicate/issues/992
+		httpClient.Transport = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
 
-	// Configure TLS to skip verification if requested
-	if c.SkipVerify {
-		httpClient.Transport.(*http.Transport).TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
+		// Configure TLS to skip verification if requested
+		if c.SkipVerify {
+			httpClient.Transport.(*http.Transport).TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
 		}
 	}
 
