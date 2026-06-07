@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -232,7 +233,10 @@ var ltxFramePool = sync.Pool{
 //
 // Frames exceeding ltxPoolCap fall back to a fresh allocation outside
 // the pool so we don't grow the pool's working set unboundedly on
-// compaction outliers.
+// compaction outliers. Buffers grown above ltxPoolCap during read are
+// DROPPED on release — never returned to the pool — so a single
+// outlier frame cannot permanently inflate the pool's working set
+// (F-05).
 func readPooled(r io.Reader) ([]byte, func(), error) {
 	bufPtr := ltxFramePool.Get().(*[]byte)
 	buf := (*bufPtr)[:0]
@@ -243,9 +247,12 @@ func readPooled(r io.Reader) ([]byte, func(), error) {
 		// Read into the unused tail of buf; grow when full.
 		if len(buf) == cap(buf) {
 			if cap(buf) >= ltxPoolCap {
-				// Outlier — drop the pool buffer, switch to growth.
-				*bufPtr = (*bufPtr)[:0]
-				ltxFramePool.Put(bufPtr)
+				// Outlier — drop the pool buffer entirely, switch to
+				// caller-owned growth. We do NOT Put the pool buffer
+				// back; the next Get returns a fresh ltxPoolCap-bounded
+				// allocation. This prevents pool poisoning where one
+				// large frame grows the cached buffer beyond ltxPoolCap
+				// and every subsequent reuse pays the inflated cost.
 				rest, err := io.ReadAll(r)
 				if err != nil {
 					return nil, nil, err
@@ -268,22 +275,33 @@ func readPooled(r io.Reader) ([]byte, func(), error) {
 			break
 		}
 		if err != nil {
-			*bufPtr = (*bufPtr)[:0]
-			ltxFramePool.Put(bufPtr)
+			putPooled(bufPtr)
 			return nil, nil, err
 		}
 	}
 	*bufPtr = buf
 	release := func() {
-		// Reset length to 0 to avoid retaining payload bytes in the
-		// pool; capacity is preserved so the next Get reuses the
-		// allocation. NB: do NOT zero the bytes — we never lend the
-		// buffer to a goroutine outside the release boundary, and
-		// callers do not depend on cleared bytes.
-		*bufPtr = (*bufPtr)[:0]
-		ltxFramePool.Put(bufPtr)
+		putPooled(bufPtr)
 	}
 	return buf, release, nil
+}
+
+// putPooled returns the buffer to the pool, but only if its capacity
+// is at or below ltxPoolCap. Oversize buffers are dropped on the
+// floor so the pool's working-set cap stays bounded. Without this
+// guard, one >64KB frame would permanently inflate the pool — the
+// next Get returns a cap-inflated buffer, subsequent reads hit the
+// outlier branch again, allocations stay quadratic forever (F-05).
+func putPooled(bufPtr *[]byte) {
+	if bufPtr == nil {
+		return
+	}
+	if cap(*bufPtr) > ltxPoolCap {
+		// Drop oversize — do NOT return to pool.
+		return
+	}
+	*bufPtr = (*bufPtr)[:0]
+	ltxFramePool.Put(bufPtr)
 }
 
 // payloadBufPool holds reusable buffers for the (header+body) payload
@@ -459,7 +477,23 @@ func (s *Server) Close() error {
 // onWALFrame is the OpWALFrame handler. Decodes the wire payload,
 // dispatches to the FrameSink, and emits an ACK. The ACK is the W=2
 // proof — never return nil before Apply has fsynced.
-func (s *Server) onWALFrame(ctx context.Context, peerID string, payload []byte) ([]byte, error) {
+//
+// A malformed frame body or a bug in the FrameSink's Apply path must
+// NEVER crash the server's dispatch goroutine. Any panic that escapes
+// Apply is recovered here, logged with full stack, and surfaced as
+// ErrCodeServerInternal — the owner sees an error and retries, the
+// standby keeps serving (F-22).
+func (s *Server) onWALFrame(ctx context.Context, peerID string, payload []byte) (resp []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("peer: wal frame handler panic",
+				"peer", peerID,
+				"panic", fmt.Sprintf("%v", r),
+				"stack", string(debug.Stack()))
+			resp = encodeAck(ErrCodeServerInternal, MarketID{}, 0)
+			err = nil
+		}
+	}()
 	s.mu.RLock()
 	closed := s.closed
 	sink := s.sink
@@ -482,7 +516,19 @@ func (s *Server) onWALFrame(ctx context.Context, peerID string, payload []byte) 
 // snapshot back as a single response payload. Snapshots are bounded by
 // the standby's available LTX history — a brand-new pod with no
 // snapshot returns ErrCodeUnknownMarket; the caller falls back to S3.
-func (s *Server) onSnapshotReq(ctx context.Context, peerID string, payload []byte) ([]byte, error) {
+//
+// Same panic-safety contract as onWALFrame (F-22).
+func (s *Server) onSnapshotReq(ctx context.Context, peerID string, payload []byte) (resp []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("peer: snapshot handler panic",
+				"peer", peerID,
+				"panic", fmt.Sprintf("%v", r),
+				"stack", string(debug.Stack()))
+			resp = encodeSnapshotResp(ErrCodeServerInternal, MarketID{}, 0, nil)
+			err = nil
+		}
+	}()
 	s.mu.RLock()
 	closed := s.closed
 	sink := s.sink
