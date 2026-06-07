@@ -85,6 +85,10 @@ func (l *Leaser) maxTTL() time.Duration {
 	return l.MaxTTL
 }
 
+// MaxLeaseTTL satisfies replicate.Leaser. Always non-zero — defaults
+// to DefaultLeaseMaxTTL when MaxTTL is unset.
+func (l *Leaser) MaxLeaseTTL() time.Duration { return l.maxTTL() }
+
 func (l *Leaser) SetLogger(logger *slog.Logger) {
 	l.logger = logger.WithGroup("file-leaser")
 }
