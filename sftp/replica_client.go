@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/sftp"
 	"github.com/hanzoai/ltx"
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/hanzoai/replicate"

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/hanzoai/ltx"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	_ "modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate/internal"

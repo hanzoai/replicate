@@ -23,6 +23,12 @@ func (e *LeaseExistsError) Error() string {
 
 type Leaser interface {
 	Type() string
+	// MaxLeaseTTL reports the server-side ceiling on lease lifetime.
+	// Implementations MUST surface a non-zero value in production —
+	// callers (heartbeat schedulers) depend on it to validate that
+	// their renew cadence is at least 2× tighter than the ceiling.
+	// Zero means "unbounded" — only acceptable in tests/dev.
+	MaxLeaseTTL() time.Duration
 	AcquireLease(ctx context.Context) (*Lease, error)
 	RenewLease(ctx context.Context, lease *Lease) (*Lease, error)
 	ReleaseLease(ctx context.Context, lease *Lease) error
