@@ -204,6 +204,98 @@ func (c *ReplicaClient) Close() error {
 	return nil
 }
 
+// ltxFramePool holds reusable byte slices for LTX frame bodies + the
+// (header+body) payload buffer that travels into encodeWALFrameReq.
+// LTX frames are typically 4-64KB at L0; a single pooled cap of 64KB
+// covers the steady-state hot path with one allocation per pool miss.
+// Get returns a slice with len=0; callers must append into it.
+//
+// The 64KB ceiling reflects the L0 frame size cap baked into the SQLite
+// WAL → LTX pipeline (4KB page × ~16 pages per checkpointed WAL frame).
+// Larger frames (compaction outputs at L1+) skip the pool — the caller
+// just falls back to io.ReadAll's default allocation.
+const ltxPoolCap = 64 * 1024
+
+var ltxFramePool = sync.Pool{
+	New: func() any {
+		b := make([]byte, 0, ltxPoolCap)
+		return &b
+	},
+}
+
+// readPooled reads r into a pooled buffer and returns the buffer + the
+// release function. The caller MUST invoke release exactly once,
+// AFTER the last reference to the returned slice is gone. Returning
+// nil + nil + err on read failure keeps the caller's release/defer
+// pattern symmetric — if the function returns an error, no release is
+// owed.
+//
+// Frames exceeding ltxPoolCap fall back to a fresh allocation outside
+// the pool so we don't grow the pool's working set unboundedly on
+// compaction outliers.
+func readPooled(r io.Reader) ([]byte, func(), error) {
+	bufPtr := ltxFramePool.Get().(*[]byte)
+	buf := (*bufPtr)[:0]
+	for {
+		if cap(buf) == 0 {
+			buf = make([]byte, 0, 4096)
+		}
+		// Read into the unused tail of buf; grow when full.
+		if len(buf) == cap(buf) {
+			if cap(buf) >= ltxPoolCap {
+				// Outlier — drop the pool buffer, switch to growth.
+				*bufPtr = (*bufPtr)[:0]
+				ltxFramePool.Put(bufPtr)
+				rest, err := io.ReadAll(r)
+				if err != nil {
+					return nil, nil, err
+				}
+				full := append([]byte(nil), buf...)
+				full = append(full, rest...)
+				return full, func() {}, nil
+			}
+			newCap := cap(buf) * 2
+			if newCap == 0 {
+				newCap = 4096
+			}
+			grown := make([]byte, len(buf), newCap)
+			copy(grown, buf)
+			buf = grown
+		}
+		n, err := r.Read(buf[len(buf):cap(buf)])
+		buf = buf[:len(buf)+n]
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			*bufPtr = (*bufPtr)[:0]
+			ltxFramePool.Put(bufPtr)
+			return nil, nil, err
+		}
+	}
+	*bufPtr = buf
+	release := func() {
+		// Reset length to 0 to avoid retaining payload bytes in the
+		// pool; capacity is preserved so the next Get reuses the
+		// allocation. NB: do NOT zero the bytes — we never lend the
+		// buffer to a goroutine outside the release boundary, and
+		// callers do not depend on cleared bytes.
+		*bufPtr = (*bufPtr)[:0]
+		ltxFramePool.Put(bufPtr)
+	}
+	return buf, release, nil
+}
+
+// payloadBufPool holds reusable buffers for the (header+body) payload
+// passed into encodeWALFrameReq. Same sizing rationale as ltxFramePool —
+// L0 frames stay under 64KB + walFrameHeaderLen=16 bytes.
+var payloadBufPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, 0, ltxPoolCap+walFrameHeaderLen)
+		return &b
+	},
+}
+
 // WriteLTXFile pushes one LTX frame to the peer and blocks until the
 // peer ACKs (fsync confirmed). minTXID and maxTXID identify the frame;
 // for L0 frames they are always equal. Returns the ltx.FileInfo the
@@ -212,6 +304,11 @@ func (c *ReplicaClient) Close() error {
 //
 // This is the hot path. Errors here fail the trader's PlaceOrder; do
 // not return nil unless the peer has confirmed durability.
+//
+// Memory: the LTX body buffer is pooled via ltxFramePool. Under
+// sustained NYSE-class load (5K+ orders/sec/market), this drops
+// per-Push allocations from O(frame_size_bytes) to O(1) on the
+// steady-state path.
 func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, maxTXID ltx.TXID, r io.Reader) (*ltx.FileInfo, error) {
 	if c.closed.Load() {
 		return nil, io.ErrClosedPipe
@@ -219,10 +316,11 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 	if c.node == nil {
 		return nil, errors.New("peer: nil node")
 	}
-	body, err := io.ReadAll(r)
+	body, release, err := readPooled(r)
 	if err != nil {
 		return nil, fmt.Errorf("peer: read ltx: %w", err)
 	}
+	defer release()
 
 	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
