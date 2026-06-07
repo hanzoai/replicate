@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/lz4/v4"
 	"github.com/hanzoai/ltx"
+	"github.com/hanzoai/lz4/v4"
 
 	"github.com/hanzoai/replicate"
 
