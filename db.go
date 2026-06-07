@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hanzoai/ltx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/hanzoai/ltx"
 	"modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate/internal"

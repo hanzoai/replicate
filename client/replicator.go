@@ -75,16 +75,16 @@ type Endpoint struct {
 
 // StreamStatus is the runtime state of one stream.
 type StreamStatus struct {
-	Name              string
-	State             string // running | paused | failed | catching_up | snapshot
-	LastEvent         time.Time
-	LastCheckpoint    Checkpoint
-	LagSeconds        float64
-	LagEvents         int64
-	BytesReplicated   int64
-	EventsReplicated  int64
-	ErrorsLastHour    int
-	LastError         string
+	Name             string
+	State            string // running | paused | failed | catching_up | snapshot
+	LastEvent        time.Time
+	LastCheckpoint   Checkpoint
+	LagSeconds       float64
+	LagEvents        int64
+	BytesReplicated  int64
+	EventsReplicated int64
+	ErrorsLastHour   int
+	LastError        string
 }
 
 // Checkpoint identifies a position in a stream.
