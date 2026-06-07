@@ -378,3 +378,251 @@ func TestWireRoundTrip(t *testing.T) {
 		t.Errorf("body mismatch")
 	}
 }
+
+// panickingSink implements FrameSink and panics on the Nth Apply call.
+// Used to verify the server's panic recovery (F-22).
+type panickingSink struct {
+	mu        sync.Mutex
+	calls     int
+	panicAt   int
+	postPanic []frameRecord
+	panicMsg  string
+}
+
+func (s *panickingSink) Apply(ctx context.Context, id MarketID, txid ltx.TXID, r io.Reader) error {
+	s.mu.Lock()
+	s.calls++
+	n := s.calls
+	s.mu.Unlock()
+	if s.panicAt > 0 && n == s.panicAt {
+		// Drain the reader so the inbound buffer drains predictably.
+		_, _ = io.ReadAll(r)
+		panic(s.panicMsg)
+	}
+	body, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.postPanic = append(s.postPanic, frameRecord{id: id, txid: txid, body: body})
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *panickingSink) Snapshot(ctx context.Context, id MarketID, fromTXID ltx.TXID) (io.ReadCloser, ltx.TXID, error) {
+	return io.NopCloser(bytes.NewReader(nil)), 0, nil
+}
+
+// TestPeerServer_PanicInWALFrameHandlerDoesNotKillServer asserts that
+// a panic inside the FrameSink does not propagate up the dispatch
+// goroutine. The server must catch the panic, ACK with
+// ErrCodeServerInternal, and remain available for subsequent frames.
+//
+// Closes F-22 (CRITICAL): a malformed payload that panicked inside
+// LTXTailWriter.Apply previously DoS'd the entire standby's peer
+// receive surface.
+func TestPeerServer_PanicInWALFrameHandlerDoesNotKillServer(t *testing.T) {
+	ctx := context.Background()
+	owner, _ := startNode(t, "owner-panic")
+	standby, standbyPort := startNode(t, "standby-panic")
+
+	standbyDisp := newFakeDispatcher(standby)
+	standbyDisp.attach()
+
+	sink := &panickingSink{panicAt: 3, panicMsg: "synthetic apply panic"}
+	server := NewServer(sink)
+	if err := server.Register(standbyDisp); err != nil {
+		t.Fatalf("server register: %v", err)
+	}
+
+	connectNodes(t, owner, standbyPort)
+
+	mkt := MarketID{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe}
+	client := NewReplicaClient(owner, "standby-panic", mkt, WithTimeout(2*time.Second))
+
+	// Send 10 frames; the 3rd panics. The remaining 7 must succeed.
+	const N = 10
+	results := make([]error, N)
+	for i := 0; i < N; i++ {
+		body := []byte(fmt.Sprintf("frame-%d", i))
+		_, err := client.WriteLTXFile(ctx, 0, ltx.TXID(i+1), ltx.TXID(i+1), bytes.NewReader(body))
+		results[i] = err
+	}
+
+	// Frame index 2 (3rd call) must surface as an error code; the
+	// rest must succeed.
+	for i, err := range results {
+		if i == 2 {
+			if err == nil {
+				t.Fatalf("frame %d: expected panic-induced error, got nil", i)
+			}
+			var ackErr *AckError
+			if !errors.As(err, &ackErr) {
+				t.Fatalf("frame %d: expected *AckError, got %T: %v", i, err, err)
+			}
+			if ackErr.Code != ErrCodeServerInternal {
+				t.Fatalf("frame %d: ack code 0x%02x want 0x%02x", i, ackErr.Code, ErrCodeServerInternal)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("frame %d after panic: %v", i, err)
+		}
+	}
+
+	sink.mu.Lock()
+	totalCalls := sink.calls
+	survivors := len(sink.postPanic)
+	sink.mu.Unlock()
+	if totalCalls != N {
+		t.Errorf("sink calls: got %d want %d (server must still receive every frame)", totalCalls, N)
+	}
+	if survivors != N-1 {
+		t.Errorf("survived frames: got %d want %d", survivors, N-1)
+	}
+}
+
+// TestPeerServer_PanicInSnapshotHandlerDoesNotKillServer mirrors the
+// WAL-frame panic test for the snapshot handler.
+func TestPeerServer_PanicInSnapshotHandlerDoesNotKillServer(t *testing.T) {
+	ctx := context.Background()
+	owner, _ := startNode(t, "owner-snap-panic")
+	standby, standbyPort := startNode(t, "standby-snap-panic")
+
+	standbyDisp := newFakeDispatcher(standby)
+	standbyDisp.attach()
+
+	sink := &snapshotPanickingSink{}
+	server := NewServer(sink)
+	if err := server.Register(standbyDisp); err != nil {
+		t.Fatalf("server register: %v", err)
+	}
+
+	connectNodes(t, owner, standbyPort)
+
+	mkt := MarketID{1, 2, 3, 4, 5, 6, 7, 8}
+	req := encodeSnapshotReq(mkt, 0)
+	resp, err := owner.Call(ctx, "standby-snap-panic", req)
+	if err != nil {
+		t.Fatalf("snapshot call: %v", err)
+	}
+	code, _, _, _, err := DecodeSnapshotResp(resp)
+	if err != nil {
+		t.Fatalf("decode snapshot resp: %v", err)
+	}
+	if code != ErrCodeServerInternal {
+		t.Fatalf("expected ErrCodeServerInternal, got 0x%02x", code)
+	}
+
+	// Server must still answer subsequent calls.
+	sink.disablePanic.Store(true)
+	resp2, err := owner.Call(ctx, "standby-snap-panic", req)
+	if err != nil {
+		t.Fatalf("snapshot call after panic: %v", err)
+	}
+	code2, _, _, _, err := DecodeSnapshotResp(resp2)
+	if err != nil {
+		t.Fatalf("decode resp after panic: %v", err)
+	}
+	if code2 != ErrCodeOK {
+		t.Fatalf("post-panic code: 0x%02x want 0x00", code2)
+	}
+}
+
+type snapshotPanickingSink struct {
+	disablePanic atomic.Bool
+}
+
+func (s *snapshotPanickingSink) Apply(ctx context.Context, id MarketID, txid ltx.TXID, r io.Reader) error {
+	return nil
+}
+
+func (s *snapshotPanickingSink) Snapshot(ctx context.Context, id MarketID, fromTXID ltx.TXID) (io.ReadCloser, ltx.TXID, error) {
+	if !s.disablePanic.Load() {
+		panic("synthetic snapshot panic")
+	}
+	return io.NopCloser(bytes.NewReader([]byte("ok"))), 1, nil
+}
+
+// TestPeerFramePool_DropsOversizeBuffers verifies that buffers grown
+// beyond ltxPoolCap during read are dropped on release, not pooled.
+// Without this, a single >64KB frame would permanently inflate the
+// pool's cached buffer cap, forcing every subsequent reuse through
+// the outlier branch (F-05).
+func TestPeerFramePool_DropsOversizeBuffers(t *testing.T) {
+	// Saturate the pool with a known reference buffer.
+	original := make([]byte, 0, ltxPoolCap)
+	ltxFramePool.Put(&original)
+
+	// Read a frame larger than ltxPoolCap. The reader enters the
+	// outlier branch (cap >= ltxPoolCap, len == cap), drops the
+	// pool buffer, and returns a caller-owned slice. Release is a
+	// no-op for the caller-owned slice.
+	bigBody := bytes.Repeat([]byte{0xab}, ltxPoolCap*2)
+	buf, release, err := readPooled(bytes.NewReader(bigBody))
+	if err != nil {
+		t.Fatalf("readPooled: %v", err)
+	}
+	if !bytes.Equal(buf, bigBody) {
+		t.Fatalf("buf mismatch — outlier path corrupted body")
+	}
+	release()
+
+	// Hammer the pool with many oversize frames to force any
+	// poisoned buffers out into circulation. Every release must
+	// drop oversize.
+	for i := 0; i < 32; i++ {
+		body := bytes.Repeat([]byte{byte(i)}, ltxPoolCap+1024)
+		got, rel, err := readPooled(bytes.NewReader(body))
+		if err != nil {
+			t.Fatalf("readPooled iter %d: %v", i, err)
+		}
+		if len(got) != len(body) {
+			t.Fatalf("iter %d: len mismatch got=%d want=%d", i, len(got), len(body))
+		}
+		rel()
+	}
+
+	// Now request many normal-sized frames. None should expose a
+	// buffer with cap > ltxPoolCap. We drain the pool via Get to
+	// inspect cached buffers directly.
+	var samples []int
+	for i := 0; i < 64; i++ {
+		ptr := ltxFramePool.Get().(*[]byte)
+		samples = append(samples, cap(*ptr))
+		// Don't put back during sampling; we're inspecting.
+	}
+	for _, c := range samples {
+		if c > ltxPoolCap {
+			t.Errorf("pool contained oversize buffer cap=%d (>ltxPoolCap=%d) — F-05 regression",
+				c, ltxPoolCap)
+		}
+	}
+}
+
+// TestPutPooled_DropsOversize is a focused unit test on the
+// putPooled helper. It verifies that an oversize buffer is dropped
+// without panicking and a normal-sized buffer is returned to the
+// pool with len reset.
+func TestPutPooled_DropsOversize(t *testing.T) {
+	// Oversize buffer — must be dropped, not pooled.
+	oversize := make([]byte, ltxPoolCap*3+100)
+	ptr := &oversize
+	putPooled(ptr)
+	// We cannot directly assert "not in pool" without a custom pool;
+	// instead assert: a normal-sized buffer that we Put + Get must
+	// come back with len=0 and cap≤ltxPoolCap.
+
+	normal := make([]byte, 100, ltxPoolCap)
+	nPtr := &normal
+	putPooled(nPtr)
+	if len(*nPtr) != 0 {
+		t.Errorf("putPooled did not reset len: got %d want 0", len(*nPtr))
+	}
+	if cap(*nPtr) != ltxPoolCap {
+		t.Errorf("putPooled mutated cap: got %d want %d", cap(*nPtr), ltxPoolCap)
+	}
+
+	// putPooled(nil) must not panic.
+	putPooled(nil)
+}
