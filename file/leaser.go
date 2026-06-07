@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	DefaultLeaseTTL  = 30 * time.Second
-	DefaultLeaseFile = "lock.json"
-	LeaserType       = "file"
+	DefaultLeaseTTL    = 30 * time.Second
+	DefaultLeaseMaxTTL = 30 * time.Second
+	DefaultLeaseFile   = "lock.json"
+	LeaserType         = "file"
 )
 
 var (
@@ -27,19 +28,31 @@ var (
 	ErrLeaseRequired        = errors.New("lease required")
 	ErrLeaseETagRequired    = errors.New("lease etag required")
 	ErrLeaseAlreadyReleased = errors.New("lease already released")
+	ErrTTLExceedsMax        = errors.New("requested lease TTL exceeds MaxTTL")
+	ErrLeaseCorrupt         = errors.New("on-disk lease ExpiresAt exceeds MaxTTL — refusing to honor")
 )
 
 // Leaser implements replicate.Leaser using POSIX filesystem semantics:
 // O_CREAT|O_EXCL for initial creation, content-hash ETag matching for
 // updates, atomic rename for cutover. Mirrors the S3 leaser's CAS
 // contract so callers can swap backends without code changes.
+//
+// Production deployments MUST set MaxTTL to a value commensurate with
+// their heartbeat interval (≥ 2 × heartbeat tick is the standard).
+// A buggy or malicious caller that requests TTL > MaxTTL is rejected
+// with ErrTTLExceedsMax — without this, one bad pod can pin the lease
+// for an arbitrary duration regardless of liveness. MaxTTL also
+// bounds the read side: any on-disk ExpiresAt > now + MaxTTL is
+// treated as corrupt/malicious and rejected (defense in depth against
+// a writer that bypassed this API).
 type Leaser struct {
 	logger *slog.Logger
 
-	Dir   string        // directory containing the lock file
-	Path  string        // relative path under Dir; empty means DefaultLeaseFile
-	TTL   time.Duration // lease TTL on Acquire/Renew
-	Owner string        // string written to the lease body for forensics
+	Dir    string        // directory containing the lock file
+	Path   string        // relative path under Dir; empty means DefaultLeaseFile
+	TTL    time.Duration // lease TTL on Acquire/Renew
+	MaxTTL time.Duration // server-side ceiling; zero means DefaultLeaseMaxTTL
+	Owner  string        // string written to the lease body for forensics
 }
 
 // NewLeaser constructs a file-backed lease coordinator rooted at dir.
@@ -57,8 +70,19 @@ func NewLeaser(dir string) *Leaser {
 		logger: slog.Default().WithGroup("file-leaser"),
 		Dir:    dir,
 		TTL:    DefaultLeaseTTL,
+		MaxTTL: DefaultLeaseMaxTTL,
 		Owner:  owner,
 	}
+}
+
+// maxTTL returns the configured ceiling, defaulting to
+// DefaultLeaseMaxTTL when zero so a Leaser that callers built without
+// touching the field still gets a sane bound.
+func (l *Leaser) maxTTL() time.Duration {
+	if l.MaxTTL <= 0 {
+		return DefaultLeaseMaxTTL
+	}
+	return l.MaxTTL
 }
 
 func (l *Leaser) SetLogger(logger *slog.Logger) {
@@ -76,6 +100,9 @@ func (l *Leaser) lockPath() string {
 }
 
 func (l *Leaser) AcquireLease(ctx context.Context) (*replicate.Lease, error) {
+	if l.TTL > l.maxTTL() {
+		return nil, fmt.Errorf("%w: TTL=%s MaxTTL=%s", ErrTTLExceedsMax, l.TTL, l.maxTTL())
+	}
 	existing, etag, err := l.readLease()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("read existing lease: %w", err)
@@ -130,6 +157,24 @@ func (l *Leaser) RenewLease(ctx context.Context, lease *replicate.Lease) (*repli
 	if lease.ETag == "" {
 		return nil, ErrLeaseETagRequired
 	}
+	if l.TTL > l.maxTTL() {
+		return nil, fmt.Errorf("%w: TTL=%s MaxTTL=%s", ErrTTLExceedsMax, l.TTL, l.maxTTL())
+	}
+
+	// Belt-and-suspenders: confirm the on-disk record was written by us.
+	// ETag CAS is primary, Owner check guards against a caller who read
+	// the ETag from a co-located Leaser and crafted a renew with a
+	// different Owner string.
+	existing, _, err := l.readLease()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, replicate.ErrLeaseNotHeld
+		}
+		return nil, fmt.Errorf("read existing lease: %w", err)
+	}
+	if existing.Owner != l.Owner {
+		return nil, replicate.ErrLeaseNotHeld
+	}
 
 	newLease := &replicate.Lease{
 		Generation: lease.Generation,
@@ -181,7 +226,9 @@ func (l *Leaser) ReleaseLease(ctx context.Context, lease *replicate.Lease) error
 
 // readLease loads the lock file, returning the parsed lease and its
 // content-hash ETag. Returns os.ErrNotExist when no lock file is
-// present.
+// present. Treats an on-disk ExpiresAt > now + MaxTTL as corrupt and
+// returns ErrLeaseCorrupt — defense in depth against a writer that
+// bypassed the API.
 func (l *Leaser) readLease() (*replicate.Lease, string, error) {
 	data, err := os.ReadFile(l.lockPath())
 	if err != nil {
@@ -193,6 +240,11 @@ func (l *Leaser) readLease() (*replicate.Lease, string, error) {
 	var lease replicate.Lease
 	if err := json.Unmarshal(data, &lease); err != nil {
 		return nil, "", fmt.Errorf("decode lease: %w", err)
+	}
+	if max := l.maxTTL(); !lease.ExpiresAt.IsZero() && time.Until(lease.ExpiresAt) > max {
+		return nil, "", fmt.Errorf("%w: expires_at=%s now+max=%s", ErrLeaseCorrupt,
+			lease.ExpiresAt.Format(time.RFC3339Nano),
+			time.Now().Add(max).Format(time.RFC3339Nano))
 	}
 	etag := contentETag(data)
 	lease.ETag = etag

@@ -2,7 +2,10 @@ package file
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -233,5 +236,111 @@ func TestLeaser_ConcurrentAcquireSingleWinner(t *testing.T) {
 
 	if got := winners.Load(); got != 1 {
 		t.Fatalf("expected exactly 1 winner, got %d", got)
+	}
+}
+
+// TestLeaser_RejectsTTLBeyondMax — a malicious or buggy caller that
+// sets l.TTL > l.MaxTTL must be rejected with ErrTTLExceedsMax on
+// both Acquire and Renew. Without this, one pod can pin the lease
+// for hours regardless of liveness.
+func TestLeaser_RejectsTTLBeyondMax(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("acquire", func(t *testing.T) {
+		l := NewLeaser(t.TempDir())
+		l.Owner = "node-a"
+		l.MaxTTL = 30 * time.Second
+		l.TTL = 1 * time.Hour
+		if _, err := l.AcquireLease(ctx); !errors.Is(err, ErrTTLExceedsMax) {
+			t.Fatalf("Acquire: expected ErrTTLExceedsMax, got %v", err)
+		}
+	})
+
+	t.Run("renew", func(t *testing.T) {
+		l := NewLeaser(t.TempDir())
+		l.Owner = "node-a"
+		l.MaxTTL = 30 * time.Second
+		l.TTL = 5 * time.Second
+		lease, err := l.AcquireLease(ctx)
+		if err != nil {
+			t.Fatalf("AcquireLease: %v", err)
+		}
+		l.TTL = 1 * time.Hour
+		if _, err := l.RenewLease(ctx, lease); !errors.Is(err, ErrTTLExceedsMax) {
+			t.Fatalf("Renew: expected ErrTTLExceedsMax, got %v", err)
+		}
+	})
+
+	t.Run("zero_max_uses_default", func(t *testing.T) {
+		l := NewLeaser(t.TempDir())
+		l.Owner = "node-a"
+		l.MaxTTL = 0
+		l.TTL = DefaultLeaseMaxTTL + 1*time.Second
+		if _, err := l.AcquireLease(ctx); !errors.Is(err, ErrTTLExceedsMax) {
+			t.Fatalf("zero MaxTTL must fall back to default and reject; got %v", err)
+		}
+	})
+}
+
+// TestLeaser_ReadRejectsCorruptedTTL — an attacker who bypasses the
+// API and hand-writes a lock file with ExpiresAt 1h out must be
+// rejected when any normal Acquire/Renew reads it. Defense in depth
+// against a writer that ignored the API ceiling.
+func TestLeaser_ReadRejectsCorruptedTTL(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	corrupt := &replicate.Lease{
+		Generation: 1,
+		ExpiresAt:  time.Now().Add(1 * time.Hour),
+		Owner:      "evil",
+	}
+	data, err := json.Marshal(corrupt)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, DefaultLeaseFile), data, 0o644); err != nil {
+		t.Fatalf("write lock: %v", err)
+	}
+
+	l := NewLeaser(dir)
+	l.Owner = "node-a"
+	l.MaxTTL = 30 * time.Second
+	l.TTL = 5 * time.Second
+
+	if _, err := l.AcquireLease(ctx); !errors.Is(err, ErrLeaseCorrupt) {
+		t.Fatalf("Acquire on corrupt lock: expected ErrLeaseCorrupt, got %v", err)
+	}
+}
+
+// TestLeaser_RejectsRenewByForeignOwner — Leaser A acquires; Leaser B
+// (different Owner) crafts a renew call carrying A's ETag. Without
+// the owner check, B would overwrite A's lease silently. Now: B is
+// rejected with ErrLeaseNotHeld.
+func TestLeaser_RejectsRenewByForeignOwner(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	a := NewLeaser(dir)
+	a.Owner = "node-a"
+	a.TTL = 5 * time.Second
+	leaseA, err := a.AcquireLease(ctx)
+	if err != nil {
+		t.Fatalf("a.AcquireLease: %v", err)
+	}
+
+	b := NewLeaser(dir)
+	b.Owner = "node-b"
+	b.TTL = 5 * time.Second
+	// B uses A's ETag — would have succeeded pre-fix because ETag CAS
+	// alone matched. Owner check is the new gate.
+	leaseACopy := *leaseA
+	if _, err := b.RenewLease(ctx, &leaseACopy); !errors.Is(err, replicate.ErrLeaseNotHeld) {
+		t.Fatalf("expected ErrLeaseNotHeld for foreign-owner renew, got %v", err)
+	}
+
+	// A can still renew its own lease.
+	if _, err := a.RenewLease(ctx, leaseA); err != nil {
+		t.Fatalf("a.RenewLease (own): %v", err)
 	}
 }
