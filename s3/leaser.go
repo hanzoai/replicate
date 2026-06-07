@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	DefaultLeaseTTL  = 30 * time.Second
-	DefaultLeasePath = "lock.json"
-	LeaserType       = "s3"
+	DefaultLeaseTTL    = 30 * time.Second
+	DefaultLeaseMaxTTL = 30 * time.Second
+	DefaultLeasePath   = "lock.json"
+	LeaserType         = "s3"
 )
 
 var (
@@ -46,6 +47,10 @@ type Leaser struct {
 	Bucket string
 	Path   string
 	TTL    time.Duration
+	// MaxTTL is the server-side ceiling on lease lifetime. Zero
+	// defaults to DefaultLeaseMaxTTL. Heartbeats use 2*tick ≤ MaxTTL
+	// as the split-brain safety bound.
+	MaxTTL time.Duration
 	Owner  string
 }
 
@@ -60,8 +65,18 @@ func NewLeaser() *Leaser {
 	return &Leaser{
 		logger: slog.Default().WithGroup("s3-leaser"),
 		TTL:    DefaultLeaseTTL,
+		MaxTTL: DefaultLeaseMaxTTL,
 		Owner:  owner,
 	}
+}
+
+// MaxTTL satisfies replicate.Leaser. Always non-zero — defaults to
+// DefaultLeaseMaxTTL when the field is unset.
+func (l *Leaser) maxTTL() time.Duration {
+	if l.MaxTTL <= 0 {
+		return DefaultLeaseMaxTTL
+	}
+	return l.MaxTTL
 }
 
 func (l *Leaser) SetLogger(logger *slog.Logger) {
@@ -79,6 +94,10 @@ func (l *Leaser) SetClient(client S3API) {
 func (l *Leaser) Type() string {
 	return LeaserType
 }
+
+// MaxLeaseTTL exposes the configured ceiling for the replicate.Leaser
+// interface.
+func (l *Leaser) MaxLeaseTTL() time.Duration { return l.maxTTL() }
 
 func (l *Leaser) lockKey() string {
 	if l.Path == "" {
