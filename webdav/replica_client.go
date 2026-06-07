@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/studio-b12/gowebdav"
 	"github.com/hanzoai/ltx"
+	"github.com/studio-b12/gowebdav"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/internal"

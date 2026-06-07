@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/hanzoai/ltx"
 	"github.com/luxfi/age"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/hanzoai/ltx"
 )
 
 // Compactor handles compaction and retention for LTX files.
