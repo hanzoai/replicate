@@ -12,7 +12,7 @@ problems for a post-quantum stack:
    a future quantum computer recording the traffic today can decrypt
    it later ("harvest now, decrypt later").
 
-2. **Latency tax for in-cluster S2S.** The most common Liquidity
+2. **Latency tax for in-cluster S2S.** The most common Base-backed
    topology runs the replication target as a pod in the same cluster
    (hanzos3/s3 server, or a MinIO sidecar). Plaintext HTTP/1.1 +
    AWS-v4 signing per part adds ~3-5ms per request on hot loops.
