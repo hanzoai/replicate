@@ -3,12 +3,13 @@ package replicate
 // SyncPolicy controls how Sync() coordinates across multiple replicas.
 //
 // The current DB struct has a single Replica field that the monitor
-// loop drives asynchronously. The W=2 hot-path use case in liquidity
-// ATS needs a stronger guarantee: ACK only after a designated peer
-// replica has confirmed durability. SyncPolicy expresses the contract
-// the caller needs; the actual peer push happens at the journal layer
-// (which knows the peer's identity and the symbol→stream binding) so
-// the replicate package stays storage-agnostic.
+// loop drives asynchronously. The W=2 hot-path use case in matching-
+// engine workloads needs a stronger guarantee: ACK only after a
+// designated peer replica has confirmed durability. SyncPolicy
+// expresses the contract the caller needs; the actual peer push
+// happens at the journal layer (which knows the peer's identity and
+// the symbol→stream binding) so the replicate package stays
+// storage-agnostic.
 type SyncPolicy uint8
 
 const (
