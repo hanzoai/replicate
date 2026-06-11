@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/ltx"
-	"github.com/prometheus/client_golang/prometheus/testutil"
+	metric "github.com/luxfi/metric"
 	_ "modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate/internal"
