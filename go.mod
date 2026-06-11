@@ -23,7 +23,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.19
 	github.com/nats-io/nats.go v1.44.0
 	github.com/pkg/sftp v1.13.6
-	github.com/prometheus/client_golang v1.17.0
 	github.com/psanford/sqlite3vfs v0.0.0-20251127171934-4e34e03a991a // direct
 	github.com/studio-b12/gowebdav v0.11.0
 	golang.org/x/crypto v0.52.0
@@ -115,6 +114,7 @@ require (
 	github.com/luxfi/accel v1.1.9 // indirect
 	github.com/luxfi/crypto v1.19.17 // indirect
 	github.com/luxfi/mdns v0.1.1 // indirect
+	github.com/luxfi/metric v1.5.8
 	github.com/magefile/mage v1.14.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
