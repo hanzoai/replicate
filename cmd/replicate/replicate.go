@@ -13,8 +13,8 @@ import (
 	"os/exec"
 	"strings"
 
+	metric "github.com/luxfi/metric"
 	"github.com/mattn/go-shellwords"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/abs"
@@ -359,7 +359,7 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 
 		slog.Info("serving metrics on", "url", fmt.Sprintf("http://%s/metrics", hostport))
 		go func() {
-			http.Handle("/metrics", promhttp.Handler())
+			http.Handle("/metrics", metric.NewHTTPHandler(metric.DefaultGatherer, metric.HandlerOpts{}))
 			if err := http.ListenAndServe(c.Config.Addr, nil); err != nil {
 				slog.Error("cannot start metrics server", "error", err)
 			}
