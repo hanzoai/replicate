@@ -19,8 +19,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/ltx"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	metric "github.com/luxfi/metric"
 	"modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate/internal"
@@ -117,16 +116,16 @@ type DB struct {
 	Done   <-chan struct{}
 
 	// Metrics
-	dbSizeGauge                 prometheus.Gauge
-	walSizeGauge                prometheus.Gauge
-	totalWALBytesCounter        prometheus.Counter
-	txIDGauge                   prometheus.Gauge
-	syncNCounter                prometheus.Counter
-	syncErrorNCounter           prometheus.Counter
-	syncSecondsCounter          prometheus.Counter
-	checkpointNCounterVec       *prometheus.CounterVec
-	checkpointErrorNCounterVec  *prometheus.CounterVec
-	checkpointSecondsCounterVec *prometheus.CounterVec
+	dbSizeGauge                 metric.Gauge
+	walSizeGauge                metric.Gauge
+	totalWALBytesCounter        metric.Counter
+	txIDGauge                   metric.Gauge
+	syncNCounter                metric.Counter
+	syncErrorNCounter           metric.Counter
+	syncSecondsCounter          metric.Counter
+	checkpointNCounterVec       *metric.CounterVec
+	checkpointErrorNCounterVec  *metric.CounterVec
+	checkpointSecondsCounterVec *metric.CounterVec
 
 	// Minimum threshold of WAL size, in pages, before a passive checkpoint.
 	// A passive checkpoint will attempt a checkpoint but fail if there are
@@ -226,9 +225,9 @@ func NewDB(path string) *DB {
 	db.syncNCounter = syncNCounterVec.WithLabelValues(db.path)
 	db.syncErrorNCounter = syncErrorNCounterVec.WithLabelValues(db.path)
 	db.syncSecondsCounter = syncSecondsCounterVec.WithLabelValues(db.path)
-	db.checkpointNCounterVec = checkpointNCounterVec.MustCurryWith(prometheus.Labels{"db": db.path})
-	db.checkpointErrorNCounterVec = checkpointErrorNCounterVec.MustCurryWith(prometheus.Labels{"db": db.path})
-	db.checkpointSecondsCounterVec = checkpointSecondsCounterVec.MustCurryWith(prometheus.Labels{"db": db.path})
+	db.checkpointNCounterVec = checkpointNCounterVec.MustCurryWith(metric.Labels{"db": db.path})
+	db.checkpointErrorNCounterVec = checkpointErrorNCounterVec.MustCurryWith(metric.Labels{"db": db.path})
+	db.checkpointSecondsCounterVec = checkpointSecondsCounterVec.MustCurryWith(metric.Labels{"db": db.path})
 
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 
@@ -1890,7 +1889,7 @@ func (db *DB) execCheckpoint(ctx context.Context, mode string) (err error) {
 	// Track checkpoint metrics.
 	t := time.Now()
 	defer func() {
-		labels := prometheus.Labels{"mode": mode}
+		labels := metric.Labels{"mode": mode}
 		db.checkpointNCounterVec.With(labels).Inc()
 		if err != nil {
 			db.checkpointErrorNCounterVec.With(labels).Inc()
@@ -2441,57 +2440,57 @@ func NewRestoreOptions() RestoreOptions {
 
 // Database metrics.
 var (
-	dbSizeGaugeVec = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	dbSizeGaugeVec = metric.NewGaugeVec(metric.GaugeOpts{
 		Name: "replicate_db_size",
 		Help: "The current size of the real DB",
 	}, []string{"db"})
 
-	walSizeGaugeVec = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	walSizeGaugeVec = metric.NewGaugeVec(metric.GaugeOpts{
 		Name: "replicate_wal_size",
 		Help: "The current size of the real WAL",
 	}, []string{"db"})
 
-	totalWALBytesCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	totalWALBytesCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_total_wal_bytes",
 		Help: "Total number of bytes written to shadow WAL",
 	}, []string{"db"})
 
-	txIDIndexGaugeVec = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	txIDIndexGaugeVec = metric.NewGaugeVec(metric.GaugeOpts{
 		Name: "replicate_txid",
 		Help: "The current transaction ID",
 	}, []string{"db"})
 
-	syncNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	syncNCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_sync_count",
 		Help: "Number of sync operations performed",
 	}, []string{"db"})
 
-	syncErrorNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	syncErrorNCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_sync_error_count",
 		Help: "Number of sync errors that have occurred",
 	}, []string{"db"})
 
-	syncSecondsCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	syncSecondsCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_sync_seconds",
 		Help: "Time spent syncing shadow WAL, in seconds",
 	}, []string{"db"})
 
-	checkpointNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	checkpointNCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_checkpoint_count",
 		Help: "Number of checkpoint operations performed",
 	}, []string{"db", "mode"})
 
-	checkpointErrorNCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	checkpointErrorNCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_checkpoint_error_count",
 		Help: "Number of checkpoint errors that have occurred",
 	}, []string{"db", "mode"})
 
-	checkpointSecondsCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	checkpointSecondsCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_checkpoint_seconds",
 		Help: "Time spent checkpointing WAL, in seconds",
 	}, []string{"db", "mode"})
 
-	compactionVerifyErrorCounterVec = promauto.NewCounterVec(prometheus.CounterOpts{
+	compactionVerifyErrorCounterVec = metric.NewCounterVec(metric.CounterOpts{
 		Name: "replicate_compaction_verify_error_count",
 		Help: "Number of post-compaction verification failures",
 	}, []string{"db"})

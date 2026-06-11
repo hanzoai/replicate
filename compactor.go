@@ -10,7 +10,7 @@ import (
 
 	"github.com/hanzoai/ltx"
 	"github.com/luxfi/age"
-	"github.com/prometheus/client_golang/prometheus"
+	metric "github.com/luxfi/metric"
 )
 
 // Compactor handles compaction and retention for LTX files.
@@ -32,7 +32,7 @@ type Compactor struct {
 
 	// CompactionVerifyErrorCounter is incremented when post-compaction
 	// verification fails. Optional; if nil, no metric is recorded.
-	CompactionVerifyErrorCounter prometheus.Counter
+	CompactionVerifyErrorCounter metric.Counter
 
 	// LocalFileOpener optionally opens a local LTX file for compaction.
 	// If nil or returns os.ErrNotExist, falls back to remote.
