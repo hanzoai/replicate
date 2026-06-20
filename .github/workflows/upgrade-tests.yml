@@ -16,7 +16,7 @@ permissions:
 jobs:
   upgrade-test:
     name: v0.3.x to v0.5.x Upgrade Test
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - uses: actions/checkout@v4
 

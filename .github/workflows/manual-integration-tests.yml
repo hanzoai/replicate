@@ -55,7 +55,7 @@ on:
 jobs:
   setup:
     name: Setup and Validation
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     outputs:
       ref: ${{ steps.get-ref.outputs.ref }}
       ref_name: ${{ steps.get-ref.outputs.ref_name }}
@@ -105,7 +105,7 @@ jobs:
 
   s3-integration:
     name: S3 Integration Tests (AWS)
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_s3 == 'true'
     concurrency:
@@ -166,7 +166,7 @@ jobs:
 
   tigris-integration:
     name: Tigris Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_tigris == 'true'
     concurrency:
@@ -225,7 +225,7 @@ jobs:
 
   r2-integration:
     name: Cloudflare R2 Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_r2 == 'true'
     concurrency:
@@ -286,7 +286,7 @@ jobs:
 
   b2-integration:
     name: Backblaze B2 Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_b2 == 'true'
     concurrency:
@@ -347,7 +347,7 @@ jobs:
 
   multipart-stress:
     name: Multipart Upload Stress Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_multipart == 'true'
     concurrency:
@@ -411,7 +411,7 @@ jobs:
 
   gcs-integration:
     name: Google Cloud Storage Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_gcs == 'true'
     concurrency:
@@ -477,7 +477,7 @@ jobs:
 
   abs-integration:
     name: Azure Blob Storage Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: setup
     if: github.event.inputs.test_abs == 'true'
     concurrency:
@@ -537,7 +537,7 @@ jobs:
 
   summary:
     name: Test Summary
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: [setup, s3-integration, gcs-integration, abs-integration, tigris-integration, r2-integration, b2-integration, multipart-stress]
     if: always()
     steps:

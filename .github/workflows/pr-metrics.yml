@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-base:
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - name: Checkout base branch
         uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
           path: base-size.txt
 
   build-pr:
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
             go-version.txt
 
   analyze-deps:
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -166,7 +166,7 @@ jobs:
 
   post-comment:
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: [build-base, build-pr, analyze-deps]
     steps:
       - name: Download all artifacts
