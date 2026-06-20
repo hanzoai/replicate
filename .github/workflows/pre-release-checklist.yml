@@ -35,7 +35,7 @@ on:
 jobs:
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     outputs:
       result: ${{ steps.test.outcome }}
     steps:
@@ -51,7 +51,7 @@ jobs:
 
   build-verification:
     name: Build Verification
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     outputs:
       result: ${{ steps.build.outcome }}
     steps:
@@ -76,7 +76,7 @@ jobs:
 
   s3-integration:
     name: S3 Integration (AWS)
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     if: github.event.inputs.test_cloud_providers == 'true'
     outputs:
       result: ${{ steps.test.outcome }}
@@ -112,7 +112,7 @@ jobs:
 
   gcs-integration:
     name: GCS Integration
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     if: github.event.inputs.test_cloud_providers == 'true'
     outputs:
       result: ${{ steps.test.outcome }}
@@ -153,7 +153,7 @@ jobs:
 
   abs-integration:
     name: Azure Blob Storage Integration
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     if: github.event.inputs.test_cloud_providers == 'true'
     outputs:
       result: ${{ steps.test.outcome }}
@@ -188,7 +188,7 @@ jobs:
 
   r2-integration:
     name: Cloudflare R2 Integration
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     if: github.event.inputs.test_cloud_providers == 'true'
     outputs:
       result: ${{ steps.test.outcome }}
@@ -224,7 +224,7 @@ jobs:
 
   multipart-stress:
     name: Multipart Upload Stress Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     if: github.event.inputs.test_multipart == 'true'
     outputs:
       result: ${{ steps.test.outcome }}
@@ -263,7 +263,7 @@ jobs:
 
   generate-checklist:
     name: Generate Release Checklist
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs:
       - unit-tests
       - build-verification

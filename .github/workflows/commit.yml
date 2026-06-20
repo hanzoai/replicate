@@ -12,7 +12,7 @@ name: Commit
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +45,7 @@ jobs:
 
   vfs-build-test-linux:
     name: VFS Build Test (Linux)
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - uses: actions/checkout@v4
 
@@ -61,7 +61,7 @@ jobs:
 
   build-windows:
     name: Build Windows
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - run: sudo apt-get install -y mingw-w64
 
@@ -82,7 +82,7 @@ jobs:
 
   docker-smoke-test:
     name: Docker Smoke Test
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -145,7 +145,7 @@ jobs:
 
   build:
     name: Build & Unit Test
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - uses: actions/checkout@v4
 
@@ -174,7 +174,7 @@ jobs:
 
   ltx-behavioral-gate:
     name: LTX Behavioral Gate (short)
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     timeout-minutes: 20
     steps:
@@ -200,7 +200,7 @@ jobs:
 
   s3-mock-test:
     name: Run S3 Mock Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     steps:
       - uses: actions/checkout@v4
@@ -223,7 +223,7 @@ jobs:
 
   minio-integration-test:
     name: Run MinIO Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     steps:
       - uses: actions/checkout@v4
@@ -295,7 +295,7 @@ jobs:
 
   nats-docker-test:
     name: Run NATS Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     steps:
       - uses: actions/checkout@v4
@@ -361,7 +361,7 @@ jobs:
 
   s3-integration-test:
     name: Run S3 Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     if: github.ref == 'refs/heads/main'
     concurrency:
@@ -386,7 +386,7 @@ jobs:
 
   gcp-integration-test:
     name: Run GCP Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     if: github.ref == 'refs/heads/main'
     concurrency:
@@ -415,7 +415,7 @@ jobs:
 
   abs-integration-test:
     name: Run Azure Blob Store Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     if: github.ref == 'refs/heads/main'
     concurrency:
@@ -439,7 +439,7 @@ jobs:
 
   r2-integration-test:
     name: Run Cloudflare R2 Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     if: github.ref == 'refs/heads/main'
     concurrency:
@@ -464,7 +464,7 @@ jobs:
 
   sftp-integration-test:
     name: Run SFTP Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     steps:
       - name: Prepare OpenSSH server
@@ -561,7 +561,7 @@ jobs:
 
   webdav-integration-test:
     name: Run WebDAV Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: build
     steps:
       - name: Start WebDAV Server
