@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
 
   vfs-build-linux:
     name: Build VFS (Linux ${{ matrix.arch }})
-    runs-on: ubuntu-22.04  # glibc 2.35 (ubuntu-20.04 runners deprecated)
+    runs-on: hanzo-build-linux-amd64
     needs: goreleaser
     strategy:
       matrix:
@@ -292,7 +292,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI (${{ matrix.os }}-${{ matrix.arch }})
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: [vfs-build-linux, vfs-build-darwin]
     environment: release
     permissions:
@@ -372,7 +372,7 @@ jobs:
 
   publish-npm:
     name: Publish to npm
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: [vfs-build-linux, vfs-build-darwin]
     steps:
       - name: Checkout
@@ -443,7 +443,7 @@ jobs:
 
   publish-gem:
     name: Publish to RubyGems (${{ matrix.os }}-${{ matrix.arch }})
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     needs: [vfs-build-linux, vfs-build-darwin]
     strategy:
       matrix:
