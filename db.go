@@ -123,9 +123,9 @@ type DB struct {
 	syncNCounter                metric.Counter
 	syncErrorNCounter           metric.Counter
 	syncSecondsCounter          metric.Counter
-	checkpointNCounterVec       *metric.CounterVec
-	checkpointErrorNCounterVec  *metric.CounterVec
-	checkpointSecondsCounterVec *metric.CounterVec
+	checkpointNCounterVec       metric.CounterVec
+	checkpointErrorNCounterVec  metric.CounterVec
+	checkpointSecondsCounterVec metric.CounterVec
 
 	// Minimum threshold of WAL size, in pages, before a passive checkpoint.
 	// A passive checkpoint will attempt a checkpoint but fail if there are
