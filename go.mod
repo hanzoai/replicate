@@ -35,7 +35,7 @@ require (
 require (
 	cloud.google.com/go/pubsub v1.33.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/google/renameio/v2 v2.0.0 // indirect
+	github.com/google/renameio/v2 v2.0.2 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
@@ -64,6 +64,8 @@ require (
 	github.com/zeebo/blake3 v0.2.4
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260209214922-2f26647a795e
 )
+
+require github.com/gorilla/rpc v1.2.1 // indirect
 
 require (
 	cloud.google.com/go v0.111.0 // indirect
@@ -114,7 +116,7 @@ require (
 	github.com/luxfi/accel v1.1.9 // indirect
 	github.com/luxfi/crypto v1.19.17 // indirect
 	github.com/luxfi/mdns v0.1.1 // indirect
-	github.com/luxfi/metric v1.5.8
+	github.com/luxfi/metric v1.7.0
 	github.com/magefile/mage v1.14.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
