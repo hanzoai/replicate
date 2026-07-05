@@ -241,14 +241,12 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 
 	filename := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
-	var buf bytes.Buffer
-	teeReader := io.TeeReader(rd, &buf)
-
-	hdr, _, err := ltx.PeekHeader(teeReader)
+	// Extract the LTX-header timestamp (age-encrypted objects fall back to write
+	// time) and get a reader that replays the full object for upload.
+	timestamp, fullReader, err := internal.ExtractLTXTimestamp(rd)
 	if err != nil {
-		return nil, fmt.Errorf("extract timestamp from LTX header: %w", err)
+		return nil, err
 	}
-	timestamp := time.UnixMilli(hdr.Timestamp).UTC()
 
 	// Stage to temporary file to get seekable reader with known size.
 	// This ensures compatibility with all WebDAV servers and avoids the
@@ -262,8 +260,6 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 		_ = tmpFile.Close()
 		_ = os.Remove(tmpFile.Name())
 	}()
-
-	fullReader := io.MultiReader(&buf, rd)
 
 	size, err := io.Copy(tmpFile, fullReader)
 	if err != nil {
