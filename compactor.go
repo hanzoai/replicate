@@ -55,6 +55,12 @@ type Compactor struct {
 	// writes are encrypted so compacted files remain encrypted at rest.
 	AgeIdentities []age.Identity
 	AgeRecipients []age.Recipient
+
+	// RequireEncryption mirrors Replica.RequireEncryption for the compaction
+	// write path. When true and no recipient is configured, Compact fails closed
+	// with ErrEncryptionRequired rather than decrypting source files and writing
+	// a plaintext compacted result (a silent downgrade at rest).
+	RequireEncryption bool
 }
 
 // NewCompactor creates a new Compactor with the given client and logger.
@@ -107,6 +113,13 @@ func (c *Compactor) MaxLTXFileInfo(ctx context.Context, level int) (ltx.FileInfo
 // Returns ErrNoCompaction if there are no files to compact.
 func (c *Compactor) Compact(ctx context.Context, dstLevel int) (*ltx.FileInfo, error) {
 	srcLevel := dstLevel - 1
+
+	// Fail closed: refuse to produce a plaintext compacted file when encryption
+	// is mandated but no recipient is configured. Checked before any source read
+	// so we never decrypt inputs only to re-emit them in the clear.
+	if c.RequireEncryption && len(c.AgeRecipients) == 0 {
+		return nil, ErrEncryptionRequired
+	}
 
 	prevMaxInfo, err := c.MaxLTXFileInfo(ctx, dstLevel)
 	if err != nil {
