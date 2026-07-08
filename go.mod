@@ -58,7 +58,7 @@ require (
 	github.com/hanzoai/lz4/v4 v4.1.22
 	github.com/lmittmann/tint v1.1.3
 	github.com/luxfi/age v1.6.0 // fail-closed encryption; forced up from v1.4.0 (its tag was re-published upstream, so main's go.sum hash no longer verifies) to the blessed v1.6.0 — encrypt/decrypt/restore round-trip verified by the e2e test
-	github.com/luxfi/zap v0.8.1
+	github.com/luxfi/zap v0.8.12
 	github.com/mattn/go-isatty v0.0.20
 	github.com/stretchr/testify v1.11.1
 	github.com/zeebo/blake3 v0.2.4

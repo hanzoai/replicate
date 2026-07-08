@@ -161,7 +161,11 @@ jobs:
       - run: go build -o /dev/null ./_examples/library/s3
       - run: go test -v ./_examples/library
 
-      - run: go test -v .
+      # -tags metrics: luxfi/metric defaults to a no-op registry (//go:build
+      # !metrics); the real in-process registry is behind `metrics`. The root
+      # package's metric assertions (issue #876 regression) require it, else
+      # every WithLabelValues returns a throwaway gauge and reads back 0.
+      - run: go test -v -tags metrics .
       - run: go test -v ./internal
       - run: go test -v ./abs
       - run: go test -v ./file
