@@ -86,7 +86,7 @@ brews:
     license: Apache-2.0
     repository:
       owner: hanzoai
-      name: homebrew-replicate
+      name: homebrew
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     install: |
