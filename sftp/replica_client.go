@@ -1,7 +1,6 @@
 package sftp
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -274,19 +273,12 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 
 	filename := replicate.LTXFilePath(c.Path, level, minTXID, maxTXID)
 
-	// Use TeeReader to peek at LTX header while preserving data for upload
-	var buf bytes.Buffer
-	teeReader := io.TeeReader(rd, &buf)
-
-	// Extract timestamp from LTX header
-	hdr, _, err := ltx.PeekHeader(teeReader)
+	// Extract the LTX-header timestamp (age-encrypted objects fall back to write
+	// time) and get a reader that replays the full object for upload.
+	timestamp, fullReader, err := internal.ExtractLTXTimestamp(rd)
 	if err != nil {
-		return nil, fmt.Errorf("extract timestamp from LTX header: %w", err)
+		return nil, err
 	}
-	timestamp := time.UnixMilli(hdr.Timestamp).UTC()
-
-	// Combine buffered data with rest of reader
-	fullReader := io.MultiReader(&buf, rd)
 
 	if err := sftpClient.MkdirAll(path.Dir(filename)); err != nil {
 		return nil, fmt.Errorf("sftp: cannot make parent snapshot directory %q: %w", path.Dir(filename), err)

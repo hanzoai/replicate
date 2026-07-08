@@ -589,6 +589,7 @@ func (db *DB) Open() (err error) {
 	db.compactor.client = db.Replica.Client
 	db.compactor.AgeIdentities = db.Replica.AgeIdentities
 	db.compactor.AgeRecipients = db.Replica.AgeRecipients
+	db.compactor.RequireEncryption = db.Replica.RequireEncryption
 
 	// Start monitoring SQLite database in a separate goroutine.
 	if db.MonitorInterval > 0 {
@@ -808,6 +809,17 @@ func (db *DB) init(ctx context.Context) (err error) {
 		return nil
 	}
 
+	// Fail closed at the earliest possible point: a replica that must encrypt
+	// but has no age recipient refuses to initialize replication at all. Checked
+	// before the "no database file yet" early return below so a misconfigured
+	// deployment surfaces ErrEncryptionRequired on its very first Sync — loudly,
+	// every interval — instead of silently no-oping until data appears and only
+	// then tripping the Replica.Start guard. No data path can slip through in the
+	// window between Open and the first write.
+	if db.Replica != nil && db.Replica.RequireEncryption && !db.Replica.EncryptionEnabled() {
+		return ErrEncryptionRequired
+	}
+
 	// Exit if no database file exists.
 	fi, err := os.Stat(db.path)
 	if os.IsNotExist(err) {
@@ -910,9 +922,13 @@ func (db *DB) init(ctx context.Context) (err error) {
 
 	// TODO(gen): Generate diff of current LTX snapshot and save as next LTX file.
 
-	// Start replication.
+	// Start replication. Propagate Start's error so a fail-closed replica
+	// (RequireEncryption with no recipient) surfaces loudly here instead of
+	// opening a DB that can never replicate.
 	if db.Replica != nil {
-		db.Replica.Start(db.ctx)
+		if err := db.Replica.Start(db.ctx); err != nil {
+			return fmt.Errorf("start replica: %w", err)
+		}
 	}
 
 	return nil
@@ -2056,7 +2072,11 @@ func (db *DB) Snapshot(ctx context.Context) (*ltx.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	info, err := db.Replica.Client.WriteLTXFile(ctx, SnapshotLevel, 1, pos.TXID, r)
+	// Route through Replica.WriteLTXFile (not the raw Client) so snapshots are
+	// age-encrypted and honor the fail-closed invariant, exactly like L0 WAL
+	// sync. Writing via Client directly here previously stored plaintext
+	// snapshots even when recipients were configured.
+	info, err := db.Replica.WriteLTXFile(ctx, SnapshotLevel, 1, pos.TXID, r)
 	if err != nil {
 		return info, err
 	}

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/hanzoai/ltx"
-	metric "github.com/luxfi/metric"
 	_ "modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate/internal"

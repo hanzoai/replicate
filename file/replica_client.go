@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -10,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"time"
 
 	"github.com/hanzoai/ltx"
 
@@ -160,19 +158,12 @@ func (c *ReplicaClient) WriteLTXFile(ctx context.Context, level int, minTXID, ma
 		fileInfo, dirInfo = db.FileInfo(), db.DirInfo()
 	}
 
-	// Use TeeReader to peek at LTX header while preserving data for upload
-	var buf bytes.Buffer
-	teeReader := io.TeeReader(rd, &buf)
-
-	// Extract timestamp from LTX header
-	hdr, _, err := ltx.PeekHeader(teeReader)
+	// Extract the LTX-header timestamp (age-encrypted objects fall back to write
+	// time) and get a reader that replays the full object for upload.
+	timestamp, fullReader, err := internal.ExtractLTXTimestamp(rd)
 	if err != nil {
-		return nil, fmt.Errorf("extract timestamp from LTX header: %w", err)
+		return nil, err
 	}
-	timestamp := time.UnixMilli(hdr.Timestamp).UTC()
-
-	// Combine buffered data with rest of reader
-	fullReader := io.MultiReader(&buf, rd)
 
 	// Ensure parent directory exists.
 	filename := c.LTXFilePath(level, minTXID, maxTXID)

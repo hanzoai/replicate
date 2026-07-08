@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,12 +27,21 @@ import (
 //	REPLICATE_S3_BUCKET    — bucket name (default: "replicate")
 //	REPLICATE_S3_PATH      — key prefix (default: hostname)
 //	REPLICATE_S3_REGION    — S3 region (default: "us-central1")
-//	REPLICATE_AGE_RECIPIENT — age public key for PQ encryption
+//	REPLICATE_AGE_RECIPIENT — age public key for encryption (REQUIRED unless
+//	                          REPLICATE_ALLOW_PLAINTEXT=true; sourced from KMS)
 //	REPLICATE_AGE_IDENTITY  — age private key for restore/decrypt
+//	REPLICATE_ALLOW_PLAINTEXT — opt out of mandatory encryption for
+//	                          non-sensitive local/dev targets (default: false)
 //	REPLICATE_SYNC_INTERVAL — WAL sync interval (default: "1s")
 //
+// Encryption is fail-closed: when REPLICATE_S3_ENDPOINT is set, replication
+// REFUSES to start (loud log, no-op) unless a valid age recipient is configured
+// or REPLICATE_ALLOW_PLAINTEXT=true is explicitly set. It never silently streams
+// plaintext LTX to S3.
+//
 // Returns a stop function that gracefully shuts down replication.
-// Returns a no-op function if REPLICATE_S3_ENDPOINT is not set.
+// Returns a no-op function if REPLICATE_S3_ENDPOINT is not set or if the
+// fail-closed encryption policy is violated.
 func AutoReplicate(dbPath string) func() {
 	endpoint := os.Getenv("REPLICATE_S3_ENDPOINT")
 	if endpoint == "" {
@@ -74,24 +84,43 @@ func AutoReplicate(dbPath string) func() {
 	replica := NewReplicaWithClient(db, client)
 	replica.SyncInterval = syncInterval
 
-	// Parse age recipients for PQ encryption.
+	// Fail-closed encryption policy. By default replicate REFUSES to stream
+	// plaintext to S3: an age recipient (public key, sourced from the
+	// KMS-synced REPLICATE_AGE_RECIPIENT) is mandatory. Set
+	// REPLICATE_ALLOW_PLAINTEXT=true ONLY for non-sensitive local/dev targets.
+	allowPlaintext := boolEnv("REPLICATE_ALLOW_PLAINTEXT")
+	replica.RequireEncryption = !allowPlaintext
+
+	// Parse age recipients for encryption.
 	if recipientStr := os.Getenv("REPLICATE_AGE_RECIPIENT"); recipientStr != "" {
 		rcs, err := age.ParseRecipients(strings.NewReader(recipientStr))
 		if err != nil {
-			slog.Warn("replicate: invalid AGE_RECIPIENT, encryption disabled", "error", err)
-		} else {
-			replica.AgeRecipients = rcs
+			// Fail closed: a malformed recipient must never silently downgrade
+			// to plaintext. Refuse to start replication so the misconfiguration
+			// is loud, not a clear-text money/identity backup.
+			slog.Error("replicate: invalid REPLICATE_AGE_RECIPIENT — refusing to start (fix the KMS age recipient, or set REPLICATE_ALLOW_PLAINTEXT=true for non-sensitive data)", "error", err)
+			return func() {}
 		}
+		replica.AgeRecipients = rcs
 	}
 
 	// Parse age identity for decryption (restore).
 	if identityStr := os.Getenv("REPLICATE_AGE_IDENTITY"); identityStr != "" {
 		ids, err := age.ParseIdentities(strings.NewReader(identityStr))
 		if err != nil {
-			slog.Warn("replicate: invalid AGE_IDENTITY, decryption disabled", "error", err)
-		} else {
-			replica.AgeIdentities = ids
+			slog.Error("replicate: invalid REPLICATE_AGE_IDENTITY — refusing to start (fix the KMS age identity)", "error", err)
+			return func() {}
 		}
+		replica.AgeIdentities = ids
+	}
+
+	// Enforce the fail-closed policy before opening: no recipient while
+	// encryption is required => refuse to stream rather than emit plaintext.
+	if replica.RequireEncryption && len(replica.AgeRecipients) == 0 {
+		slog.Error("replicate: REPLICATE_AGE_RECIPIENT is not set — refusing to stream plaintext",
+			"s3", "s3://"+bucket+"/"+prefix,
+			"hint", "wire the KMS-synced age recipient, or set REPLICATE_ALLOW_PLAINTEXT=true for non-sensitive data")
+		return func() {}
 	}
 
 	db.Replica = replica
@@ -118,6 +147,13 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// boolEnv parses a boolean environment variable, returning false when unset or
+// unparseable. Used for the fail-closed REPLICATE_ALLOW_PLAINTEXT opt-out.
+func boolEnv(key string) bool {
+	v, _ := strconv.ParseBool(os.Getenv(key))
+	return v
 }
 
 func parseDur(envKey string, fallback time.Duration) time.Duration {
