@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/hanzoai/ltx"
-	_ "modernc.org/sqlite"
+	_ "github.com/hanzoai/sqlite" // registers the "sqlite" database/sql driver EXACTLY ONCE (mattn under cgo, modernc otherwise) — never modernc directly, so embedding into a CGO=1 binary can't double-register "sqlite".
 )
 
 // Naming constants.
