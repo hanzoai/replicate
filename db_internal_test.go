@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/ltx"
-	_ "modernc.org/sqlite"
+	_ "github.com/hanzoai/sqlite"
 
 	"github.com/hanzoai/replicate/internal"
 )

@@ -19,10 +19,10 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/hanzoai/ltx"
+	_ "github.com/hanzoai/sqlite"
 	"github.com/luxfi/age"
 	_ "golang.org/x/crypto/x509roots/fallback"
 	"gopkg.in/yaml.v2"
-	_ "modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/abs"
