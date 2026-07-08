@@ -133,13 +133,12 @@ jobs:
             > replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ steps.version.outputs.version }} \
-            dist/replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz \
-            dist/replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256 \
-            --clobber
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          files: |
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload artifact for packaging
         uses: actions/upload-artifact@v4
@@ -204,13 +203,12 @@ jobs:
             > replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ steps.version.outputs.version }} \
-            dist/replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz \
-            dist/replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256 \
-            --clobber
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          files: |
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz
+            dist/replicate-vfs-${{ steps.version.outputs.version }}-darwin-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload artifact for packaging
         uses: actions/upload-artifact@v4
