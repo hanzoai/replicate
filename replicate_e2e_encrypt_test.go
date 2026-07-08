@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	_ "github.com/hanzoai/sqlite"
 	"github.com/luxfi/age"
-	_ "modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/file"
