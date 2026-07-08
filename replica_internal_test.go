@@ -15,7 +15,7 @@ import (
 
 	"github.com/hanzoai/ltx"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/hanzoai/sqlite"
 )
 
 func TestReplica_ApplyNewLTXFiles_FillGapWithOverlappingCompactedFile(t *testing.T) {

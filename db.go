@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/hanzoai/ltx"
+	"github.com/hanzoai/sqlite"
 	metric "github.com/luxfi/metric"
-	"modernc.org/sqlite"
 
 	"github.com/hanzoai/replicate/internal"
 )
@@ -787,17 +787,10 @@ func (db *DB) setPersistWAL(ctx context.Context) error {
 	defer conn.Close()
 
 	return conn.Raw(func(driverConn interface{}) error {
-		fc, ok := driverConn.(sqlite.FileControl)
-		if !ok {
-			return fmt.Errorf("driver does not implement FileControl")
-		}
-
-		_, err := fc.FileControlPersistWAL("main", 1)
-		if err != nil {
-			return fmt.Errorf("FileControlPersistWAL: %w", err)
-		}
-
-		return nil
+		// Backend-neutral PERSIST_WAL: hanzoai/sqlite bridges mattn's
+		// SetFileControlInt(SQLITE_FCNTL_PERSIST_WAL) (cgo) and modernc's
+		// FileControl.FileControlPersistWAL (nocgo) behind one call.
+		return sqlite.SetPersistWAL(driverConn, true)
 	})
 }
 
@@ -835,10 +828,17 @@ func (db *DB) init(ctx context.Context) (err error) {
 	}
 	db.dirInfo = fi
 
-	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(%d)&_pragma=wal_autocheckpoint(0)",
-		db.path, db.BusyTimeout.Milliseconds())
-
-	if db.db, err = sql.Open("sqlite", dsn); err != nil {
+	// Apply busy_timeout + wal_autocheckpoint=0 to EVERY pooled connection via
+	// OpenPragma. These MUST hold pool-wide, but mattn silently drops
+	// `_wal_autocheckpoint` from the DSN (only modernc honors it) — so under a
+	// CGO=1 build a DSN-only form would re-enable auto-checkpoint and truncate
+	// the WAL out from under the shipping replicator, losing committed frames.
+	// OpenPragma runs the pragmas per connection, backend-neutrally. Order
+	// matters: busy_timeout leads so a conn blocks on a busy db before WAL work.
+	if db.db, err = sqlite.OpenPragma("file:"+db.path, []sqlite.Pragma{
+		{Name: "busy_timeout", Value: strconv.FormatInt(db.BusyTimeout.Milliseconds(), 10)},
+		{Name: "wal_autocheckpoint", Value: "0"},
+	}); err != nil {
 		return err
 	}
 
