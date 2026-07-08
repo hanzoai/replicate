@@ -60,7 +60,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          # Unified tap = hanzoai/homebrew (one tap for ALL hanzoai formulae, not
+          # per-tool repos). UNIVERSE_PAT is the org-scoped PAT with cross-repo
+          # write; the default GITHUB_TOKEN cannot push to a sibling repo (401).
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.UNIVERSE_PAT }}
 
   vfs-build-linux:
     name: Build VFS (Linux ${{ matrix.arch }})
