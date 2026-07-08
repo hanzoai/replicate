@@ -25,6 +25,15 @@ const (
 	DefaultSyncInterval = 1 * time.Second
 )
 
+// ErrEncryptionRequired is returned by any write path when RequireEncryption is
+// set but no age recipient is configured. It is the fail-closed invariant: when
+// a replica is told it must encrypt, the absence of a recipient MUST refuse the
+// write rather than silently emit plaintext LTX (LTX1) to the destination. This
+// protects money-ledger and identity backups from being stored in the clear if
+// the age key is ever unwired (unset env, empty ${AGE_RECIPIENT} expansion, or a
+// config that omits the age section entirely).
+var ErrEncryptionRequired = errors.New("replicate: encryption required but no age recipient configured (refusing to write plaintext)")
+
 // Replica connects a database to a replication destination via a ReplicaClient.
 // The replica manages periodic synchronization and maintaining the current
 // replica position.
@@ -63,6 +72,15 @@ type Replica struct {
 	// AgeIdentities: private keys used to decrypt data on read (restore, calcPos).
 	AgeIdentities []age.Identity
 	AgeRecipients []age.Recipient
+
+	// RequireEncryption enforces the fail-closed invariant: when true, every
+	// write path (Start, WriteLTXFile, and the DB snapshot/compaction that flow
+	// through them) refuses to write plaintext unless an age recipient is
+	// configured, returning ErrEncryptionRequired instead. It is set by the
+	// deployment entry points (AutoReplicate SDK, CLI config) which default to
+	// requiring encryption; the library leaves it false so encryption stays an
+	// explicit policy decision, never a silent default that flips to plaintext.
+	RequireEncryption bool
 }
 
 func NewReplica(db *DB) *Replica {
@@ -100,6 +118,13 @@ func (r *Replica) Start(ctx context.Context) error {
 	// Ignore if replica is being used sychronously.
 	if !r.MonitorEnabled {
 		return nil
+	}
+
+	// Fail closed: a monitored replica that must encrypt refuses to start the
+	// write loop without a recipient, so a misconfigured sidecar crash-loops
+	// loudly instead of silently streaming plaintext WAL to the destination.
+	if r.RequireEncryption && !r.EncryptionEnabled() {
+		return ErrEncryptionRequired
 	}
 
 	// Stop previous replication.
@@ -288,6 +313,13 @@ func (r *Replica) OpenLTXFile(ctx context.Context, level int, minTXID, maxTXID l
 // the caller provides plaintext data (all Replica write paths).
 func (r *Replica) WriteLTXFile(ctx context.Context, level int, minTXID, maxTXID ltx.TXID, rd io.Reader) (*ltx.FileInfo, error) {
 	if !r.EncryptionEnabled() {
+		// Fail closed: never write plaintext when encryption is mandated. This
+		// is the universal backstop covering every write path that funnels
+		// through WriteLTXFile — L0 WAL sync, DB snapshots, and any future
+		// caller — so absence of a recipient can never downgrade to LTX1.
+		if r.RequireEncryption {
+			return nil, ErrEncryptionRequired
+		}
 		return r.Client.WriteLTXFile(ctx, level, minTXID, maxTXID, rd)
 	}
 

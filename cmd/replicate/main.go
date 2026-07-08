@@ -1046,6 +1046,11 @@ type ReplicaSettings struct {
 	Age struct {
 		Identities []string `yaml:"identities"`
 		Recipients []string `yaml:"recipients"`
+		// AllowPlaintext opts out of the fail-closed encryption policy. When
+		// unset or false (the default), a remote replica REFUSES to write
+		// plaintext without a recipient. Set true ONLY for non-sensitive
+		// local/dev targets.
+		AllowPlaintext *bool `yaml:"allow-plaintext"`
 	} `yaml:"age"`
 }
 
@@ -1188,6 +1193,9 @@ func (rs *ReplicaSettings) SetDefaults(src *ReplicaSettings) {
 	if len(rs.Age.Recipients) == 0 {
 		rs.Age.Recipients = src.Age.Recipients
 	}
+	if rs.Age.AllowPlaintext == nil {
+		rs.Age.AllowPlaintext = src.Age.AllowPlaintext
+	}
 }
 
 // ReplicaConfig represents the configuration for a single replica in a database.
@@ -1231,6 +1239,14 @@ func NewReplicaFromConfig(c *ReplicaConfig, db *replicate.DB) (_ *replicate.Repl
 		}
 		r.AgeRecipients = append(r.AgeRecipients, rcs...)
 	}
+
+	// Fail-closed encryption policy: unless age.allow-plaintext is explicitly
+	// true, this replica must encrypt. Arm the write guards (Start/WriteLTXFile/
+	// Compact); enforcement lives there so restore (a read path) is never blocked
+	// by a write-side policy. A monitored replica with no recipient fails closed
+	// at Start() below; a config that forgot its ${AGE_RECIPIENT} therefore
+	// crash-loops loudly instead of silently backing up plaintext.
+	r.RequireEncryption = c.Age.AllowPlaintext == nil || !*c.Age.AllowPlaintext
 
 	// Build and set client on replica.
 	switch c.ReplicaType() {
