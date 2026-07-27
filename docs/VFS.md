@@ -1,7 +1,7 @@
 # Replicate VFS
 
 The Replicate VFS (Virtual File System) is a SQLite extension that allows applications to read directly
-from Replicate replica storage (S3, GCS, Azure Blob, etc.) without restoring to local disk. It also
+from Replicate replica storage (S3, SFTP, WebDAV, etc.) without restoring to local disk. It also
 supports write mode for remote-first SQLite databases.
 
 ## Table of Contents
@@ -93,17 +93,8 @@ The VFS is configured via environment variables:
 ### Replica URL Format
 
 ```
-# Amazon S3
+# S3 and S3-compatible
 s3://bucket-name/path/to/db
-
-# Google Cloud Storage
-gs://bucket-name/path/to/db
-
-# Azure Blob Storage
-abs://container-name/path/to/db
-
-# Alibaba OSS
-oss://bucket-name/path/to/db
 
 # Local filesystem
 file:///path/to/replica
@@ -313,10 +304,7 @@ The VFS supports all Replicate storage backends:
 
 | Backend | URL Scheme | Notes |
 |---------|-----------|-------|
-| Amazon S3 | `s3://` | Supports S3-compatible services (MinIO, DigitalOcean Spaces, etc.) |
-| Google Cloud Storage | `gs://` | Requires `GOOGLE_APPLICATION_CREDENTIALS` |
-| Azure Blob Storage | `abs://` | Requires `AZURE_STORAGE_ACCOUNT` and credentials |
-| Alibaba OSS | `oss://` | Object Storage Service |
+| S3 | `s3://` | Supports S3-compatible services (hanzoai/s3, MinIO, DigitalOcean Spaces, etc.) |
 | Local filesystem | `file://` | Useful for testing and development |
 | SFTP | `sftp://` | SSH File Transfer Protocol |
 | NATS JetStream | `nats://` | Object store via NATS |
@@ -333,13 +321,6 @@ export AWS_REGION="us-east-1"
 
 # For S3-compatible services:
 export REPLICATE_REPLICA_URL="s3://bucket/path?endpoint=https://custom.endpoint.com"
-```
-
-### GCS Configuration
-
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-export REPLICATE_REPLICA_URL="gs://bucket/path"
 ```
 
 ## Troubleshooting

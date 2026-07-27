@@ -1,6 +1,6 @@
 # Replicate
 
-Disaster recovery tool for SQLite. Replicates WAL changes to S3, GCS, Azure, SFTP, or local filesystem.
+Disaster recovery tool for SQLite. Replicates WAL changes to S3, SFTP, WebDAV, NATS, or local filesystem.
 
 ## Quick Start for AI Contributors
 
@@ -40,10 +40,9 @@ Disaster recovery tool for SQLite. Replicates WAL changes to S3, GCS, Azure, SFT
 
 ## Storage Backends
 
-- `s3/replica_client.go` - AWS S3
-- `gs/replica_client.go` - Google Cloud Storage
-- `abs/replica_client.go` - Azure Blob Storage
+- `s3/replica_client.go` - S3 and S3-compatible (hanzoai/s3, MinIO protocol)
 - `sftp/replica_client.go` - SFTP
+- `webdav/replica_client.go` - WebDAV
 - `file/replica_client.go` - Local filesystem
 - `nats/replica_client.go` - NATS JetStream
 

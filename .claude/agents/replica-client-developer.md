@@ -103,13 +103,11 @@ go test -race -v ./[backend]/...
 
 ### Study These Implementations
 
-- `s3/replica_client.go` - AWS S3 (most complete)
-- `gs/replica_client.go` - Google Cloud Storage
-- `abs/replica_client.go` - Azure Blob Storage
+- `s3/replica_client.go` - S3 and S3-compatible (most complete)
 - `file/replica_client.go` - Local filesystem (simplest)
 - `sftp/replica_client.go` - SSH File Transfer
+- `webdav/replica_client.go` - WebDAV
 - `nats/replica_client.go` - NATS JetStream (newest)
-- `oss/replica_client.go` - Alibaba Cloud OSS
 
 ## Common Pitfalls
 

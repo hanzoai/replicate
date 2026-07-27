@@ -77,9 +77,8 @@ func TestLockPageCalculation(t *testing.T) {
 ```bash
 # Backend-specific tests
 go test -v ./replica_client_test.go -integration s3
-go test -v ./replica_client_test.go -integration gcs
-go test -v ./replica_client_test.go -integration abs
 go test -v ./replica_client_test.go -integration sftp
+go test -v ./replica_client_test.go -integration webdav
 ```
 
 ### Eventual Consistency Tests

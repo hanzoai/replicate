@@ -41,14 +41,6 @@ echo "=== Running Integration Tests ==="
 AWS_ACCESS_KEY_ID=xxx AWS_SECRET_ACCESS_KEY=yyy \
   go test -v ./replica_client_test.go -integration s3
 
-# Google Cloud Storage (requires credentials)
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/creds.json \
-  go test -v ./replica_client_test.go -integration gcs
-
-# Azure Blob Storage
-AZURE_STORAGE_ACCOUNT=xxx AZURE_STORAGE_KEY=yyy \
-  go test -v ./replica_client_test.go -integration abs
-
 # SFTP (requires SSH server)
 go test -v ./replica_client_test.go -integration sftp
 

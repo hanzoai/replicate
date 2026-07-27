@@ -66,23 +66,6 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 		}
 	})
 
-
-	t.Run("GS_MissingBucket", func(t *testing.T) {
-		_, err := replicate.NewReplicaClientFromURL("gs:///path")
-		if err == nil {
-			t.Fatal("expected error for missing bucket")
-		}
-	})
-
-
-
-	t.Run("ABS_MissingBucket", func(t *testing.T) {
-		_, err := replicate.NewReplicaClientFromURL("abs:///path")
-		if err == nil {
-			t.Fatal("expected error for missing bucket")
-		}
-	})
-
 	t.Run("SFTP", func(t *testing.T) {
 		client, err := replicate.NewReplicaClientFromURL("sftp://myuser@host.example.com/path")
 		if err != nil {
@@ -268,15 +251,6 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 		}
 	})
 
-
-
-	t.Run("OSS_MissingBucket", func(t *testing.T) {
-		_, err := replicate.NewReplicaClientFromURL("oss:///path")
-		if err == nil {
-			t.Fatal("expected error for missing bucket")
-		}
-	})
-
 	// Note: file:// with empty path returns "." due to path.Clean behavior.
 	// This is technically valid but may not be the intended behavior.
 	t.Run("File_EmptyPathReturnsDot", func(t *testing.T) {
@@ -366,14 +340,11 @@ func TestReplicaTypeFromURL(t *testing.T) {
 		expected string
 	}{
 		{"s3://bucket/path", "s3"},
-		{"gs://bucket/path", "gs"},
-		{"abs://container/path", "abs"},
 		{"file:///path/to/replica", "file"},
 		{"sftp://host/path", "sftp"},
 		{"webdav://host/path", "webdav"},
 		{"webdavs://host/path", "webdav"},
 		{"nats://host/bucket", "nats"},
-		{"oss://bucket/path", "oss"},
 		{"", ""},
 		{"invalid", ""},
 	}
