@@ -26,11 +26,8 @@ import (
 	"github.com/hanzoai/replicate"
 
 	// Import all replica backends to register their URL factories.
-	_ "github.com/hanzoai/replicate/abs"
 	_ "github.com/hanzoai/replicate/file"
-	_ "github.com/hanzoai/replicate/gs"
 	_ "github.com/hanzoai/replicate/nats"
-	_ "github.com/hanzoai/replicate/oss"
 	_ "github.com/hanzoai/replicate/s3"
 	_ "github.com/hanzoai/replicate/sftp"
 	_ "github.com/hanzoai/replicate/webdav"

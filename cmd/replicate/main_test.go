@@ -17,7 +17,6 @@ import (
 	"github.com/hanzoai/replicate"
 	main "github.com/hanzoai/replicate/cmd/replicate"
 	"github.com/hanzoai/replicate/file"
-	"github.com/hanzoai/replicate/gs"
 	"github.com/hanzoai/replicate/s3"
 	"github.com/hanzoai/replicate/sftp"
 )
@@ -303,19 +302,6 @@ func TestNewS3ReplicaFromConfig(t *testing.T) {
 			t.Fatalf("ForcePathStyle=%v, want %v", got, want)
 		}
 	})
-}
-
-func TestNewGSReplicaFromConfig(t *testing.T) {
-	r, err := main.NewReplicaFromConfig(&main.ReplicaConfig{URL: "gs://foo/bar"}, nil)
-	if err != nil {
-		t.Fatal(err)
-	} else if client, ok := r.Client.(*gs.ReplicaClient); !ok {
-		t.Fatal("unexpected replica type")
-	} else if got, want := client.Bucket, "foo"; got != want {
-		t.Fatalf("Bucket=%s, want %s", got, want)
-	} else if got, want := client.Path, "bar"; got != want {
-		t.Fatalf("Path=%s, want %s", got, want)
-	}
 }
 
 func TestNewSFTPReplicaFromConfig(t *testing.T) {

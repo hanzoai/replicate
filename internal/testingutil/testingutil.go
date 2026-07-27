@@ -19,12 +19,9 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/hanzoai/replicate"
-	"github.com/hanzoai/replicate/abs"
 	"github.com/hanzoai/replicate/file"
-	"github.com/hanzoai/replicate/gs"
 	"github.com/hanzoai/replicate/internal"
 	"github.com/hanzoai/replicate/nats"
-	"github.com/hanzoai/replicate/oss"
 	"github.com/hanzoai/replicate/s3"
 	"github.com/hanzoai/replicate/sftp"
 	"github.com/hanzoai/replicate/webdav"
@@ -83,17 +80,10 @@ var (
 
 // Google cloud storage settings
 var (
-	gsBucket = flag.String("gs-bucket", os.Getenv("REPLICATE_GS_BUCKET"), "")
-	gsPath   = flag.String("gs-path", os.Getenv("REPLICATE_GS_PATH"), "")
 )
 
 // Azure blob storage settings
 var (
-	absAccountName = flag.String("abs-account-name", os.Getenv("REPLICATE_ABS_ACCOUNT_NAME"), "")
-	absAccountKey  = flag.String("abs-account-key", os.Getenv("REPLICATE_ABS_ACCOUNT_KEY"), "")
-	absSASToken    = flag.String("abs-sas-token", os.Getenv("REPLICATE_ABS_SAS_TOKEN"), "")
-	absBucket      = flag.String("abs-bucket", os.Getenv("REPLICATE_ABS_BUCKET"), "")
-	absPath        = flag.String("abs-path", os.Getenv("REPLICATE_ABS_PATH"), "")
 )
 
 // SFTP settings
@@ -124,12 +114,6 @@ var (
 
 // Alibaba Cloud OSS settings
 var (
-	ossAccessKeyID     = flag.String("oss-access-key-id", os.Getenv("REPLICATE_OSS_ACCESS_KEY_ID"), "")
-	ossAccessKeySecret = flag.String("oss-access-key-secret", os.Getenv("REPLICATE_OSS_ACCESS_KEY_SECRET"), "")
-	ossRegion          = flag.String("oss-region", os.Getenv("REPLICATE_OSS_REGION"), "")
-	ossBucket          = flag.String("oss-bucket", os.Getenv("REPLICATE_OSS_BUCKET"), "")
-	ossPath            = flag.String("oss-path", os.Getenv("REPLICATE_OSS_PATH"), "")
-	ossEndpoint        = flag.String("oss-endpoint", os.Getenv("REPLICATE_OSS_ENDPOINT"), "")
 )
 
 func Integration() bool {
@@ -234,18 +218,12 @@ func NewReplicaClient(tb testing.TB, typ string) replicate.ReplicaClient {
 		return NewFileReplicaClient(tb)
 	case s3.ReplicaClientType:
 		return NewS3ReplicaClient(tb)
-	case gs.ReplicaClientType:
-		return NewGSReplicaClient(tb)
-	case abs.ReplicaClientType:
-		return NewABSReplicaClient(tb)
 	case sftp.ReplicaClientType:
 		return NewSFTPReplicaClient(tb)
 	case webdav.ReplicaClientType:
 		return NewWebDAVReplicaClient(tb)
 	case nats.ReplicaClientType:
 		return NewNATSReplicaClient(tb)
-	case oss.ReplicaClientType:
-		return NewOSSReplicaClient(tb)
 	case "tigris":
 		return NewTigrisReplicaClient(tb)
 	case "r2":
@@ -354,48 +332,7 @@ func NewB2ReplicaClient(tb testing.TB) *s3.ReplicaClient {
 	return c
 }
 
-// NewGSReplicaClient returns a new client for integration testing.
-func NewGSReplicaClient(tb testing.TB) *gs.ReplicaClient {
-	tb.Helper()
 
-	// Log basic diagnostic information for integration test troubleshooting
-	tb.Logf("GCS Integration Test Setup:")
-	credsSet := "not set"
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
-		credsSet = "set"
-	}
-	tb.Logf("  GOOGLE_APPLICATION_CREDENTIALS: %s", credsSet)
-	tb.Logf("  REPLICATE_GS_BUCKET: %s", *gsBucket)
-	tb.Logf("  REPLICATE_GS_PATH: %s", *gsPath)
-
-	c := gs.NewReplicaClient()
-	c.Bucket = *gsBucket
-	c.Path = path.Join(*gsPath, fmt.Sprintf("%016x", rand.Uint64()))
-
-	// Test basic connectivity
-	ctx := context.Background()
-	if err := c.Init(ctx); err != nil {
-		tb.Logf("GCS client initialization failed: %v", err)
-		tb.Logf("This may indicate credential or project issues")
-		return c // Return anyway to let the actual test show the detailed error
-	}
-	tb.Logf("GCS client initialized successfully")
-
-	return c
-}
-
-// NewABSReplicaClient returns a new client for integration testing.
-func NewABSReplicaClient(tb testing.TB) *abs.ReplicaClient {
-	tb.Helper()
-
-	c := abs.NewReplicaClient()
-	c.AccountName = *absAccountName
-	c.AccountKey = *absAccountKey
-	c.SASToken = *absSASToken
-	c.Bucket = *absBucket
-	c.Path = path.Join(*absPath, fmt.Sprintf("%016x", rand.Uint64()))
-	return c
-}
 
 // NewSFTPReplicaClient returns a new client for integration testing.
 func NewSFTPReplicaClient(tb testing.TB) *sftp.ReplicaClient {
@@ -435,19 +372,6 @@ func NewNATSReplicaClient(tb testing.TB) *nats.ReplicaClient {
 	return c
 }
 
-// NewOSSReplicaClient returns a new client for integration testing.
-func NewOSSReplicaClient(tb testing.TB) *oss.ReplicaClient {
-	tb.Helper()
-
-	c := oss.NewReplicaClient()
-	c.AccessKeyID = *ossAccessKeyID
-	c.AccessKeySecret = *ossAccessKeySecret
-	c.Region = *ossRegion
-	c.Bucket = *ossBucket
-	c.Path = path.Join(*ossPath, fmt.Sprintf("%016x", rand.Uint64()))
-	c.Endpoint = *ossEndpoint
-	return c
-}
 
 // MustDeleteAll deletes all objects under the client's path.
 func MustDeleteAll(tb testing.TB, c replicate.ReplicaClient) {

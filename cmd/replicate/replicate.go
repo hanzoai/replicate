@@ -17,12 +17,9 @@ import (
 	"github.com/mattn/go-shellwords"
 
 	"github.com/hanzoai/replicate"
-	"github.com/hanzoai/replicate/abs"
 	"github.com/hanzoai/replicate/file"
-	"github.com/hanzoai/replicate/gs"
 	"github.com/hanzoai/replicate/internal"
 	"github.com/hanzoai/replicate/nats"
-	"github.com/hanzoai/replicate/oss"
 	"github.com/hanzoai/replicate/s3"
 	"github.com/hanzoai/replicate/sftp"
 )
@@ -333,16 +330,10 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 			slogWith.Info("replicating to", "path", client.Path())
 		case *s3.ReplicaClient:
 			slogWith.Info("replicating to", "bucket", client.Bucket, "path", client.Path, "region", client.Region, "endpoint", client.Endpoint)
-		case *gs.ReplicaClient:
-			slogWith.Info("replicating to", "bucket", client.Bucket, "path", client.Path)
-		case *abs.ReplicaClient:
-			slogWith.Info("replicating to", "bucket", client.Bucket, "path", client.Path, "endpoint", client.Endpoint)
 		case *sftp.ReplicaClient:
 			slogWith.Info("replicating to", "host", client.Host, "user", client.User, "path", client.Path)
 		case *nats.ReplicaClient:
 			slogWith.Info("replicating to", "bucket", client.BucketName, "url", client.URL)
-		case *oss.ReplicaClient:
-			slogWith.Info("replicating to", "bucket", client.Bucket, "path", client.Path, "region", client.Region)
 		default:
 			slogWith.Info("replicating to")
 		}

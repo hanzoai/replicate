@@ -4,11 +4,8 @@ import (
 	"testing"
 
 	"github.com/hanzoai/replicate"
-	"github.com/hanzoai/replicate/abs"
 	"github.com/hanzoai/replicate/file"
-	"github.com/hanzoai/replicate/gs"
 	"github.com/hanzoai/replicate/nats"
-	"github.com/hanzoai/replicate/oss"
 	"github.com/hanzoai/replicate/s3"
 	"github.com/hanzoai/replicate/sftp"
 	"github.com/hanzoai/replicate/webdav"
@@ -69,25 +66,6 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 		}
 	})
 
-	t.Run("GS", func(t *testing.T) {
-		client, err := replicate.NewReplicaClientFromURL("gs://mybucket/path")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if client.Type() != "gs" {
-			t.Errorf("expected type 'gs', got %q", client.Type())
-		}
-		gsClient, ok := client.(*gs.ReplicaClient)
-		if !ok {
-			t.Fatalf("expected *gs.ReplicaClient, got %T", client)
-		}
-		if gsClient.Bucket != "mybucket" {
-			t.Errorf("expected bucket 'mybucket', got %q", gsClient.Bucket)
-		}
-		if gsClient.Path != "path" {
-			t.Errorf("expected path 'path', got %q", gsClient.Path)
-		}
-	})
 
 	t.Run("GS_MissingBucket", func(t *testing.T) {
 		_, err := replicate.NewReplicaClientFromURL("gs:///path")
@@ -96,42 +74,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 		}
 	})
 
-	t.Run("ABS", func(t *testing.T) {
-		client, err := replicate.NewReplicaClientFromURL("abs://mycontainer/path")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if client.Type() != "abs" {
-			t.Errorf("expected type 'abs', got %q", client.Type())
-		}
-		absClient, ok := client.(*abs.ReplicaClient)
-		if !ok {
-			t.Fatalf("expected *abs.ReplicaClient, got %T", client)
-		}
-		if absClient.Bucket != "mycontainer" {
-			t.Errorf("expected bucket 'mycontainer', got %q", absClient.Bucket)
-		}
-		if absClient.Path != "path" {
-			t.Errorf("expected path 'path', got %q", absClient.Path)
-		}
-	})
 
-	t.Run("ABS_WithAccount", func(t *testing.T) {
-		client, err := replicate.NewReplicaClientFromURL("abs://myaccount@mycontainer/path")
-		if err != nil {
-			t.Fatal(err)
-		}
-		absClient, ok := client.(*abs.ReplicaClient)
-		if !ok {
-			t.Fatalf("expected *abs.ReplicaClient, got %T", client)
-		}
-		if absClient.AccountName != "myaccount" {
-			t.Errorf("expected account 'myaccount', got %q", absClient.AccountName)
-		}
-		if absClient.Bucket != "mycontainer" {
-			t.Errorf("expected bucket 'mycontainer', got %q", absClient.Bucket)
-		}
-	})
 
 	t.Run("ABS_MissingBucket", func(t *testing.T) {
 		_, err := replicate.NewReplicaClientFromURL("abs:///path")
@@ -325,43 +268,7 @@ func TestNewReplicaClientFromURL(t *testing.T) {
 		}
 	})
 
-	t.Run("OSS", func(t *testing.T) {
-		client, err := replicate.NewReplicaClientFromURL("oss://mybucket/path")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if client.Type() != "oss" {
-			t.Errorf("expected type 'oss', got %q", client.Type())
-		}
-		ossClient, ok := client.(*oss.ReplicaClient)
-		if !ok {
-			t.Fatalf("expected *oss.ReplicaClient, got %T", client)
-		}
-		if ossClient.Bucket != "mybucket" {
-			t.Errorf("expected bucket 'mybucket', got %q", ossClient.Bucket)
-		}
-		if ossClient.Path != "path" {
-			t.Errorf("expected path 'path', got %q", ossClient.Path)
-		}
-	})
 
-	t.Run("OSS_WithRegion", func(t *testing.T) {
-		client, err := replicate.NewReplicaClientFromURL("oss://mybucket.oss-cn-shanghai.aliyuncs.com/path")
-		if err != nil {
-			t.Fatal(err)
-		}
-		ossClient, ok := client.(*oss.ReplicaClient)
-		if !ok {
-			t.Fatalf("expected *oss.ReplicaClient, got %T", client)
-		}
-		if ossClient.Bucket != "mybucket" {
-			t.Errorf("expected bucket 'mybucket', got %q", ossClient.Bucket)
-		}
-		// Note: Region is extracted without the 'oss-' prefix
-		if ossClient.Region != "cn-shanghai" {
-			t.Errorf("expected region 'cn-shanghai', got %q", ossClient.Region)
-		}
-	})
 
 	t.Run("OSS_MissingBucket", func(t *testing.T) {
 		_, err := replicate.NewReplicaClientFromURL("oss:///path")
