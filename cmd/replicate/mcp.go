@@ -74,7 +74,7 @@ func (s *MCPServer) Close() error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-// isReplicaURL returns true if the path looks like a replica URL (s3://, gs://, etc.)
+// isReplicaURL returns true if the path looks like a replica URL (s3://, sftp://, etc.)
 // rather than a local database path. The CLI rejects -config when using replica URLs.
 func isReplicaURL(path string) bool {
 	return strings.Contains(path, "://")

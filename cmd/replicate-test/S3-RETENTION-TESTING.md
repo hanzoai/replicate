@@ -254,7 +254,7 @@ These tests complement the existing test infrastructure:
 
 ### After Local Testing
 
-1. **Real S3 Testing**: Run against actual S3/GCS/Azure endpoints
+1. **Real S3 Testing**: Run against actual S3-compatible endpoints
 2. **Network Scenarios**: Test with network interruptions
 3. **Scale Testing**: Test with production-sized databases
 4. **Cost Analysis**: Monitor S3 API calls and storage costs

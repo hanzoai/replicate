@@ -78,14 +78,6 @@ var (
 	b2Bucket         = flag.String("b2-bucket", os.Getenv("REPLICATE_B2_BUCKET"), "")
 )
 
-// Google cloud storage settings
-var (
-)
-
-// Azure blob storage settings
-var (
-)
-
 // SFTP settings
 var (
 	sftpHost     = flag.String("sftp-host", os.Getenv("REPLICATE_SFTP_HOST"), "")
@@ -110,10 +102,6 @@ var (
 	natsCreds    = flag.String("nats-creds", os.Getenv("REPLICATE_NATS_CREDS"), "")
 	natsUsername = flag.String("nats-username", os.Getenv("REPLICATE_NATS_USERNAME"), "")
 	natsPassword = flag.String("nats-password", os.Getenv("REPLICATE_NATS_PASSWORD"), "")
-)
-
-// Alibaba Cloud OSS settings
-var (
 )
 
 func Integration() bool {

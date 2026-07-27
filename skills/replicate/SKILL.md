@@ -123,7 +123,7 @@ os.Rename(tmpFile.Name(), finalPath)
 | Store   | `store.go`               | Multi-DB coordination, compaction         |
 | DB      | `db.go`                  | Single DB management, WAL monitoring      |
 | Replica | `replica.go`             | Replication to one destination            |
-| Storage | `*/replica_client.go`    | Backend implementations (S3, GCS, etc.)   |
+| Storage | `*/replica_client.go`    | Backend implementations (S3, SFTP, etc.)   |
 
 Database state logic belongs in the DB layer, not the Replica layer.
 

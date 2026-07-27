@@ -38,11 +38,9 @@ graph TB
 
     subgraph "Storage Implementations"
         S3[s3/replica_client.go]
-        GCS[gs/replica_client.go]
-        ABS[abs/replica_client.go]
-        OSS[oss/replica_client.go]
         File[file/replica_client.go]
         SFTP[sftp/replica_client.go]
+        WebDAV[webdav/replica_client.go]
         NATS[nats/replica_client.go]
     end
 
@@ -56,17 +54,13 @@ graph TB
     DB --> Replica
     Replica --> RC
     RC --> S3
-    RC --> GCS
-    RC --> ABS
-    RC --> OSS
     RC --> File
     RC --> SFTP
+    RC --> WebDAV
     RC --> NATS
     DB <--> SQLite
     S3 --> Cloud
-    GCS --> Cloud
-    ABS --> Cloud
-    OSS --> Cloud
+    WebDAV --> Cloud
 ```
 
 ### Layer Responsibilities

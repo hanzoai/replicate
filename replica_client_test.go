@@ -264,7 +264,7 @@ func TestReplicaClient_TimestampPreservation(t *testing.T) {
 		}
 
 		// For File backend, timestamp should be preserved immediately
-		// For cloud backends (S3, GCS, Azure, NATS), timestamp is stored in metadata
+		// For remote backends (S3, NATS), timestamp is stored in metadata
 		// Verify the returned FileInfo has correct timestamp
 		if info.CreatedAt.IsZero() {
 			t.Fatal("WriteLTXFile returned zero timestamp")

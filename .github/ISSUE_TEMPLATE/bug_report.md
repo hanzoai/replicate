@@ -28,7 +28,7 @@ paste output here
 <!--- e.g., Docker, binary download, built from source -->
 
 **Storage backend:**
-<!--- e.g., S3, GCS, Azure, SFTP, file -->
+<!--- e.g., S3, SFTP, WebDAV, NATS, file -->
 
 ## Steps to Reproduce
 <!--- Provide a minimal reproducible example if possible -->

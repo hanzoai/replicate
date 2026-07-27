@@ -19,7 +19,7 @@ All replica clients MUST implement the `ReplicaClient` interface defined in `rep
 
 ```go
 type ReplicaClient interface {
-    // Returns the type identifier (e.g., "s3", "gcs", "file")
+    // Returns the type identifier (e.g., "s3", "sftp", "file")
     Type() string
 
     // Returns iterator of LTX files at given level

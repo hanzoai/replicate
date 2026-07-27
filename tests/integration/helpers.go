@@ -334,7 +334,7 @@ func (db *TestDB) Restore(outputPath string) error {
 		replicaURL = fmt.Sprintf("file://%s", filepath.ToSlash(db.ReplicaPath))
 	}
 	var cmd *exec.Cmd
-	if db.ConfigPath != "" && (strings.HasPrefix(replicaURL, "s3://") || strings.HasPrefix(replicaURL, "abs://") || strings.HasPrefix(replicaURL, "nats://")) {
+	if db.ConfigPath != "" && (strings.HasPrefix(replicaURL, "s3://") || strings.HasPrefix(replicaURL, "nats://")) {
 		cmd = exec.Command(getBinaryPath("replicate"), "restore",
 			"-config", db.ConfigPath,
 			"-o", outputPath,
