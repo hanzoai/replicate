@@ -25,12 +25,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/hanzoai/replicate"
-	"github.com/hanzoai/replicate/abs"
 	"github.com/hanzoai/replicate/file"
-	"github.com/hanzoai/replicate/gs"
 	"github.com/hanzoai/replicate/internal"
 	"github.com/hanzoai/replicate/nats"
-	"github.com/hanzoai/replicate/oss"
 	"github.com/hanzoai/replicate/s3"
 	"github.com/hanzoai/replicate/sftp"
 	"github.com/hanzoai/replicate/webdav"
@@ -1258,14 +1255,6 @@ func NewReplicaFromConfig(c *ReplicaConfig, db *replicate.DB) (_ *replicate.Repl
 		if r.Client, err = NewS3ReplicaClientFromConfig(c, r); err != nil {
 			return nil, err
 		}
-	case "gs":
-		if r.Client, err = newGSReplicaClientFromConfig(c, r); err != nil {
-			return nil, err
-		}
-	case "abs":
-		if r.Client, err = newABSReplicaClientFromConfig(c, r); err != nil {
-			return nil, err
-		}
 	case "sftp":
 		if r.Client, err = newSFTPReplicaClientFromConfig(c, r); err != nil {
 			return nil, err
@@ -1276,10 +1265,6 @@ func NewReplicaFromConfig(c *ReplicaConfig, db *replicate.DB) (_ *replicate.Repl
 		}
 	case "nats":
 		if r.Client, err = newNATSReplicaClientFromConfig(c, r); err != nil {
-			return nil, err
-		}
-	case "oss":
-		if r.Client, err = newOSSReplicaClientFromConfig(c, r); err != nil {
 			return nil, err
 		}
 	default:
@@ -1537,88 +1522,7 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *s3
 	return client, nil
 }
 
-// newGSReplicaClientFromConfig returns a new instance of gs.ReplicaClient built from config.
-func newGSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *gs.ReplicaClient, err error) {
-	// Ensure URL & constituent parts are not both specified.
-	if c.URL != "" && c.Path != "" {
-		return nil, fmt.Errorf("cannot specify url & path for gs replica")
-	} else if c.URL != "" && c.Bucket != "" {
-		return nil, fmt.Errorf("cannot specify url & bucket for gs replica")
-	}
 
-	bucket, configPath := c.Bucket, c.Path
-
-	// Apply settings from URL, if specified.
-	if c.URL != "" {
-		_, uhost, upath, err := replicate.ParseReplicaURL(c.URL)
-		if err != nil {
-			return nil, err
-		}
-
-		// Only apply URL parts to field that have not been overridden.
-		if configPath == "" {
-			configPath = upath
-		}
-		if bucket == "" {
-			bucket = uhost
-		}
-	}
-
-	// Ensure required settings are set.
-	if bucket == "" {
-		return nil, fmt.Errorf("bucket required for gs replica")
-	}
-
-	// Build replica.
-	client := gs.NewReplicaClient()
-	client.Bucket = bucket
-	client.Path = configPath
-	return client, nil
-}
-
-// newABSReplicaClientFromConfig returns a new instance of abs.ReplicaClient built from config.
-func newABSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *abs.ReplicaClient, err error) {
-	// Ensure URL & constituent parts are not both specified.
-	if c.URL != "" && c.Path != "" {
-		return nil, fmt.Errorf("cannot specify url & path for abs replica")
-	} else if c.URL != "" && c.Bucket != "" {
-		return nil, fmt.Errorf("cannot specify url & bucket for abs replica")
-	}
-
-	// Build replica.
-	client := abs.NewReplicaClient()
-	client.AccountName = c.AccountName
-	client.AccountKey = c.AccountKey
-	client.SASToken = c.SASToken
-	client.Bucket = c.Bucket
-	client.Path = c.Path
-	client.Endpoint = c.Endpoint
-
-	// Apply settings from URL, if specified.
-	if c.URL != "" {
-		u, err := url.Parse(c.URL)
-		if err != nil {
-			return nil, err
-		}
-
-		if client.AccountName == "" && u.User != nil {
-			client.AccountName = u.User.Username()
-		}
-		if client.Bucket == "" {
-			client.Bucket = u.Host
-		}
-		if client.Path == "" {
-			client.Path = strings.TrimPrefix(path.Clean(u.Path), "/")
-		}
-	}
-
-	// Ensure required settings are set.
-	if client.Bucket == "" {
-		return nil, fmt.Errorf("bucket required for abs replica")
-	}
-
-	return client, nil
-}
 
 // newSFTPReplicaClientFromConfig returns a new instance of sftp.ReplicaClient built from config.
 func newSFTPReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *sftp.ReplicaClient, err error) {
@@ -1804,68 +1708,6 @@ func newNATSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *
 	return client, nil
 }
 
-// newOSSReplicaClientFromConfig returns a new instance of oss.ReplicaClient built from config.
-func newOSSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *oss.ReplicaClient, err error) {
-	// Ensure URL & constituent parts are not both specified.
-	if c.URL != "" && c.Path != "" {
-		return nil, fmt.Errorf("cannot specify url & path for oss replica")
-	} else if c.URL != "" && c.Bucket != "" {
-		return nil, fmt.Errorf("cannot specify url & bucket for oss replica")
-	}
-
-	bucket, configPath := c.Bucket, c.Path
-	region, endpoint := c.Region, c.Endpoint
-
-	// Apply settings from URL, if specified.
-	if c.URL != "" {
-		_, host, upath, err := replicate.ParseReplicaURL(c.URL)
-		if err != nil {
-			return nil, err
-		}
-
-		var (
-			ubucket string
-			uregion string
-		)
-
-		ubucket, uregion, _ = oss.ParseHost(host)
-
-		// Only apply URL parts to fields that have not been overridden.
-		if configPath == "" {
-			configPath = upath
-		}
-		if bucket == "" {
-			bucket = ubucket
-		}
-		if region == "" {
-			region = uregion
-		}
-	}
-
-	// Ensure required settings are set.
-	if bucket == "" {
-		return nil, fmt.Errorf("bucket required for oss replica")
-	}
-
-	// Build replica client.
-	client := oss.NewReplicaClient()
-	client.AccessKeyID = c.AccessKeyID
-	client.AccessKeySecret = c.SecretAccessKey
-	client.Bucket = bucket
-	client.Path = configPath
-	client.Region = region
-	client.Endpoint = endpoint
-
-	// Apply upload configuration if specified.
-	if c.PartSize != nil {
-		client.PartSize = int64(*c.PartSize)
-	}
-	if c.Concurrency != nil {
-		client.Concurrency = *c.Concurrency
-	}
-
-	return client, nil
-}
 
 // applyReplicateEnv copies "REPLICATE" prefixed environment variables to
 // their AWS counterparts as the "AWS" prefix can be confusing when using a
