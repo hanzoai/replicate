@@ -3,10 +3,12 @@ package replicate_test
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"io"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/hanzoai/replicate"
@@ -244,6 +246,145 @@ func TestWALReader(t *testing.T) {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
+}
+
+// TestWALReader_PageMap_ConcurrentAppend verifies that a WAL scan is bounded by
+// the size of the WAL when the reader was opened.
+//
+// SQLite appends frames to the WAL while replicate reads it. An unbounded
+// reader chases the writer's tail: every read finds more bytes, so the scan
+// never reaches EOF. In DB.checkpoint() that scan is the pre-checkpoint sync,
+// so the checkpoint never executes, the WAL is never truncated, and it grows
+// until the disk fills.
+//
+// growingWAL models the writer always winning that race: it appends a fresh
+// committed frame on every read. The scan must still return exactly the frames
+// that existed when the reader was opened.
+func TestWALReader_PageMap_ConcurrentAppend(t *testing.T) {
+	// Two transactions: pages 1 & 2 commit at size 2, then page 3 commits at 3.
+	w := newGrowingWAL(4096, 200)
+	w.appendTx(1, 0)
+	w.appendTx(2, 2)
+	w.appendTx(3, 3)
+	initialSize := w.Size()
+
+	r, err := replicate.NewWALReader(w, slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, maxOffset, commit, err := r.PageMap(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if w.appended() == 0 {
+		t.Fatal("wal did not grow during the scan; test is not exercising the race")
+	}
+	if got, want := commit, uint32(3); got != want {
+		t.Fatalf("commit=%d, want %d (scan ran past the frames present when opened)", got, want)
+	}
+	if got, want := len(m), 3; got != want {
+		t.Fatalf("len(m)=%d, want %d", got, want)
+	}
+	for pgno := uint32(1); pgno <= 3; pgno++ {
+		if _, ok := m[pgno]; !ok {
+			t.Fatalf("page %d missing from page map", pgno)
+		}
+	}
+	if got, want := maxOffset, initialSize; got != want {
+		t.Fatalf("maxOffset=%d, want %d", got, want)
+	}
+}
+
+// growingWAL is an io.ReaderAt holding a valid SQLite WAL that appends one more
+// committed frame on every read, up to maxAppend frames.
+type growingWAL struct {
+	mu               sync.Mutex
+	buf              []byte
+	pageSize         uint32
+	salt1, salt2     uint32
+	chksum1, chksum2 uint32
+	nextPgno         uint32
+	maxAppend, n     int
+}
+
+func newGrowingWAL(pageSize uint32, maxAppend int) *growingWAL {
+	w := &growingWAL{
+		pageSize:  pageSize,
+		salt1:     0x1b9a294b,
+		salt2:     0x37f91916,
+		nextPgno:  4,
+		maxAppend: maxAppend,
+	}
+
+	hdr := make([]byte, replicate.WALHeaderSize)
+	binary.BigEndian.PutUint32(hdr[0:], 0x377f0683) // big-endian checksums
+	binary.BigEndian.PutUint32(hdr[4:], 3007000)
+	binary.BigEndian.PutUint32(hdr[8:], pageSize)
+	binary.BigEndian.PutUint32(hdr[12:], 1)
+	binary.BigEndian.PutUint32(hdr[16:], w.salt1)
+	binary.BigEndian.PutUint32(hdr[20:], w.salt2)
+	w.chksum1, w.chksum2 = replicate.WALChecksum(binary.BigEndian, 0, 0, hdr[:24])
+	binary.BigEndian.PutUint32(hdr[24:], w.chksum1)
+	binary.BigEndian.PutUint32(hdr[28:], w.chksum2)
+
+	w.buf = hdr
+	return w
+}
+
+// appendTx appends a single frame carrying pgno. A non-zero commit marks it as
+// the last frame of a transaction against a database of that many pages.
+func (w *growingWAL) appendTx(pgno, commit uint32) {
+	data := make([]byte, w.pageSize)
+	for i := range data {
+		data[i] = byte(pgno)
+	}
+
+	hdr := make([]byte, replicate.WALFrameHeaderSize)
+	binary.BigEndian.PutUint32(hdr[0:], pgno)
+	binary.BigEndian.PutUint32(hdr[4:], commit)
+	binary.BigEndian.PutUint32(hdr[8:], w.salt1)
+	binary.BigEndian.PutUint32(hdr[12:], w.salt2)
+	w.chksum1, w.chksum2 = replicate.WALChecksum(binary.BigEndian, w.chksum1, w.chksum2, hdr[:8])
+	w.chksum1, w.chksum2 = replicate.WALChecksum(binary.BigEndian, w.chksum1, w.chksum2, data)
+	binary.BigEndian.PutUint32(hdr[16:], w.chksum1)
+	binary.BigEndian.PutUint32(hdr[20:], w.chksum2)
+
+	w.buf = append(append(w.buf, hdr...), data...)
+}
+
+func (w *growingWAL) Size() int64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return int64(len(w.buf))
+}
+
+func (w *growingWAL) appended() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.n
+}
+
+func (w *growingWAL) ReadAt(p []byte, off int64) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	// The writer always wins the race: every read finds more WAL than the last.
+	if w.n < w.maxAppend {
+		w.appendTx(w.nextPgno, w.nextPgno)
+		w.nextPgno++
+		w.n++
+	}
+
+	if off >= int64(len(w.buf)) {
+		return 0, io.EOF
+	}
+	n := copy(p, w.buf[off:])
+	if n < len(p) {
+		return n, io.EOF
+	}
+	return n, nil
 }
 
 func TestWALReader_FrameSaltsUntil(t *testing.T) {
