@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"strings"
 
 	metric "github.com/luxfi/metric"
 	"github.com/mattn/go-shellwords"
+	zip "github.com/zap-proto/zip"
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/abs"
@@ -172,6 +171,19 @@ func (c *ReplicateCommand) ParseFlags(_ context.Context, args []string) (err err
 	}
 
 	return nil
+}
+
+// newMetricsApp builds the metrics surface served on Config.Addr.
+//
+// All, not Get: net/http.DefaultServeMux never filtered by method, so the
+// metrics handler keeps deciding for itself (HEAD works, anything else 405).
+// pprof rode this listener via net/http/pprof's DefaultServeMux init, so it is
+// registered explicitly now that the mux is gone.
+func newMetricsApp() *zip.App {
+	app := replicate.NewApp("replicate-metrics")
+	app.All("/metrics", zip.AdaptNetHTTP(metric.NewHTTPHandler(metric.DefaultGatherer, metric.HandlerOpts{})))
+	replicate.RegisterPprof(app.All)
+	return app
 }
 
 // Run loads all databases specified in the configuration.
@@ -358,9 +370,9 @@ func (c *ReplicateCommand) Run(ctx context.Context) (err error) {
 		}
 
 		slog.Info("serving metrics on", "url", fmt.Sprintf("http://%s/metrics", hostport))
+		app := newMetricsApp()
 		go func() {
-			http.Handle("/metrics", metric.NewHTTPHandler(metric.DefaultGatherer, metric.HandlerOpts{}))
-			if err := http.ListenAndServe(c.Config.Addr, nil); err != nil {
+			if err := app.Listen("http://" + c.Config.Addr); err != nil {
 				slog.Error("cannot start metrics server", "error", err)
 			}
 		}()

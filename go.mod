@@ -51,7 +51,10 @@ require (
 require (
 	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.3.0
 	github.com/hanzoai/sqlite v0.2.3
+	github.com/luxfi/log v1.4.3
 	github.com/markusmobius/go-dateparser v1.2.4
+	github.com/zap-proto/fiber/v3 v3.2.1
+	github.com/zap-proto/zip v1.10.0
 )
 
 require (
@@ -65,7 +68,24 @@ require (
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260209214922-2f26647a795e
 )
 
-require github.com/gorilla/rpc v1.2.1 // indirect
+require (
+	github.com/andybalholm/brotli v1.2.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
+	github.com/dop251/goja v0.0.0-20260607120635-348e6bea910d // indirect
+	github.com/evanw/esbuild v0.28.1 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/gofiber/schema v1.7.1 // indirect
+	github.com/gofiber/utils/v2 v2.0.4 // indirect
+	github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e // indirect
+	github.com/gorilla/rpc v1.2.1 // indirect
+	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/tinylib/msgp v1.6.4 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.70.0 // indirect
+	github.com/zap-proto/go v1.3.0 // indirect
+	github.com/zap-proto/http v0.3.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+)
 
 require (
 	cloud.google.com/go v0.111.0 // indirect

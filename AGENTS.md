@@ -30,7 +30,14 @@ Replicate is a disaster recovery tool for SQLite that runs as a background proce
 | Replica | `replica.go` | Replication mechanics only |
 | Storage | `**/replica_client.go` | Backend implementations (includes `ReplicaClientV3` for v0.3.x restore) |
 | IPC | `server.go` | Unix socket control API (register/unregister, /txid, pprof) |
+| HTTP | `httpapp.go` | `NewApp` / `RegisterPprof` — the one way replicate builds an HTTP surface |
 | Leasing | `leaser.go`, `s3/leaser.go` | Distributed lease acquisition via conditional writes |
+
+HTTP routing is `github.com/zap-proto/zip`: `app.Get/Post(path, func(c *zip.Ctx) error)`,
+built via `replicate.NewApp`. Foreign `net/http` handlers (pprof, the metrics
+handler) mount through `zip.AdaptNetHTTP`. The MCP transport in
+`cmd/replicate/mcp.go` is the one surface still on `net/http` — see the comment
+there and `TestMCPServer_SSEHeadersPrecedeFirstEvent` for why.
 
 Database state logic belongs in DB layer, not Replica layer.
 

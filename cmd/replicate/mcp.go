@@ -44,6 +44,16 @@ func NewMCP(ctx context.Context, configPath string) (*MCPServer, error) {
 	mcpServer.AddTool(StatusTool(configPath))
 	mcpServer.AddTool(ResetTool(configPath))
 
+	// This is the one surface replicate does NOT serve on zip.
+	//
+	// mcp-go's streamable transport opens its notification stream by writing
+	// the SSE headers and calling http.Flusher.Flush with an empty body (see
+	// handleGet). fasthttp — zip's engine, reached through zip.AdaptNetHTTP —
+	// only puts a streamed response on the wire when the stream writer writes
+	// bytes, so those headers would sit in the connection buffer until the
+	// first notification, and a client waiting to establish the stream would
+	// hang. TestMCPServer_SSEHeadersPrecedeFirstEvent pins the behaviour that
+	// must hold before this can move onto zip.
 	s.mux = http.NewServeMux()
 	s.mux.Handle("/", httplog.Logger(server.NewStreamableHTTPServer(mcpServer)))
 	return s, nil

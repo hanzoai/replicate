@@ -1,6 +1,7 @@
 package replicate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,10 +9,12 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/zap-proto/fiber/v3"
+	zip "github.com/zap-proto/zip"
 )
 
 // SocketConfig configures the Unix socket for control commands.
@@ -51,7 +54,7 @@ type Server struct {
 	startedAt time.Time
 
 	socketListener net.Listener
-	httpServer     *http.Server
+	app            *zip.App
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -69,26 +72,20 @@ func NewServer(store *Store) *Server {
 		ctx:         ctx,
 		cancel:      cancel,
 		logger:      slog.Default().With(LogKeySystem, LogSystemServer),
+		app:         NewApp("replicate-control"),
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /start", s.handleStart)
-	mux.HandleFunc("POST /stop", s.handleStop)
-	mux.HandleFunc("GET /txid", s.handleTXID)
-	mux.HandleFunc("POST /register", s.handleRegister)
-	mux.HandleFunc("POST /unregister", s.handleUnregister)
-	mux.HandleFunc("POST /sync", s.handleSync)
-	mux.HandleFunc("GET /list", s.handleList)
-	mux.HandleFunc("GET /info", s.handleInfo)
+	s.app.Post("/start", s.handleStart)
+	s.app.Post("/stop", s.handleStop)
+	s.app.Get("/txid", s.handleTXID)
+	s.app.Post("/register", s.handleRegister)
+	s.app.Post("/unregister", s.handleUnregister)
+	s.app.Post("/sync", s.handleSync)
+	s.app.Get("/list", s.handleList)
+	s.app.Get("/info", s.handleInfo)
 
-	// pprof endpoints
-	mux.HandleFunc("GET /debug/pprof/", pprof.Index)
-	mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
-
-	s.httpServer = &http.Server{Handler: mux}
+	// pprof endpoints (GET only, as the control socket has always exposed them).
+	RegisterPprof(s.app.Get)
 
 	return s
 }
@@ -132,7 +129,12 @@ func (s *Server) Start() error {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		if err := s.httpServer.Serve(listener); err != nil && err != http.ErrServerClosed {
+		// The socket is bound and chmod'ed above so Start returns only once the
+		// control socket is reachable; app.Listen would bind it itself and race
+		// callers. Serving a pre-bound net.Listener is the one thing zip's
+		// transport registry does not cover, so we hand it to the underlying
+		// engine directly — every route, middleware and error still runs on zip.
+		if err := s.app.Fiber().Listener(listener, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
 			s.logger.Error("http server error", "error", err)
 		}
 	}()
@@ -147,8 +149,8 @@ func (s *Server) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if s.httpServer != nil {
-		if err := s.httpServer.Shutdown(ctx); err != nil {
+	if s.socketListener != nil {
+		if err := s.app.ShutdownWithContext(ctx); err != nil {
 			s.logger.Error("http server shutdown error", "error", err)
 		}
 	}
@@ -164,22 +166,19 @@ func (s *Server) expandPath(path string) (string, error) {
 	return path, nil
 }
 
-func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleStart(c *zip.Ctx) error {
 	var req StartRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body", err.Error())
-		return
+	if err := decodeBody(c, &req); err != nil {
+		return writeJSONError(c, http.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "path required", nil)
 	}
 
 	expandedPath, err := s.expandPath(req.Path)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
 	}
 
 	ctx := s.ctx
@@ -190,32 +189,28 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.store.EnableDB(ctx, expandedPath); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return writeJSONError(c, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	writeJSON(w, http.StatusOK, StartResponse{
+	return writeJSON(c, http.StatusOK, StartResponse{
 		Status: "started",
 		Path:   expandedPath,
 	})
 }
 
-func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleStop(c *zip.Ctx) error {
 	var req StopRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body", err.Error())
-		return
+	if err := decodeBody(c, &req); err != nil {
+		return writeJSONError(c, http.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "path required", nil)
 	}
 
 	expandedPath, err := s.expandPath(req.Path)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
 	}
 
 	timeout := req.Timeout
@@ -226,59 +221,64 @@ func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := s.store.DisableDB(ctx, expandedPath); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return writeJSONError(c, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	writeJSON(w, http.StatusOK, StopResponse{
+	return writeJSON(c, http.StatusOK, StopResponse{
 		Status: "stopped",
 		Path:   expandedPath,
 	})
 }
 
-func (s *Server) handleTXID(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Query().Get("path")
+func (s *Server) handleTXID(c *zip.Ctx) error {
+	path := c.Query("path")
 	if path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "path required", nil)
 	}
 
 	expandedPath, err := s.expandPath(path)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
 	}
 
 	db := s.store.FindDB(expandedPath)
 	if db == nil {
-		writeJSONError(w, http.StatusNotFound, "database not found", nil)
-		return
+		return writeJSONError(c, http.StatusNotFound, "database not found", nil)
 	}
 
 	pos, err := db.Pos()
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return writeJSONError(c, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	writeJSON(w, http.StatusOK, TXIDResponse{
+	return writeJSON(c, http.StatusOK, TXIDResponse{
 		TXID: uint64(pos.TXID),
 	})
 }
 
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+// writeJSON is the single response seam: encoding/json with the trailing
+// newline json.Encoder writes, so the bytes on the wire are byte-identical to
+// what the net/http handlers produced.
+func writeJSON(c *zip.Ctx, status int, v interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	c.SetHeader("Content-Type", "application/json")
+	return c.Bytes(status, append(b, '\n'))
 }
 
-func writeJSONError(w http.ResponseWriter, status int, message string, details interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(ErrorResponse{
+func writeJSONError(c *zip.Ctx, status int, message string, details interface{}) error {
+	return writeJSON(c, status, ErrorResponse{
 		Error:   message,
 		Details: details,
 	})
+}
+
+// decodeBody decodes the request body the way json.NewDecoder(r.Body) did:
+// an empty body yields io.EOF, so a bodyless POST is still a 400.
+func decodeBody(c *zip.Ctx, v interface{}) error {
+	return json.NewDecoder(bytes.NewReader(c.Body())).Decode(v)
 }
 
 // StartRequest is the request body for the /start endpoint.
@@ -316,22 +316,19 @@ type TXIDResponse struct {
 	TXID uint64 `json:"txid"`
 }
 
-func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleSync(c *zip.Ctx) error {
 	var req SyncRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body", err.Error())
-		return
+	if err := decodeBody(c, &req); err != nil {
+		return writeJSONError(c, http.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "path required", nil)
 	}
 
 	expandedPath, err := s.expandPath(req.Path)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
 	}
 
 	ctx := s.ctx
@@ -348,13 +345,12 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrDatabaseNotFound):
-			writeJSONError(w, http.StatusNotFound, err.Error(), nil)
+			return writeJSONError(c, http.StatusNotFound, err.Error(), nil)
 		case errors.Is(err, ErrDatabaseNotOpen):
-			writeJSONError(w, http.StatusConflict, err.Error(), nil)
+			return writeJSONError(c, http.StatusConflict, err.Error(), nil)
 		default:
-			writeJSONError(w, http.StatusInternalServerError, err.Error(), nil)
+			return writeJSONError(c, http.StatusInternalServerError, err.Error(), nil)
 		}
-		return
 	}
 
 	var status string
@@ -366,7 +362,7 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		status = "synced_local"
 	}
 
-	writeJSON(w, http.StatusOK, SyncResponse{
+	return writeJSON(c, http.StatusOK, SyncResponse{
 		Status:         status,
 		Path:           expandedPath,
 		TXID:           result.TXID,
@@ -389,7 +385,7 @@ type SyncResponse struct {
 	ReplicatedTXID uint64 `json:"replicated_txid"`
 }
 
-func (s *Server) handleList(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleList(c *zip.Ctx) error {
 	dbs := s.store.DBs()
 	resp := ListResponse{
 		Databases: make([]DatabaseSummary, 0, len(dbs)),
@@ -419,10 +415,10 @@ func (s *Server) handleList(w http.ResponseWriter, _ *http.Request) {
 		resp.Databases = append(resp.Databases, summary)
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return writeJSON(c, http.StatusOK, resp)
 }
 
-func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleInfo(c *zip.Ctx) error {
 	resp := InfoResponse{
 		Version:       s.Version,
 		PID:           os.Getpid(),
@@ -431,7 +427,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 		DatabaseCount: len(s.store.DBs()),
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return writeJSON(c, http.StatusOK, resp)
 }
 
 // ListResponse is the response body for the /list endpoint.
@@ -483,43 +479,37 @@ type UnregisterDatabaseResponse struct {
 	Path   string `json:"path"`
 }
 
-func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleRegister(c *zip.Ctx) error {
 	var req RegisterDatabaseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body", err.Error())
-		return
+	if err := decodeBody(c, &req); err != nil {
+		return writeJSONError(c, http.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "path required", nil)
 	}
 
 	if req.ReplicaURL == "" {
-		writeJSONError(w, http.StatusBadRequest, "replica_url required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "replica_url required", nil)
 	}
 
 	expandedPath, err := s.expandPath(req.Path)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
 	}
 
 	// Check if database already exists.
 	if existing := s.store.FindDB(expandedPath); existing != nil {
-		writeJSON(w, http.StatusOK, RegisterDatabaseResponse{
+		return writeJSON(c, http.StatusOK, RegisterDatabaseResponse{
 			Status: "already_exists",
 			Path:   expandedPath,
 		})
-		return
 	}
 
 	// Create replica client from URL.
 	client, err := NewReplicaClientFromURL(req.ReplicaURL)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid replica url: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid replica url: %v", err), nil)
 	}
 
 	// Create new database.
@@ -532,32 +522,28 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// Register database with store (this also opens the database).
 	if err := s.store.RegisterDB(db); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("failed to register database: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusInternalServerError, fmt.Sprintf("failed to register database: %v", err), nil)
 	}
 
-	writeJSON(w, http.StatusOK, RegisterDatabaseResponse{
+	return writeJSON(c, http.StatusOK, RegisterDatabaseResponse{
 		Status: "registered",
 		Path:   expandedPath,
 	})
 }
 
-func (s *Server) handleUnregister(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUnregister(c *zip.Ctx) error {
 	var req UnregisterDatabaseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body", err.Error())
-		return
+	if err := decodeBody(c, &req); err != nil {
+		return writeJSONError(c, http.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required", nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, "path required", nil)
 	}
 
 	expandedPath, err := s.expandPath(req.Path)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusBadRequest, fmt.Sprintf("invalid path: %v", err), nil)
 	}
 
 	// Set up timeout context. Treat non-positive values as default.
@@ -570,11 +556,10 @@ func (s *Server) handleUnregister(w http.ResponseWriter, r *http.Request) {
 
 	// Remove database from store (this also closes it).
 	if err := s.store.UnregisterDB(ctx, expandedPath); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("failed to unregister database: %v", err), nil)
-		return
+		return writeJSONError(c, http.StatusInternalServerError, fmt.Sprintf("failed to unregister database: %v", err), nil)
 	}
 
-	writeJSON(w, http.StatusOK, UnregisterDatabaseResponse{
+	return writeJSON(c, http.StatusOK, UnregisterDatabaseResponse{
 		Status: "unregistered",
 		Path:   expandedPath,
 	})
