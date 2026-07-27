@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 
 	"github.com/hanzoai/replicate/internal"
@@ -18,6 +19,7 @@ import (
 // It is the responsibility of the caller to handle this.
 type WALReader struct {
 	r      io.ReaderAt
+	size   int64 // byte bound captured when the reader was opened; 0 means unbounded
 	frameN int
 
 	bo       binary.ByteOrder
@@ -86,8 +88,42 @@ func (r *WALReader) Offset() int64 {
 	return WALHeaderSize + ((int64(r.frameN) - 1) * (WALFrameHeaderSize + int64(r.pageSize)))
 }
 
+// beyondBound reports whether reading n bytes at off would run past the WAL
+// boundary captured when the reader was opened.
+func (r *WALReader) beyondBound(off, n int64) bool {
+	return r.size > 0 && off+n > r.size
+}
+
+// readerSize returns the number of bytes readable from rd, or zero if rd cannot
+// report a size (in which case the reader is unbounded).
+func readerSize(rd io.ReaderAt) (int64, error) {
+	switch v := rd.(type) {
+	case interface{ Stat() (fs.FileInfo, error) }: // *os.File
+		fi, err := v.Stat()
+		if err != nil {
+			return 0, err
+		}
+		return fi.Size(), nil
+	case interface{ Size() int64 }: // *bytes.Reader, *strings.Reader, *io.SectionReader
+		return v.Size(), nil
+	default:
+		return 0, nil
+	}
+}
+
 // readHeader reads the WAL header into the reader. Returns io.EOF if WAL is invalid.
 func (r *WALReader) readHeader() error {
+	// Bound every read to the size of the WAL at the moment the reader is
+	// opened. SQLite appends frames while we read; without this bound a reader
+	// races the writer's tail and never reaches EOF, so the pre-checkpoint sync
+	// never returns and the WAL is never reclaimed. Frames appended past this
+	// bound belong to the next read pass.
+	size, err := readerSize(r.r)
+	if err != nil {
+		return fmt.Errorf("wal size: %w", err)
+	}
+	r.size = size
+
 	// If we have a partial WAL, then mark WAL as done.
 	hdr := make([]byte, WALHeaderSize)
 	if n, err := r.r.ReadAt(hdr, 0); n < len(hdr) {
@@ -142,6 +178,12 @@ func (r *WALReader) readFrame(_ context.Context, data []byte, verifyChecksum boo
 	frameSize := r.pageSize + WALFrameHeaderSize
 	offset := WALHeaderSize + (int64(r.frameN) * int64(frameSize))
 
+	// Stop at the bound captured when the reader was opened so that frames a
+	// concurrent writer appends behind us cannot extend this scan forever.
+	if r.beyondBound(offset, int64(frameSize)) {
+		return 0, 0, io.EOF
+	}
+
 	// Read WAL frame header.
 	hdr := make([]byte, WALFrameHeaderSize)
 	if n, err := r.r.ReadAt(hdr, offset); n != len(hdr) {
@@ -193,7 +235,14 @@ func (r *WALReader) PageMap(ctx context.Context) (m map[uint32]int64, maxOffset 
 	m = make(map[uint32]int64)
 	txMap := make(map[uint32]int64)
 	data := make([]byte, r.pageSize)
-	for i := 0; ; i++ {
+	for {
+		// Allow the caller to abandon a long WAL scan.
+		select {
+		case <-ctx.Done():
+			return nil, 0, 0, context.Cause(ctx)
+		default:
+		}
+
 		pgno, fcommit, err := r.ReadFrame(ctx, data)
 		if errors.Is(err, io.EOF) {
 			break
@@ -211,6 +260,10 @@ func (r *WALReader) PageMap(ctx context.Context) (m map[uint32]int64, maxOffset 
 			for pgno, offset := range txMap {
 				m[pgno] = offset
 			}
+			// Start the next transaction with an empty page set. Retaining
+			// committed pages here would make each commit re-copy every page
+			// seen so far, which is quadratic in the number of frames.
+			clear(txMap)
 			commit = fcommit
 		}
 	}
@@ -247,6 +300,10 @@ func (r *WALReader) PageMap(ctx context.Context) (m map[uint32]int64, maxOffset 
 func (r *WALReader) FrameSaltsUntil(ctx context.Context, until [2]uint32) (map[[2]uint32]struct{}, error) {
 	m := make(map[[2]uint32]struct{})
 	for offset := int64(WALHeaderSize); ; offset += int64(WALFrameHeaderSize + r.pageSize) {
+		if r.beyondBound(offset, int64(WALFrameHeaderSize+r.pageSize)) {
+			break
+		}
+
 		hdr := make([]byte, WALFrameHeaderSize)
 		if n, err := r.r.ReadAt(hdr, offset); n != len(hdr) {
 			break
