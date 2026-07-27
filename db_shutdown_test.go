@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -395,4 +396,51 @@ func TestDB_Close_SyncRetry(t *testing.T) {
 			t.Fatalf("expected exactly 1 attempt, got %d", got)
 		}
 	})
+}
+
+// TestDB_Close_SyncsDatabaseCreatedAfterOpen pins the silent-loss path.
+//
+// db.db is only set by init(), which no-ops when the SQLite file does not exist
+// yet. Close() used to guard BOTH its final Sync and its replica sync on
+// db.db != nil, so a handle opened before its database was created kept db.db
+// nil forever and skipped both. Open a handle, create the file, write, close:
+// zero bytes replicated, Close returned nil, and a later restore reported
+// ok=false with err=nil. Silent in both directions.
+//
+// This is exactly the shape AutoReplicate(...) at startup produces: the
+// replicator is wired before the application has created its schema.
+func TestDB_Close_SyncsDatabaseCreatedAfterOpen(t *testing.T) {
+	// Open the handle against a path that does NOT exist yet — the whole point.
+	// init() finds nothing and leaves db.db nil.
+	db := testingutil.MustOpenDBAt(t, filepath.Join(t.TempDir(), "late.db"))
+
+	// The database appears only now, after the handle is already open.
+	sqldb := testingutil.MustOpenSQLDB(t, db.Path())
+	if _, err := sqldb.Exec(`CREATE TABLE t (x)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sqldb.Exec(`INSERT INTO t VALUES (1)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := sqldb.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	// The replica must hold something. Zero files means the writes are gone and
+	// nothing reported it.
+	itr, err := db.Replica.Client.LTXFiles(context.Background(), 0, 0, false)
+	if err != nil {
+		t.Fatalf("listing replica: %v", err)
+	}
+	infos, err := ltx.SliceFileIterator(itr)
+	if err != nil {
+		t.Fatalf("draining replica listing: %v", err)
+	}
+	if len(infos) == 0 {
+		t.Fatal("Close replicated ZERO files for a database created after open — the writes are gone and nothing said so")
+	}
 }

@@ -612,14 +612,27 @@ func (db *DB) Close(ctx context.Context) (err error) {
 	db.cancel()
 	db.wg.Wait()
 
-	// Perform a final db sync, if initialized.
-	if db.db != nil {
-		if e := db.Sync(ctx); e != nil {
-			err = e
-		}
+	// Perform a final db sync.
+	//
+	// Deliberately NOT guarded on db.db != nil. db.db is only set by init(),
+	// which no-ops when the SQLite file does not exist yet — so a handle opened
+	// before its database was created kept db.db == nil forever, and this guard
+	// then skipped BOTH the final sync and the replica sync below. Open a
+	// handle, create the file, write to it, close: zero bytes replicated, and
+	// Close returned nil. A later restore reported ok=false with err=nil.
+	// Silent in both directions, which is the worst shape a durability bug can
+	// take.
+	//
+	// Sync() runs init() itself and returns nil when there is genuinely no
+	// database, so calling it unconditionally is safe and picks up a file that
+	// appeared after this handle opened.
+	if e := db.Sync(ctx); e != nil {
+		err = e
 	}
 
-	// Ensure replicas perform a final sync and stop replicating.
+	// Ensure replicas perform a final sync and stop replicating. db.db is
+	// re-checked AFTER the Sync above, so init has had its chance to find a
+	// database created since open.
 	if db.Replica != nil {
 		if db.db != nil {
 			if e := db.syncReplicaWithRetry(ctx); e != nil && err == nil {
