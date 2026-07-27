@@ -237,62 +237,6 @@ replicas:
     secret-access-key: your-secret-key
 ```
 
-## Google Cloud Storage (GCS)
-
-**Status**: Fully supported (native client)
-
-```yaml
-replicas:
-  - url: gcs://bucket-name/path
-```
-
-**Authentication**:
-
-- Uses Application Default Credentials
-- Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
-- Or use workload identity on GCP
-
-## Azure Blob Storage (ABS)
-
-**Status**: Fully supported (native client)
-
-```yaml
-replicas:
-  - url: abs://container-name/path
-    account-name: your-account-name
-    account-key: your-account-key
-```
-
-**Using SAS Token** (for granular container-level access):
-
-```yaml
-replicas:
-  - url: abs://container-name/path
-    account-name: your-account-name
-    sas-token: "sv=2023-01-03&ss=b&srt=co&sp=rwdlacx..."
-```
-
-Or via environment variable: `REPLICATE_AZURE_SAS_TOKEN`
-
-**Alternative Authentication**:
-
-- SAS token: `sas-token` config or `REPLICATE_AZURE_SAS_TOKEN` env var
-- Account key: `account-key` config or `REPLICATE_AZURE_ACCOUNT_KEY` env var
-- Managed identity on Azure (via DefaultAzureCredential)
-
-**Authentication Priority**: SAS token > Account key > Default credential chain
-
-## Alibaba Cloud OSS
-
-**Status**: Supported (native client)
-
-```yaml
-replicas:
-  - url: oss://bucket-name/path?endpoint=oss-REGION.aliyuncs.com
-    access-key-id: your-access-key-id
-    access-key-secret: your-access-key-secret
-```
-
 ## SFTP
 
 **Status**: Supported

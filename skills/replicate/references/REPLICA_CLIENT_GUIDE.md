@@ -20,7 +20,7 @@ type ReplicaClient interface {
 
 ### Method Contracts
 
-**Type()**: Return identifier string (e.g., "s3", "gcs", "file").
+**Type()**: Return identifier string (e.g., "s3", "sftp", "file").
 
 **Init()**: Initialize connection. Must be idempotent (no-op if already initialized).
 

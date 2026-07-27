@@ -139,10 +139,7 @@ if err := replica.Restore(ctx, opt); err != nil {
 ## Supported Backends
 
 - `file` - Local filesystem
-- `s3` - AWS S3 and S3-compatible storage
-- `gs` - Google Cloud Storage
-- `abs` - Azure Blob Storage
-- `oss` - Alibaba Cloud OSS
+- `s3` - S3 and S3-compatible storage
 - `sftp` - SFTP servers
 - `nats` - NATS JetStream
 - `webdav` - WebDAV servers
