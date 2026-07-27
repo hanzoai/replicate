@@ -1852,6 +1852,16 @@ func TestDB_CheckpointPageGapWithConcurrentWrites(t *testing.T) {
 	// The writer goroutine continuously inserts rows while checkpoint runs.
 	// This exercises the TOCTOU window where frames arrive after the
 	// pre-checkpoint sync but before WAL truncation.
+	//
+	// The writer's row count is capped. Nothing in this test bounds how long
+	// the checkpoint takes, so an uncapped writer's disk footprint is not
+	// bounded either — a checkpoint that failed to return once buried a 24GB
+	// tmpfs under 171GB of WAL. The cap holds the footprint at roughly 16MB of
+	// database plus 50MB of WAL while still landing thousands of commits inside
+	// the checkpoint window. Termination itself is covered deterministically by
+	// TestWALReader_PageMap_ConcurrentAppend.
+	const maxWriterRows = 4000
+
 	writerCtx, cancelWriter := context.WithCancel(ctx)
 	writerDone := make(chan error, 1)
 	writerStarted := make(chan struct{})
@@ -1866,6 +1876,13 @@ func TestDB_CheckpointPageGapWithConcurrentWrites(t *testing.T) {
 				writerDone <- nil
 				return
 			default:
+				if atomic.LoadInt64(&writtenRows) >= maxWriterRows {
+					// Stop growing the database but stay alive so the
+					// checkpoint is never rushed by the writer exiting.
+					<-writerCtx.Done()
+					writerDone <- nil
+					return
+				}
 				blob := make([]byte, 4000)
 				_, err := sqldb.Exec(`INSERT INTO t VALUES (?, ?)`, i, blob)
 				if err != nil {
@@ -1895,7 +1912,14 @@ func TestDB_CheckpointPageGapWithConcurrentWrites(t *testing.T) {
 	case err := <-writerDone:
 		t.Fatalf("writer exited before starting: %v", err)
 	}
-	if err := db.Checkpoint(ctx, CheckpointModeTruncate); err != nil {
+
+	// Give the checkpoint a deadline. Without one, a checkpoint that cannot
+	// make progress hangs until the package-wide test timeout, which panics the
+	// binary — and a panic skips t.TempDir cleanup, so the database, WAL and
+	// LTX files are all left behind on the filesystem.
+	chkCtx, cancelCheckpoint := context.WithTimeout(ctx, 60*time.Second)
+	defer cancelCheckpoint()
+	if err := db.Checkpoint(chkCtx, CheckpointModeTruncate); err != nil {
 		cancelWriter()
 		<-writerDone
 		t.Fatal(err)
@@ -1916,9 +1940,16 @@ func TestDB_CheckpointPageGapWithConcurrentWrites(t *testing.T) {
 	t.Logf("after checkpoint: txid=%d", pos2.TXID)
 
 	// Check the DB file size — the checkpoint should have extended it
-	dbInfo, _ := os.Stat(dbPath)
-	dbPages := dbInfo.Size() / 4096
-	t.Logf("DB file: %d bytes (%d pages)", dbInfo.Size(), dbPages)
+	dbInfo, err := os.Stat(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	walInfo, err := os.Stat(db.WALPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("DB file: %d bytes (%d pages), WAL: %d bytes",
+		dbInfo.Size(), dbInfo.Size()/4096, walInfo.Size())
 
 	// Log each L0 file's header and page count
 	for txid := ltx.TXID(1); txid <= pos2.TXID; txid++ {
