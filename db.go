@@ -78,12 +78,13 @@ type DB struct {
 	// otherwise create unnecessary LTX files. See issue #896.
 	syncedSinceCheckpoint bool
 
-	// syncedToWALEnd tracks whether the last successful sync reached the
-	// exact end of the WAL file. When true, a subsequent WAL truncation
-	// (from checkpoint) is expected and should NOT trigger a full snapshot.
-	// This prevents issue #927 where every checkpoint triggers unnecessary
-	// full snapshots because verify() sees the old LTX position exceeds
-	// the new (truncated) WAL size.
+	// syncedToWALEnd tracks whether we are synced to the exact end of the WAL
+	// file. sync() sets it; checkpoint() re-evaluates it immediately before
+	// truncating, since frames appended in between leave it stale. When true, a
+	// subsequent WAL truncation (from checkpoint) is expected and should NOT
+	// trigger a full snapshot. This prevents issue #927 where every checkpoint
+	// triggers unnecessary full snapshots because verify() sees the old LTX
+	// position exceeds the new (truncated) WAL size.
 	syncedToWALEnd bool
 
 	// lastSyncedWALOffset tracks the logical end of the WAL content after
@@ -1391,7 +1392,7 @@ func (db *DB) verify(ctx context.Context) (info syncInfo, err error) {
 			return info, nil
 		}
 
-		info.reason = "wal truncated by another process"
+		info.reason = "wal truncated past last sync position, snapshotting"
 		return info, nil
 	}
 
@@ -1860,6 +1861,18 @@ func (db *DB) checkpoint(ctx context.Context, mode string) error {
 	// Copy end of WAL before checkpoint to copy as much as possible.
 	if _, _, _, err := db.verifyAndSync(ctx, true); err != nil {
 		return fmt.Errorf("cannot copy wal before checkpoint: %w", err)
+	}
+
+	// The WAL can grow between the sync above and the checkpoint below. Those
+	// frames are about to be folded into the database file and erased, and the
+	// post-checkpoint sync will not find them in the WAL, so the only way they
+	// stay replicated is as a full snapshot. Re-evaluate here, at the instant of
+	// truncation, whether we are still synced to the end of the WAL: the sync
+	// above could only answer that for the moment it ran.
+	if walSize, err := db.walFileSize(); err != nil {
+		return fmt.Errorf("stat wal before checkpoint: %w", err)
+	} else if db.lastSyncedWALOffset != walSize {
+		db.syncedToWALEnd = false
 	}
 
 	// Execute checkpoint and immediately issue a write to the WAL to ensure
