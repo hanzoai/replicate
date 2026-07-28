@@ -87,6 +87,13 @@ type DB struct {
 	// position exceeds the new (truncated) WAL size.
 	syncedToWALEnd bool
 
+	// afterPreCheckpointSync, when non-nil, runs inside checkpoint() between the
+	// pre-checkpoint sync and WAL truncation. Commits made from it land in the
+	// window where a checkpoint can move pages into the database file that no
+	// LTX file covers. Tests set it to open that window deterministically;
+	// it is nil in production.
+	afterPreCheckpointSync func()
+
 	// lastSyncedWALOffset tracks the logical end of the WAL content after
 	// the last successful sync. This is the WALOffset + WALSize from the
 	// last LTX file. Used for checkpoint threshold decisions instead of
@@ -1861,6 +1868,10 @@ func (db *DB) checkpoint(ctx context.Context, mode string) error {
 	// Copy end of WAL before checkpoint to copy as much as possible.
 	if _, _, _, err := db.verifyAndSync(ctx, true); err != nil {
 		return fmt.Errorf("cannot copy wal before checkpoint: %w", err)
+	}
+
+	if db.afterPreCheckpointSync != nil {
+		db.afterPreCheckpointSync()
 	}
 
 	// The WAL can grow between the sync above and the checkpoint below. Those

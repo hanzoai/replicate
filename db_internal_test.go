@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1775,24 +1774,29 @@ func TestDB_CheckpointCreatesSnapshotL0(t *testing.T) {
 	}
 }
 
-// TestDB_CheckpointPageGapWithConcurrentWrites verifies that pages written
-// concurrently with checkpoint execution are not lost.
+// TestDB_CheckpointPageGap verifies that pages committed inside the checkpoint
+// window are still covered by an L0 file once the checkpoint finishes.
 //
-// Root cause: checkpoint() does a pre-checkpoint sync to capture WAL state,
-// then executes PRAGMA wal_checkpoint(TRUNCATE). Under concurrent writes,
-// new commits can arrive between the pre-sync and the checkpoint. These commits
-// are checkpointed (moved from WAL to DB file) and then the WAL is truncated.
-// The post-checkpoint sync reads only the NEW WAL — the missed pages are in
-// the DB file but not in any L0 file. When compaction merges L0 files into
-// a snapshot (MinTXID=1), the missing pages cause "nonsequential page numbers".
+// checkpoint() syncs the WAL, runs PRAGMA wal_checkpoint(TRUNCATE), then syncs
+// again. A commit that lands between the first sync and the truncation is moved
+// into the database file and erased from the WAL, so the second sync cannot find
+// it there. What keeps those pages replicated is verify() detecting the WAL
+// restart and forcing the post-checkpoint sync to write a full snapshot L0.
+// Without that snapshot the pages sit in the database file and in no LTX file at
+// all, and a later L0->snapshot compaction fails on nonsequential page numbers.
 //
-// This test exercises the race by:
-// 1. Doing an initial sync (snapshot L0)
-// 2. Writing data to grow the database
-// 3. Syncing to capture the growth
-// 4. Running checkpoint CONCURRENTLY with more writes
-// 5. Verifying all pages are covered across L0 files
-func TestDB_CheckpointPageGapWithConcurrentWrites(t *testing.T) {
+// The window is opened by afterPreCheckpointSync rather than by racing a writer
+// against the checkpoint. A racing writer keeps the database busy, so TRUNCATE
+// leaves the WAL in place, so checkpoint() returns at its "WAL hasn't been
+// restarted" guard without ever reaching the post-checkpoint sync — the race
+// passed just as happily with the snapshot suppressed, proving nothing. It was
+// also unbounded on disk: it once buried a 24GB tmpfs under 171GB of WAL.
+func TestDB_CheckpointPageGap(t *testing.T) {
+	const (
+		baseRows = 100 // committed and synced before the checkpoint
+		gapRows  = 200 // committed inside the checkpoint window
+	)
+
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "db")
 
@@ -1827,227 +1831,129 @@ func TestDB_CheckpointPageGapWithConcurrentWrites(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Step 1: Initial sync — creates snapshot L0 with all current pages
+	// Each row carries one overflow page, so a row is roughly a page of growth.
+	insert := func(from, n int) error {
+		blob := make([]byte, 4000)
+		for i := from; i < from+n; i++ {
+			if _, err := sqldb.Exec(`INSERT INTO t VALUES (?, ?)`, i, blob); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Snapshot L0 of the empty database, then grow it and sync so the growth is
+	// covered by an incremental L0. Anything committed after this is the gap.
+	if err := db.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := insert(0, baseRows); err != nil {
+		t.Fatal(err)
+	}
 	if err := db.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
 
-	// Step 2: Write data to grow the database significantly
-	for i := 0; i < 100; i++ {
-		blob := make([]byte, 4000)
-		if _, err := sqldb.Exec(`INSERT INTO t VALUES (?, ?)`, i, blob); err != nil {
+	walBefore, err := readWALHeader(db.WALPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var gapErr error
+	var gapOpened bool
+	db.afterPreCheckpointSync = func() {
+		gapOpened = true
+		gapErr = insert(baseRows, gapRows)
+	}
+
+	err = db.Checkpoint(ctx, CheckpointModeTruncate)
+	db.afterPreCheckpointSync = nil
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gapErr != nil {
+		t.Fatal(gapErr)
+	}
+	if !gapOpened {
+		t.Fatal("checkpoint returned before its pre-checkpoint sync; no gap was opened")
+	}
+
+	// The checkpoint must have restarted the WAL. If it did not, checkpoint()
+	// returned at its "WAL hasn't been restarted" guard and the post-checkpoint
+	// sync this test covers never ran.
+	walAfter, err := readWALHeader(db.WALPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(walBefore, walAfter) {
+		t.Fatal("truncating checkpoint did not restart the WAL")
+	}
+
+	// Every page of the database must appear in at least one L0 file. maxCommit
+	// is the database size the L0 files themselves report, so an L0 that claims
+	// the grown database while carrying only the pages left in the truncated WAL
+	// is exactly what surfaces here as missing pages.
+	l0Dir := db.LTXLevelDir(0)
+	entries, err := os.ReadDir(l0Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pages := make(map[uint32]bool)
+	var maxCommit uint32
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".ltx") {
+			continue
+		}
+
+		f, err := os.Open(filepath.Join(l0Dir, entry.Name()))
+		if err != nil {
 			t.Fatal(err)
 		}
-	}
+		defer f.Close()
 
-	// Step 3: Sync to capture the growth — creates incremental L0
-	if err := db.Sync(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	pos1, _ := db.Pos()
-	t.Logf("after growth sync: txid=%d", pos1.TXID)
-
-	// Step 4: Run checkpoint CONCURRENTLY with more writes.
-	// The writer goroutine continuously inserts rows while checkpoint runs.
-	// This exercises the TOCTOU window where frames arrive after the
-	// pre-checkpoint sync but before WAL truncation.
-	//
-	// The writer's row count is capped. Nothing in this test bounds how long
-	// the checkpoint takes, so an uncapped writer's disk footprint is not
-	// bounded either — a checkpoint that failed to return once buried a 24GB
-	// tmpfs under 171GB of WAL. The cap holds the footprint at roughly 16MB of
-	// database plus 50MB of WAL while still landing thousands of commits inside
-	// the checkpoint window. Termination itself is covered deterministically by
-	// TestWALReader_PageMap_ConcurrentAppend.
-	const maxWriterRows = 4000
-
-	writerCtx, cancelWriter := context.WithCancel(ctx)
-	writerDone := make(chan error, 1)
-	writerStarted := make(chan struct{})
-	var writtenRows int64
-
-	go func() {
-		var i int64 = 100
-		started := false
-		for {
-			select {
-			case <-writerCtx.Done():
-				writerDone <- nil
-				return
-			default:
-				if atomic.LoadInt64(&writtenRows) >= maxWriterRows {
-					// Stop growing the database but stay alive so the
-					// checkpoint is never rushed by the writer exiting.
-					<-writerCtx.Done()
-					writerDone <- nil
-					return
-				}
-				blob := make([]byte, 4000)
-				_, err := sqldb.Exec(`INSERT INTO t VALUES (?, ?)`, i, blob)
-				if err != nil {
-					// SQLITE_BUSY is expected during concurrent checkpoint - retry
-					if strings.Contains(err.Error(), "database is locked") ||
-						strings.Contains(err.Error(), "SQLITE_BUSY") {
-						time.Sleep(time.Millisecond)
-						continue
-					}
-					writerDone <- err
-					return
-				}
-				atomic.AddInt64(&writtenRows, 1)
-				if !started {
-					close(writerStarted)
-					started = true
-				}
-				i++
-			}
-		}
-	}()
-
-	// Wait for the writer to confirm at least one successful write before
-	// starting the checkpoint. This avoids a timing-dependent 10ms sleep.
-	select {
-	case <-writerStarted:
-	case err := <-writerDone:
-		t.Fatalf("writer exited before starting: %v", err)
-	}
-
-	// Give the checkpoint a deadline. Without one, a checkpoint that cannot
-	// make progress hangs until the package-wide test timeout, which panics the
-	// binary — and a panic skips t.TempDir cleanup, so the database, WAL and
-	// LTX files are all left behind on the filesystem.
-	chkCtx, cancelCheckpoint := context.WithTimeout(ctx, 60*time.Second)
-	defer cancelCheckpoint()
-	if err := db.Checkpoint(chkCtx, CheckpointModeTruncate); err != nil {
-		cancelWriter()
-		<-writerDone
-		t.Fatal(err)
-	}
-	cancelWriter()
-	if err := <-writerDone; err != nil {
-		t.Fatal(err)
-	}
-
-	rows := atomic.LoadInt64(&writtenRows)
-	t.Logf("concurrent writer inserted %d rows during/around checkpoint", rows)
-	if rows == 0 {
-		t.Fatal("concurrent writer inserted 0 rows — race was not exercised")
-	}
-
-	// Log diagnostic info about what we expect
-	pos2, _ := db.Pos()
-	t.Logf("after checkpoint: txid=%d", pos2.TXID)
-
-	// Check the DB file size — the checkpoint should have extended it
-	dbInfo, err := os.Stat(dbPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	walInfo, err := os.Stat(db.WALPath())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("DB file: %d bytes (%d pages), WAL: %d bytes",
-		dbInfo.Size(), dbInfo.Size()/4096, walInfo.Size())
-
-	// Log each L0 file's header and page count
-	for txid := ltx.TXID(1); txid <= pos2.TXID; txid++ {
-		path := db.LTXPath(0, txid, txid)
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
 		dec := ltx.NewDecoder(f)
 		if err := dec.DecodeHeader(); err != nil {
-			f.Close()
-			continue
-		}
-		hdrInfo := dec.Header()
-		// Count pages in this L0 file
-		var pageCount int
-		var firstPgno, lastPgno uint32
-		data := make([]byte, hdrInfo.PageSize)
-		for {
-			var phdr ltx.PageHeader
-			if err := dec.DecodePage(&phdr, data); err == io.EOF {
-				break
-			} else if err != nil {
-				t.Logf("  decode error: %v", err)
-				break
-			}
-			pageCount++
-			if firstPgno == 0 {
-				firstPgno = phdr.Pgno
-			}
-			lastPgno = phdr.Pgno
-		}
-		fi, _ := os.Stat(path)
-		t.Logf("L0 %s: commit=%d, pages=%d [%d..%d], size=%d, isSnapshot=%v",
-			filepath.Base(path), hdrInfo.Commit, pageCount, firstPgno, lastPgno,
-			fi.Size(), hdrInfo.IsSnapshot())
-		f.Close()
-	}
-
-	// Step 6: Verify all pages are covered across L0 files.
-	// The last L0's commit tells us the database has N pages. ALL pages
-	// 1..N (except the lock page) must exist in at least one L0 file.
-	// If the checkpoint race caused page loss, pages between the pre-checkpoint
-	// sync's coverage and the final commit will be missing.
-	allPages := make(map[uint32]bool)
-	var maxCommit uint32
-	for txid := ltx.TXID(1); txid <= pos2.TXID; txid++ {
-		path := db.LTXPath(0, txid, txid)
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		dec := ltx.NewDecoder(f)
-		if err := dec.DecodeHeader(); err != nil {
-			f.Close()
-			continue
+			t.Fatalf("%s: decode header: %v", entry.Name(), err)
 		}
 		hdr := dec.Header()
 		if hdr.Commit > maxCommit {
 			maxCommit = hdr.Commit
 		}
+
+		var pageN int
 		data := make([]byte, hdr.PageSize)
 		for {
 			var phdr ltx.PageHeader
-			if err := dec.DecodePage(&phdr, data); err == io.EOF {
+			if err := dec.DecodePage(&phdr, data); errors.Is(err, io.EOF) {
 				break
 			} else if err != nil {
-				break
+				t.Fatalf("%s: decode page: %v", entry.Name(), err)
 			}
-			allPages[phdr.Pgno] = true
+			pages[phdr.Pgno] = true
+			pageN++
 		}
-		f.Close()
+
+		t.Logf("L0 %s: commit=%d pages=%d snapshot=%v", entry.Name(), hdr.Commit, pageN, hdr.IsSnapshot())
 	}
 
-	lockPgno := ltx.LockPgno(4096)
+	lockPgno := ltx.LockPgno(uint32(db.PageSize()))
 	var missing []uint32
 	for pgno := uint32(1); pgno <= maxCommit; pgno++ {
-		if pgno == lockPgno {
-			continue
-		}
-		if !allPages[pgno] {
+		if pgno != lockPgno && !pages[pgno] {
 			missing = append(missing, pgno)
 		}
 	}
-
 	if len(missing) > 0 {
-		// Show first few missing pages
 		show := missing
 		if len(show) > 10 {
 			show = show[:10]
 		}
-		t.Fatalf("FAIL: %d pages missing from L0 files (commit=%d, have %d pages). "+
-			"Pages lost between pre-checkpoint sync and checkpoint execution. "+
-			"First missing: %v",
-			len(missing), maxCommit, len(allPages), show)
+		t.Fatalf("%d of %d pages missing from L0 files: pages committed in the checkpoint window reached the database file but no LTX file. first missing: %v",
+			len(missing), maxCommit, show)
 	}
 
-	t.Logf("all %d pages present across L0 files (commit=%d)", len(allPages), maxCommit)
+	t.Logf("all %d pages present across L0 files (commit=%d)", len(pages), maxCommit)
 }
 
 // TestDB_Sync_InitErrorMetrics verifies that sync error counter is incremented
