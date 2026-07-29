@@ -300,7 +300,11 @@ func (r *Replica) OpenLTXFile(ctx context.Context, level int, minTXID, maxTXID l
 	if !r.DecryptionEnabled() {
 		return rc, nil
 	}
-	dr, err := age.Decrypt(rc, r.AgeIdentities...)
+	// Sniff before decrypting: identities configured is not the same fact as this
+	// object being sealed, and this bucket holds both.
+	dr, err := internal.DecryptIfSealed(rc, func(rd io.Reader) (io.Reader, error) {
+		return age.Decrypt(rd, r.AgeIdentities...)
+	})
 	if err != nil {
 		rc.Close()
 		return nil, fmt.Errorf("age decrypt: %w", err)
@@ -1275,7 +1279,9 @@ func (r *Replica) downloadSnapshotV3(ctx context.Context, client ReplicaClientV3
 
 	var rd io.Reader = rc
 	if r.DecryptionEnabled() {
-		dr, err := age.Decrypt(rc, r.AgeIdentities...)
+		dr, err := internal.DecryptIfSealed(rc, func(x io.Reader) (io.Reader, error) {
+			return age.Decrypt(x, r.AgeIdentities...)
+		})
 		if err != nil {
 			return fmt.Errorf("age decrypt snapshot: %w", err)
 		}
@@ -1354,7 +1360,9 @@ func (r *Replica) appendWALSegmentV3(ctx context.Context, client ReplicaClientV3
 
 	var rd io.Reader = rc
 	if r.DecryptionEnabled() {
-		dr, err := age.Decrypt(rc, r.AgeIdentities...)
+		dr, err := internal.DecryptIfSealed(rc, func(x io.Reader) (io.Reader, error) {
+			return age.Decrypt(x, r.AgeIdentities...)
+		})
 		if err != nil {
 			return fmt.Errorf("age decrypt WAL segment: %w", err)
 		}
