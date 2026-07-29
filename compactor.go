@@ -11,6 +11,8 @@ import (
 	"github.com/hanzoai/ltx"
 	"github.com/luxfi/age"
 	metric "github.com/luxfi/metric"
+
+	"github.com/hanzoai/replicate/internal"
 )
 
 // Compactor handles compaction and retention for LTX files.
@@ -167,7 +169,9 @@ func (c *Compactor) Compact(ctx context.Context, dstLevel int) (*ltx.FileInfo, e
 			return nil, fmt.Errorf("open ltx file: %w", err)
 		}
 		if len(c.AgeIdentities) > 0 {
-			dr, err := age.Decrypt(f, c.AgeIdentities...)
+			dr, err := internal.DecryptIfSealed(f, func(x io.Reader) (io.Reader, error) {
+				return age.Decrypt(x, c.AgeIdentities...)
+			})
 			if err != nil {
 				f.Close()
 				return nil, fmt.Errorf("age decrypt ltx file: %w", err)
