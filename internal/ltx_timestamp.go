@@ -45,3 +45,39 @@ func ExtractLTXTimestamp(rd io.Reader) (time.Time, io.Reader, error) {
 	}
 	return time.UnixMilli(hdr.Timestamp).UTC(), reader, nil
 }
+
+// DecryptIfSealed returns a reader of plaintext LTX bytes from rd, decrypting only
+// when rd actually IS an age ciphertext.
+//
+// Why this is not simply age.Decrypt: having identities configured is not the same
+// fact as the object being sealed. A bucket can hold both — ours does, because
+// snapshots were written before age was wired and sealed ones landed after — and
+// decrypting unconditionally turns every older object into:
+//
+//	age decrypt: failed to read header: parsing age header: unexpected intro "LTX1\x00…"
+//
+// That took chat, hanzo-app, dataroom and studio down: the restore init container
+// cannot rehydrate an empty PVC, so no pod with this sidecar can cold-start. There
+// was no config that read both, because removing the identities makes the WRITER
+// fail closed instead.
+//
+// The write path already made exactly this distinction — ExtractLTXTimestamp above
+// sniffs the same intro so that mixed buckets upload correctly. This is the read
+// half of that, so the two directions agree.
+//
+// It does NOT weaken encryption: with zero identities the caller never had a key
+// and this returns the stream untouched, exactly as before. A sealed object still
+// requires a valid identity, and a corrupt one still fails — only the plaintext
+// case, which previously could not be read at all, now round-trips.
+func DecryptIfSealed(rd io.Reader, decrypt func(io.Reader) (io.Reader, error)) (io.Reader, error) {
+	// Sniff exactly the intro's width and replay it, so neither branch loses bytes.
+	sniff := make([]byte, len(ageStreamIntro))
+	n, _ := io.ReadFull(rd, sniff)
+	sniff = sniff[:n]
+	full := io.MultiReader(bytes.NewReader(sniff), rd)
+
+	if string(sniff) != ageStreamIntro {
+		return full, nil // plaintext LTX (or a corrupt object, which LTX itself will reject)
+	}
+	return decrypt(full)
+}
