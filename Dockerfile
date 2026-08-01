@@ -1,4 +1,5 @@
-FROM golang:1.26.4 AS builder
+FROM golang:1.26.5 AS builder
+ENV GOTOOLCHAIN=auto
 
 # Install build dependencies for VFS extension
 RUN apt-get update && apt-get install -y gcc libc6-dev && rm -rf /var/lib/apt/lists/*
