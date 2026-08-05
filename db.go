@@ -893,20 +893,8 @@ func (db *DB) init(ctx context.Context) (err error) {
 		return fmt.Errorf("enable wal failed, mode=%q", mode)
 	}
 
-	// Create a table to force writes to the WAL when empty.
-	// There should only ever be one row with id=1.
-	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _replicate_seq (id INTEGER PRIMARY KEY, seq INTEGER);`); err != nil {
-		return fmt.Errorf("create _replicate_seq table: %w", err)
-	}
-
-	// Create a lock table to force write locks during sync.
-	// The sync write transaction always rolls back so no data should be in this table.
-	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _replicate_lock (id INTEGER);`); err != nil {
-		return fmt.Errorf("create _replicate_lock table: %w", err)
-	}
-
 	// Start a long-running read transaction to prevent other transactions
-	// from checkpointing.
+	// from checkpointing. This also creates our two tables, see createSchema.
 	if err := db.acquireReadLock(ctx); err != nil {
 		return fmt.Errorf("acquire read lock: %w", err)
 	}
@@ -997,10 +985,42 @@ func (db *DB) verifyHeadersMatch() error {
 }
 */
 
+// createSchema creates the two tables replicate keeps its own bookkeeping in.
+//
+// _replicate_seq is written to force a frame into the WAL when the application
+// is otherwise idle; it holds a single row with id=1. _replicate_lock is
+// inserted into to promote the sync transaction to a write lock; that
+// transaction always rolls back, so the table stays empty.
+//
+// Both are asserted on every read-lock acquisition rather than once at init,
+// because we do not own the file we keep them in. An application that
+// reconciles its whole schema against the same database -- `prisma db push`,
+// `drizzle-kit push`, atlas -- drops every table its schema does not declare,
+// and ours are never declared. That is a legitimate thing for an application to
+// do and it must not wedge replication: dataroom dropped both at boot, one
+// second after we created them, and every checkpoint from then on died on
+// "no such table: _replicate_seq" for three days with no other symptom.
+// Recreating them here is safe -- the drop is an ordinary transaction that
+// replicates like any other, and only our bookkeeping needs restoring.
+func (db *DB) createSchema(ctx context.Context) error {
+	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _replicate_seq (id INTEGER PRIMARY KEY, seq INTEGER);`); err != nil {
+		return fmt.Errorf("create _replicate_seq table: %w", err)
+	}
+	if _, err := db.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS _replicate_lock (id INTEGER);`); err != nil {
+		return fmt.Errorf("create _replicate_lock table: %w", err)
+	}
+	return nil
+}
+
 // acquireReadLock begins a read transaction on the database to prevent checkpointing.
 func (db *DB) acquireReadLock(ctx context.Context) error {
 	if db.rtx != nil {
 		return nil
+	}
+
+	// Ensure our bookkeeping tables exist before we read from one of them.
+	if err := db.createSchema(ctx); err != nil {
+		return err
 	}
 
 	// Start long running read-transaction to prevent checkpoints.
