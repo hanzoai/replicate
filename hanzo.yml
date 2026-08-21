@@ -1,0 +1,36 @@
+# Hanzo Replicate — the one file that says how this repo builds, gates and ships.
+#
+# It replaces callers of hanzoai/.github's docker-build.yml, which push to ghcr
+# and stop there. hanzoai/ci's build.yml makes the same push and then copies the
+# tag set to oci.hanzo.ai — server-side, no rebuild — so the image exists at both
+# addresses. ghcr stays as the public mirror; what changes is that ours gets a
+# copy at all.
+#
+# THE VERSION FILE BELOW IS STALE AND DELIBERATELY LEFT ALONE. VERSION says
+# 0.5.13 while ghcr.io/hanzoai/replicate has published through 0.9.10 — the tag
+# production runs. imgver takes the MAX of the declared version and the registry
+# floor, so it reads 0.9.10 and publishes 0.9.11; the series continues and the
+# stale file changes nothing. Editing VERSION upward would be a version this repo
+# never released, and editing it to match would be typing a number that is
+# already derived. The published image has been the source of truth here for a
+# while, and this makes that explicit rather than pretending the file leads.
+#
+# Note the tag SHAPE changes: docker-build.yml published `v0.9.10`, imgver
+# publishes bare `0.9.11`. Every pin names a tag explicitly, so nothing resolves
+# by accident — the three deployments that carry this as a sidecar move when
+# their pin moves, not before.
+
+test:
+  - name: build-and-vet
+    run: |
+      set -e
+      go build ./...
+      go vet ./...
+
+images:
+  - name: replicate
+    context: .
+    dockerfile: Dockerfile
+    repo: ghcr.io/hanzoai/replicate
+    platforms:
+      - linux/amd64
