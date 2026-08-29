@@ -24,14 +24,14 @@ func TestS3AccessPointLocalStack(t *testing.T) {
 	RequireBinaries(t)
 	RequireDocker(t)
 
-	containerName, endpoint := StartMinioTestContainer(t)
+	containerName, endpoint := StartS3TestContainer(t)
 	t.Cleanup(func() {
-		StopMinioTestContainer(t, containerName)
+		StopS3TestContainer(t, containerName)
 	})
 
 	ctx := context.Background()
-	configEndpoint := strings.Replace(endpoint, "localhost", "s3-accesspoint.127.0.0.1.nip.io", 1)
-	s3Client := newMinioS3Client(t, configEndpoint, false)
+	configEndpoint := strings.Replace(endpoint, "localhost", s3TestDomain, 1)
+	s3Client := newTestS3Client(t, configEndpoint, false)
 
 	accountID := "000000000000"
 	accessPointName := fmt.Sprintf("replicate-ap-%d", time.Now().UnixNano())
@@ -62,7 +62,7 @@ func TestS3AccessPointLocalStack(t *testing.T) {
 	replicaURL := fmt.Sprintf("s3://%s/test-prefix", accessPointARN)
 	db.ReplicaURL = replicaURL
 
-	configPath := WriteS3AccessPointConfig(t, db.Path, replicaURL, configEndpoint, false, "minioadmin", "minioadmin")
+	configPath := WriteS3AccessPointConfig(t, db.Path, replicaURL, configEndpoint, false, s3TestAccessKey, s3TestSecretKey)
 	db.ConfigPath = configPath
 
 	if err := db.StartReplicateWithConfig(configPath); err != nil {
@@ -96,7 +96,7 @@ func TestS3AccessPointLocalStack(t *testing.T) {
 	}
 }
 
-func newMinioS3Client(t *testing.T, endpoint string, forcePathStyle bool) *awss3.Client {
+func newTestS3Client(t *testing.T, endpoint string, forcePathStyle bool) *awss3.Client {
 	t.Helper()
 
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -110,7 +110,7 @@ func newMinioS3Client(t *testing.T, endpoint string, forcePathStyle bool) *awss3
 
 	cfg, err := config.LoadDefaultConfig(context.Background(),
 		config.WithRegion("us-east-1"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("minioadmin", "minioadmin", "")),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(s3TestAccessKey, s3TestSecretKey, "")),
 		config.WithEndpointResolverWithOptions(resolver),
 	)
 	if err != nil {
@@ -185,13 +185,13 @@ func waitForObjects(t *testing.T, client *awss3.Client, bucket, prefix string, t
 }
 
 func compareRowCounts(srcPath, restoredPath string) error {
-	srcDB, err := sql.Open("sqlite3", srcPath)
+	srcDB, err := sql.Open("sqlite", srcPath)
 	if err != nil {
 		return fmt.Errorf("open source db: %w", err)
 	}
 	defer srcDB.Close()
 
-	restoredDB, err := sql.Open("sqlite3", restoredPath)
+	restoredDB, err := sql.Open("sqlite", restoredPath)
 	if err != nil {
 		return fmt.Errorf("open restored db: %w", err)
 	}

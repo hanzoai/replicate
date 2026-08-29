@@ -6,16 +6,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
-// TestMinIOSoak runs a soak test against local MinIO S3-compatible server using Docker.
+// TestSelfHostedS3Soak runs a soak test against a local self-hosted S3 server using Docker.
 //
 // Default duration: 2 hours
 // Can be shortened with: go test -test.short (runs for 30 minutes)
@@ -25,11 +24,11 @@ import (
 // - docker command must be in PATH
 //
 // This test validates:
-// - S3-compatible replication to MinIO
+// - S3-compatible replication to Hanzo S3
 // - Docker container lifecycle management
 // - Heavy sustained load (500 writes/sec)
 // - Restoration from S3-compatible storage
-func TestMinIOSoak(t *testing.T) {
+func TestSelfHostedS3Soak(t *testing.T) {
 	RequireBinaries(t)
 	RequireDocker(t)
 
@@ -48,7 +47,7 @@ func TestMinIOSoak(t *testing.T) {
 	}
 
 	t.Logf("================================================")
-	t.Logf("Replicate MinIO S3 Soak Test")
+	t.Logf("Replicate self-hosted S3 Soak Test")
 	t.Logf("================================================")
 	t.Logf("Duration: %v", duration)
 	t.Logf("Start time: %s", time.Now().Format(time.RFC3339))
@@ -56,20 +55,20 @@ func TestMinIOSoak(t *testing.T) {
 
 	startTime := time.Now()
 
-	// Start MinIO container
-	t.Log("Starting MinIO container...")
-	containerID, endpoint, dataVolume := StartMinIOContainer(t)
-	defer StopMinIOContainer(t, containerID, dataVolume)
-	t.Logf("✓ MinIO running at: %s", endpoint)
+	// Start S3 container
+	t.Log("Starting S3 container...")
+	containerID, endpoint, dataVolume := StartS3Container(t)
+	defer StopS3Container(t, containerID, dataVolume)
+	t.Logf("✓ Hanzo S3 running at: %s", endpoint)
 	t.Log("")
 
-	// Create MinIO bucket
+	// Create S3 bucket
 	bucket := "replicate-test"
-	CreateMinIOBucket(t, containerID, bucket)
+	CreateS3Bucket(t, containerID, bucket)
 	t.Log("")
 
 	// Setup test database
-	db := SetupTestDB(t, "minio-soak")
+	db := SetupTestDB(t, "s3-soak")
 	defer db.Cleanup()
 
 	// Create database
@@ -85,15 +84,15 @@ func TestMinIOSoak(t *testing.T) {
 	t.Log("✓ Database populated")
 	t.Log("")
 
-	// Create S3 configuration for MinIO
+	// Create S3 configuration for Hanzo S3
 	s3Path := fmt.Sprintf("replicate-test-%d", time.Now().Unix())
 	s3URL := fmt.Sprintf("s3://%s/%s", bucket, s3Path)
 	db.ReplicaURL = s3URL
-	t.Log("Creating Replicate configuration for MinIO S3...")
+	t.Log("Creating Replicate configuration for Hanzo S3...")
 	s3Config := &S3Config{
 		Endpoint:       endpoint,
-		AccessKey:      "minioadmin",
-		SecretKey:      "minioadmin",
+		AccessKey:      s3TestAccessKey,
+		SecretKey:      s3TestSecretKey,
 		Region:         "us-east-1",
 		ForcePathStyle: true,
 		SkipVerify:     true,
@@ -105,7 +104,7 @@ func TestMinIOSoak(t *testing.T) {
 	t.Log("")
 
 	// Start Replicate
-	t.Log("Starting Replicate with MinIO backend...")
+	t.Log("Starting Replicate with Hanzo S3 backend...")
 	if err := db.StartReplicateWithConfig(configPath); err != nil {
 		t.Fatalf("Failed to start Replicate: %v", err)
 	}
@@ -138,8 +137,8 @@ func TestMinIOSoak(t *testing.T) {
 		loadDone <- db.GenerateLoad(ctx, writeRate, duration, "wave")
 	}()
 
-	// Monitor every 60 seconds with MinIO-specific metrics
-	t.Log("Running MinIO S3 test...")
+	// Monitor every 60 seconds with S3-specific metrics
+	t.Log("Running self-hosted S3 test...")
 	t.Log("Monitor will report every 60 seconds")
 	t.Log("Press Ctrl+C twice within 5 seconds to stop early")
 	t.Log("================================================")
@@ -153,11 +152,11 @@ func TestMinIOSoak(t *testing.T) {
 		if testInfo.RowCount == 0 {
 			testInfo.RowCount, _ = db.GetRowCount("test_data")
 		}
-		testInfo.FileCount = CountMinIOObjects(t, containerID, bucket)
+		testInfo.FileCount = CountBucketObjects(t, containerID, bucket)
 	}
 
 	logMetrics := func() {
-		logMinIOMetrics(t, db, containerID, bucket)
+		logS3Metrics(t, db, containerID, bucket)
 		if db.ReplicateCmd != nil && db.ReplicateCmd.ProcessState != nil {
 			t.Error("✗ Replicate stopped unexpectedly!")
 			if testInfo.cancel != nil {
@@ -210,10 +209,10 @@ func TestMinIOSoak(t *testing.T) {
 	}
 	t.Log("")
 
-	// MinIO statistics
-	t.Log("MinIO S3 Statistics:")
-	finalObjects := CountMinIOObjects(t, containerID, bucket)
-	t.Logf("  Total objects in MinIO: %d", finalObjects)
+	// S3 statistics
+	t.Log("Hanzo S3 Statistics:")
+	finalObjects := CountBucketObjects(t, containerID, bucket)
+	t.Logf("  Total objects in S3: %d", finalObjects)
 	t.Log("")
 
 	// Check for errors (filter benign shutdown errors like "context canceled")
@@ -221,11 +220,11 @@ func TestMinIOSoak(t *testing.T) {
 	t.Logf("  Total errors: %d (critical: %d, benign: %d)", errStats.TotalCount, errStats.CriticalCount, errStats.BenignCount)
 	t.Log("")
 
-	// Test restoration from MinIO
-	t.Log("Testing restoration from MinIO S3...")
+	// Test restoration from S3
+	t.Log("Testing restoration from Hanzo S3...")
 	restoredPath := filepath.Join(db.TempDir, "restored.db")
 	if err := db.Restore(restoredPath); err != nil {
-		t.Fatalf("Restoration from MinIO failed: %v", err)
+		t.Fatalf("Restoration from Hanzo S3 failed: %v", err)
 	}
 	t.Log("✓ Restoration successful!")
 
@@ -274,13 +273,13 @@ func TestMinIOSoak(t *testing.T) {
 
 	if finalObjects == 0 {
 		testPassed = false
-		issues = append(issues, "No objects stored in MinIO")
+		issues = append(issues, "No objects stored in S3")
 	}
 
 	if testPassed {
 		t.Log("✓ TEST PASSED!")
 		t.Log("")
-		t.Logf("Successfully replicated to MinIO (%d objects)", finalObjects)
+		t.Logf("Successfully replicated to Hanzo S3 (%d objects)", finalObjects)
 		t.Log("The configuration is ready for production use.")
 	} else {
 		t.Log("⚠ TEST COMPLETED WITH ISSUES:")
@@ -300,33 +299,30 @@ func TestMinIOSoak(t *testing.T) {
 	t.Log("================================================")
 }
 
-// logMinIOMetrics logs MinIO-specific metrics
-func logMinIOMetrics(t *testing.T, db *TestDB, containerID, bucket string) {
+// logS3Metrics logs S3-specific metrics
+func logS3Metrics(t *testing.T, db *TestDB, containerID, bucket string) {
 	t.Helper()
 
 	// Basic database metrics
-	LogSoakMetrics(t, db, "minio")
+	LogSoakMetrics(t, db, "s3")
 
-	// MinIO-specific metrics
+	// S3-specific metrics
 	t.Log("")
-	t.Log("  MinIO S3 Statistics:")
+	t.Log("  Hanzo S3 Statistics:")
 
-	objectCount := CountMinIOObjects(t, containerID, bucket)
+	objectCount := CountBucketObjects(t, containerID, bucket)
 	t.Logf("    Total objects: %d", objectCount)
 
 	// Count LTX files specifically
-	ltxCount := countMinIOLTXFiles(t, containerID, bucket)
+	ltxCount := countS3LTXFiles(t, containerID, bucket)
 	t.Logf("    LTX segments: %d", ltxCount)
 }
 
-// countMinIOLTXFiles counts LTX files in MinIO bucket
-func countMinIOLTXFiles(t *testing.T, containerID, bucket string) int {
+// countS3LTXFiles counts LTX files in the S3 bucket
+func countS3LTXFiles(t *testing.T, containerID, bucket string) int {
 	t.Helper()
 
-	cmd := exec.Command("docker", "run", "--rm",
-		"--link", containerID+":minio",
-		"-e", "MC_HOST_minio=http://minioadmin:minioadmin@minio:9000",
-		"minio/mc", "ls", "minio/"+bucket+"/", "--recursive")
+	cmd := awsCLI(containerID, "s3", "ls", "s3://"+bucket+"/", "--recursive")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -346,7 +342,7 @@ func countMinIOLTXFiles(t *testing.T, containerID, bucket string) int {
 
 // getRowCountFromPath gets row count from a database file path
 func getRowCountFromPath(dbPath, table string) (int, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return 0, err
 	}

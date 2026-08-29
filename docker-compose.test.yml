@@ -1,15 +1,13 @@
 services:
-  minio:
-    image: minio/minio:latest
+  s3:
+    image: ghcr.io/hanzoai/s3:v1.0.14
     ports:
       - "9000:9000"
-      - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
+      AWS_ACCESS_KEY_ID: hanzo
+      AWS_SECRET_ACCESS_KEY: hanzos3secret
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/healthz"]
       interval: 5s
       timeout: 5s
       retries: 5

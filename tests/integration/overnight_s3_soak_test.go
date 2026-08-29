@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 // TestOvernightS3Soak runs an 8-hour overnight soak test against real AWS S3.
@@ -331,7 +331,7 @@ func logS3Metrics(t *testing.T, db *TestDB, s3URL string) {
 
 // getRowCountFromPath gets row count from a database file path
 func getRowCountFromPath(dbPath, table string) (int, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return 0, err
 	}

@@ -111,14 +111,14 @@ func promptYesNoDefaultYes(t *testing.T, prompt string) bool {
 	return promptYesNo(t, prompt, true)
 }
 
-// StartMinIOContainer starts a MinIO container and returns the container ID and endpoint
-func StartMinIOContainer(t *testing.T) (containerID string, endpoint string, volumeName string) {
+// StartS3Container starts a self-hosted S3 container and returns the container
+// ID, endpoint and data volume name.
+func StartS3Container(t *testing.T) (containerID string, endpoint string, volumeName string) {
 	t.Helper()
 
-	containerName := fmt.Sprintf("replicate-test-minio-%d", time.Now().Unix())
-	volumeName = fmt.Sprintf("replicate-test-minio-data-%d", time.Now().Unix())
-	minioPort := "9100"
-	consolePort := "9101"
+	containerName := fmt.Sprintf("replicate-test-s3-%d", time.Now().Unix())
+	volumeName = fmt.Sprintf("replicate-test-s3-data-%d", time.Now().Unix())
+	s3Port := "9100"
 
 	// Clean up any existing container
 	exec.Command("docker", "stop", containerName).Run()
@@ -127,51 +127,53 @@ func StartMinIOContainer(t *testing.T) (containerID string, endpoint string, vol
 	// Remove any lingering volume with the same name, then create fresh volume.
 	exec.Command("docker", "volume", "rm", volumeName).Run()
 	if out, err := exec.Command("docker", "volume", "create", volumeName).CombinedOutput(); err != nil {
-		t.Fatalf("Failed to create MinIO volume: %v\nOutput: %s", err, string(out))
+		t.Fatalf("Failed to create S3 volume: %v\nOutput: %s", err, string(out))
 	}
 
-	// Start MinIO container
+	// Start S3 container. The image entrypoint already serves the S3 API on
+	// :9000 backed by /data, so no command override is required.
 	cmd := exec.Command("docker", "run", "-d",
 		"--name", containerName,
-		"-p", minioPort+":9000",
-		"-p", consolePort+":9001",
+		"-p", s3Port+":9000",
 		"-v", volumeName+":/data",
-		"-e", "MINIO_ROOT_USER=minioadmin",
-		"-e", "MINIO_ROOT_PASSWORD=minioadmin",
-		"minio/minio", "server", "/data", "--console-address", ":9001")
+		"-e", "AWS_ACCESS_KEY_ID="+s3TestAccessKey,
+		"-e", "AWS_SECRET_ACCESS_KEY="+s3TestSecretKey,
+		s3TestImage)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to start MinIO container: %v\nOutput: %s", err, string(output))
+		t.Fatalf("Failed to start S3 container: %v\nOutput: %s", err, string(output))
 	}
 
 	containerID = strings.TrimSpace(string(output))
-	endpoint = fmt.Sprintf("http://localhost:%s", minioPort)
+	endpoint = fmt.Sprintf("http://localhost:%s", s3Port)
 
-	// Wait for MinIO to be ready
-	time.Sleep(5 * time.Second)
+	// Wait for the S3 API to answer its health probe.
+	if err := waitForS3Ready(endpoint, 60*time.Second); err != nil {
+		t.Fatalf("S3 container failed to become ready: %v", err)
+	}
 
 	// Verify container is running
 	cmd = exec.Command("docker", "ps", "-q", "-f", "name="+containerName)
 	output, err = cmd.CombinedOutput()
 	if err != nil || len(strings.TrimSpace(string(output))) == 0 {
-		t.Fatalf("MinIO container failed to start properly")
+		t.Fatalf("S3 container failed to start properly")
 	}
 
-	t.Logf("MinIO container started: %s (endpoint: %s)", containerID[:12], endpoint)
+	t.Logf("S3 container started: %s (endpoint: %s)", containerID[:12], endpoint)
 
 	return containerID, endpoint, volumeName
 }
 
-// StopMinIOContainer stops and removes a MinIO container
-func StopMinIOContainer(t *testing.T, containerID string, volumeName string) {
+// StopS3Container stops and removes an S3 container
+func StopS3Container(t *testing.T, containerID string, volumeName string) {
 	t.Helper()
 
 	if containerID == "" {
 		return
 	}
 
-	t.Logf("Stopping MinIO container: %s", containerID[:12])
+	t.Logf("Stopping S3 container: %s", containerID[:12])
 
 	exec.Command("docker", "stop", containerID).Run()
 	exec.Command("docker", "rm", containerID).Run()
@@ -181,63 +183,50 @@ func StopMinIOContainer(t *testing.T, containerID string, volumeName string) {
 	}
 }
 
-// CreateMinIOBucket creates a bucket in MinIO
-func CreateMinIOBucket(t *testing.T, containerID, bucket string) {
+// CreateS3Bucket creates a bucket on the self-hosted S3 server.
+func CreateS3Bucket(t *testing.T, containerID, bucket string) {
 	t.Helper()
 
-	if minioBucketExists(containerID, bucket) {
+	if s3BucketExists(containerID, bucket) {
 		if promptYesNoDefaultYes(t, fmt.Sprintf("Bucket '%s' already exists. Purge existing objects before running soak test?", bucket)) {
-			t.Logf("Purging MinIO bucket '%s'...", bucket)
-			if err := clearMinIOBucket(containerID, bucket); err != nil {
-				t.Fatalf("Failed to purge MinIO bucket: %v", err)
+			t.Logf("Purging S3 bucket '%s'...", bucket)
+			if err := clearS3Bucket(containerID, bucket); err != nil {
+				t.Fatalf("Failed to purge S3 bucket: %v", err)
 			}
 		} else {
 			t.Logf("Skipping purge of bucket '%s'. Residual data may cause replication errors.", bucket)
 		}
 	}
 
-	// Use mc (MinIO Client) via docker to create bucket
-	cmd := exec.Command("docker", "run", "--rm",
-		"--link", containerID+":minio",
-		"-e", "MC_HOST_minio=http://minioadmin:minioadmin@minio:9000",
-		"minio/mc", "mb", "minio/"+bucket)
+	cmd := awsCLI(containerID, "s3", "mb", "s3://"+bucket)
 
 	_, stdoutBuf, stderrBuf := configureCmdIO(cmd)
 	if err := cmd.Run(); err != nil {
 		output := combinedOutput(stdoutBuf, stderrBuf)
-		if !strings.Contains(output, "already exists") {
+		if !strings.Contains(output, "BucketAlreadyOwnedByYou") && !strings.Contains(output, "BucketAlreadyExists") {
 			t.Fatalf("Create bucket failed: %v Output: %s", err, output)
 		}
 	}
 
-	if err := waitForMinIOBucket(containerID, bucket, 60*time.Second); err != nil {
+	if err := waitForS3Bucket(containerID, bucket, 60*time.Second); err != nil {
 		t.Fatalf("Bucket %s not ready: %v", bucket, err)
 	}
 
-	if err := clearMinIOBucket(containerID, bucket); err != nil {
-		t.Fatalf("Failed to purge MinIO bucket: %v", err)
+	if err := clearS3Bucket(containerID, bucket); err != nil {
+		t.Fatalf("Failed to purge S3 bucket: %v", err)
 	}
 
-	t.Logf("MinIO bucket '%s' ready", bucket)
+	t.Logf("S3 bucket '%s' ready", bucket)
 }
 
-func minioBucketExists(containerID, bucket string) bool {
-	cmd := exec.Command("docker", "run", "--rm",
-		"--link", containerID+":minio",
-		"-e", "MC_HOST_minio=http://minioadmin:minioadmin@minio:9000",
-		"minio/mc", "ls", "minio/"+bucket+"/")
+func s3BucketExists(containerID, bucket string) bool {
+	cmd := awsCLI(containerID, "s3", "ls", "s3://"+bucket+"/")
 	_, _, _ = configureCmdIO(cmd)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
+	return cmd.Run() == nil
 }
 
-func clearMinIOBucket(containerID, bucket string) error {
-	cmd := exec.Command("docker", "run", "--rm",
-		"--link", containerID+":minio",
-		"-e", "MC_HOST_minio=http://minioadmin:minioadmin@minio:9000",
-		"minio/mc", "rm", "--recursive", "--force", "minio/"+bucket)
+func clearS3Bucket(containerID, bucket string) error {
+	cmd := awsCLI(containerID, "s3", "rm", "s3://"+bucket, "--recursive")
 	_, stdoutBuf, stderrBuf := configureCmdIO(cmd)
 	if err := cmd.Run(); err != nil {
 		output := combinedOutput(stdoutBuf, stderrBuf)
@@ -249,10 +238,10 @@ func clearMinIOBucket(containerID, bucket string) error {
 	return nil
 }
 
-func waitForMinIOBucket(containerID, bucket string, timeout time.Duration) error {
+func waitForS3Bucket(containerID, bucket string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for {
-		if minioBucketExists(containerID, bucket) {
+		if s3BucketExists(containerID, bucket) {
 			return nil
 		}
 		if time.Now().After(deadline) {
@@ -263,14 +252,11 @@ func waitForMinIOBucket(containerID, bucket string, timeout time.Duration) error
 	return fmt.Errorf("bucket %s not available", bucket)
 }
 
-// CountMinIOObjects counts objects in a MinIO bucket
-func CountMinIOObjects(t *testing.T, containerID, bucket string) int {
+// CountBucketObjects counts objects in a bucket on a container-local S3 server.
+func CountBucketObjects(t *testing.T, containerID, bucket string) int {
 	t.Helper()
 
-	cmd := exec.Command("docker", "run", "--rm",
-		"--link", containerID+":minio",
-		"-e", "MC_HOST_minio=http://minioadmin:minioadmin@minio:9000",
-		"minio/mc", "ls", "minio/"+bucket+"/", "--recursive")
+	cmd := awsCLI(containerID, "s3", "ls", "s3://"+bucket+"/", "--recursive")
 
 	_, stdoutBuf, stderrBuf := configureCmdIO(cmd)
 	if err := cmd.Run(); err != nil {
@@ -957,7 +943,7 @@ func AnalyzeSoakTest(t *testing.T, db *TestDB, duration time.Duration) *SoakTest
 	}
 
 	// Get row ID range
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err == nil {
 		defer sqlDB.Close()
 		sqlDB.QueryRow("SELECT MIN(id), MAX(id) FROM load_test").Scan(&analysis.MinRowID, &analysis.MaxRowID)

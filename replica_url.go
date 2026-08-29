@@ -273,15 +273,17 @@ func IsSupabaseEndpoint(endpoint string) bool {
 	return strings.HasSuffix(host, ".supabase.co")
 }
 
-// IsMinIOEndpoint returns true if the endpoint appears to be MinIO or similar
-// (a custom endpoint with a port number that is not a known cloud provider).
-func IsMinIOEndpoint(endpoint string) bool {
+// IsSelfHostedS3Endpoint returns true if the endpoint is a self-hosted,
+// S3-compatible target: a custom endpoint with an explicit port that is not a
+// known cloud provider. Such targets (Hanzo S3, SeaweedFS, Ceph RGW, ...)
+// default to signed payloads and path-style addressing.
+func IsSelfHostedS3Endpoint(endpoint string) bool {
 	host := extractEndpointHost(endpoint)
 	if host == "" {
 		return false
 	}
-	// MinIO typically uses host:port format without .com domain
-	// Check for port number in the host
+	// Self-hosted targets are addressed as host:port rather than by a
+	// provider-owned domain, so require an explicit port.
 	if !strings.Contains(host, ":") {
 		return false
 	}

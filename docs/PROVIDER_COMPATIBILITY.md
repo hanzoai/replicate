@@ -107,23 +107,29 @@ replicas:
 
 Related issues: #943
 
-### MinIO
+### Hanzo S3
 
 **Status**: Fully supported
+
+Hanzo S3 (`ghcr.io/hanzoai/s3`) is the self-hosted S3 target used by the
+integration suite. It serves the S3 API on port 9000 and reads
+`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` for its admin identity.
 
 **Configuration**:
 
 ```yaml
 replicas:
-  - url: s3://bucket-name/path?endpoint=https://your-minio-server:9000&force-path-style=true
+  - url: s3://bucket-name/path?endpoint=http://localhost:9000&force-path-style=true
     access-key-id: your-access-key
     secret-access-key: your-secret-key
 ```
 
 **Notes**:
 
-- Works well with default settings
-- Force path style recommended for single-server deployments
+- Works with default settings; signed payloads and path-style addressing are
+  applied automatically for any endpoint with an explicit port.
+- Virtual-hosted style addressing requires starting the server with
+  `-s3.domainName=<suffix>`.
 
 ### Scaleway Object Storage
 
@@ -283,7 +289,7 @@ Replicate automatically detects certain providers and applies appropriate defaul
 | Scaleway | `*.scw.cloud` | `sign-payload=true` |
 | Filebase | `s3.filebase.com` | `sign-payload=true`, `force-path-style=true` |
 | Tigris | `*.tigris.dev` | `sign-payload=true`, `require-content-md5=false` |
-| MinIO | host with port (not cloud provider) | `sign-payload=true`, `force-path-style=true` |
+| Self-hosted S3 (e.g. Hanzo S3) | host with an explicit port that is not a known cloud provider | `sign-payload=true`, `force-path-style=true` |
 | Supabase | `*.supabase.co` | `sign-payload=true`, `force-path-style=true` |
 
 ## Troubleshooting

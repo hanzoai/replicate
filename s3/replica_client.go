@@ -105,7 +105,7 @@ type ReplicaClient struct {
 	MetadataConcurrency int
 
 	// Server-Side Encryption - Customer Provided Keys (SSE-C)
-	// Works with all S3-compatible providers (AWS, MinIO, Exoscale, etc.)
+	// Works with all S3-compatible providers (AWS, Hanzo S3, Exoscale, etc.)
 	SSECustomerAlgorithm string // Must be "AES256" if set
 	SSECustomerKey       string // Base64-encoded 256-bit (32 byte) encryption key
 	SSECustomerKeyMD5    string // Base64-encoded MD5 of key (auto-computed if not set)
@@ -243,7 +243,7 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 	isFilebase := replicate.IsFilebaseEndpoint(endpoint)
 	isScaleway := replicate.IsScalewayEndpoint(endpoint)
 	isCloudflareR2 := replicate.IsCloudflareR2Endpoint(endpoint)
-	isMinIO := replicate.IsMinIOEndpoint(endpoint)
+	isSelfHosted := replicate.IsSelfHostedS3Endpoint(endpoint)
 	isSupabase := replicate.IsSupabaseEndpoint(endpoint)
 
 	// Apply provider-specific defaults for S3-compatible providers.
@@ -256,15 +256,15 @@ func NewReplicaClientFromURL(scheme, host, urlPath string, query url.Values, use
 			requireMD5, requireMD5Set = false, true
 		}
 	}
-	if isHetzner || isDigitalOcean || isBackblaze || isFilebase || isScaleway || isCloudflareR2 || isMinIO || isSupabase {
+	if isHetzner || isDigitalOcean || isBackblaze || isFilebase || isScaleway || isCloudflareR2 || isSelfHosted || isSupabase {
 		// All these providers require signed payloads (don't support UNSIGNED-PAYLOAD)
 		if !signPayloadSet {
 			signPayload, signPayloadSet = true, true
 		}
 	}
 	if !forcePathStyleSet {
-		// Filebase, Backblaze B2, MinIO, and Supabase require path-style URLs
-		if isFilebase || isBackblaze || isMinIO || isSupabase {
+		// Filebase, Backblaze B2, self-hosted S3, and Supabase require path-style URLs
+		if isFilebase || isBackblaze || isSelfHosted || isSupabase {
 			forcePathStyle = true
 		}
 	}
@@ -442,7 +442,7 @@ func (c *ReplicaClient) Init(ctx context.Context) (err error) {
 		},
 	}
 
-	// S3-compatible providers (Tigris, Backblaze B2, MinIO, Filebase, etc.) don't
+	// S3-compatible providers (Tigris, Backblaze B2, Hanzo S3, Filebase, etc.) don't
 	// support aws-chunked content encoding used by default checksum calculation
 	// in AWS SDK Go v2 v1.73.0+. Disable automatic checksum calculation and
 	// response checksum validation for all custom endpoints.
@@ -503,7 +503,7 @@ func (c *ReplicaClient) configureEndpoint(opts *[]func(*s3.Options)) {
 			}
 
 			o.BaseEndpoint = aws.String(endpoint)
-			// For MinIO and other S3-compatible services
+			// For self-hosted and other S3-compatible services
 			if strings.HasPrefix(endpoint, "http://") {
 				o.EndpointOptions.DisableHTTPS = true
 			}
@@ -828,7 +828,7 @@ func (c *ReplicaClient) middlewareOption() func(*middleware.Stack) error {
 		// Disable AWS SDK v2's trailing checksum middleware which uses
 		// aws-chunked encoding. This is required for:
 		// 1. UNSIGNED-PAYLOAD requests (aws-chunked + UNSIGNED-PAYLOAD is rejected by AWS)
-		// 2. S3-compatible providers (Filebase, MinIO, Backblaze B2, etc.) that don't
+		// 2. S3-compatible providers (Filebase, Hanzo S3, Backblaze B2, etc.) that don't
 		//    support aws-chunked encoding at all
 		// See: https://github.com/aws/aws-sdk-go-v2/discussions/2960
 		// See: https://github.com/benbjohnson/replicate/issues/895
@@ -1614,7 +1614,7 @@ func ParseURL(s, endpoint string) (bucket, region, key string, err error) {
 // ParseHost parses the host/endpoint for an S3-like storage system.
 // Endpoints: https://docs.aws.amazon.com/general/latest/gr/s3.html
 func ParseHost(host string) (bucket, region, endpoint string, forcePathStyle bool) {
-	// Check for MinIO-style hosts (bucket.host:port)
+	// Check for self-hosted style hosts (bucket.host:port)
 	if strings.Contains(host, ":") && !strings.Contains(host, ".com") {
 		parts := strings.SplitN(host, ".", 2)
 		if len(parts) == 2 {
