@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 type LoadCommand struct {
@@ -75,7 +75,7 @@ func (c *LoadCommand) Run(ctx context.Context, args []string) error {
 }
 
 func (c *LoadCommand) generateLoad(ctx context.Context) error {
-	db, err := sql.Open("sqlite3", c.DB+"?_journal_mode=WAL")
+	db, err := sql.Open("sqlite", c.DB+"?_journal_mode=WAL")
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

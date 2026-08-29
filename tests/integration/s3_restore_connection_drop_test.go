@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 // TestRestore_S3ConnectionDrop verifies restore can recover from dropped S3-compatible connections.
@@ -31,18 +31,18 @@ func TestRestore_S3ConnectionDrop(t *testing.T) {
 	networkName := startDockerNetwork(t)
 	defer removeDockerNetwork(networkName)
 
-	minioName := startMinioContainerForProxy(t, networkName)
-	defer stopDockerContainer(minioName)
+	s3Name := startS3ContainerForProxy(t, networkName)
+	defer stopDockerContainer(s3Name)
 
 	toxiproxyName, toxiproxyAPIPort, toxiproxyProxyPort := startToxiproxyContainer(t, networkName)
 	defer stopDockerContainer(toxiproxyName)
 
 	bucket := fmt.Sprintf("replicate-test-%d", time.Now().UnixNano())
-	createMinioBucket(t, networkName, minioName, bucket)
+	createS3Bucket(t, networkName, s3Name, bucket)
 
 	proxyEndpoint := fmt.Sprintf("http://localhost:%s", toxiproxyProxyPort)
 	proxyClient := newToxiproxyClient(t, fmt.Sprintf("http://localhost:%s", toxiproxyAPIPort))
-	proxyClient.createProxy(t, "minio", "0.0.0.0:8666", fmt.Sprintf("%s:9000", minioName))
+	proxyClient.createProxy(t, "s3", "0.0.0.0:8666", fmt.Sprintf("%s:9000", s3Name))
 
 	replicaPath := fmt.Sprintf("restore-drop-%d", time.Now().UnixNano())
 	replicaURL := fmt.Sprintf("s3://%s/%s", bucket, replicaPath)
@@ -83,9 +83,9 @@ func TestRestore_S3ConnectionDrop(t *testing.T) {
 	}()
 
 	time.Sleep(200 * time.Millisecond)
-	proxyClient.addResetPeerToxic(t, "minio", "reset-connection", 200)
+	proxyClient.addResetPeerToxic(t, "s3", "reset-connection", 200)
 	time.Sleep(400 * time.Millisecond)
-	proxyClient.removeToxic(t, "minio", "reset-connection")
+	proxyClient.removeToxic(t, "s3", "reset-connection")
 
 	if err := <-restoreErr; err != nil {
 		t.Fatalf("restore failed: %v", err)
@@ -110,17 +110,17 @@ func removeDockerNetwork(name string) {
 	exec.Command("docker", "network", "rm", name).Run()
 }
 
-func startMinioContainerForProxy(t *testing.T, networkName string) string {
+func startS3ContainerForProxy(t *testing.T, networkName string) string {
 	t.Helper()
-	name := fmt.Sprintf("replicate-minio-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("replicate-s3-%d", time.Now().UnixNano())
 	exec.Command("docker", "rm", "-f", name).Run()
 
 	runDockerCommand(t, "run", "-d",
 		"--name", name,
 		"--network", networkName,
-		"-e", "MINIO_ROOT_USER=minioadmin",
-		"-e", "MINIO_ROOT_PASSWORD=minioadmin",
-		"minio/minio", "server", "/data",
+		"-e", "AWS_ACCESS_KEY_ID="+s3TestAccessKey,
+		"-e", "AWS_SECRET_ACCESS_KEY="+s3TestSecretKey,
+		s3TestImage,
 	)
 
 	time.Sleep(3 * time.Second)
@@ -160,15 +160,19 @@ func stopDockerContainer(name string) {
 	exec.Command("docker", "rm", "-f", name).Run()
 }
 
-func createMinioBucket(t *testing.T, networkName, minioName, bucket string) {
+func createS3Bucket(t *testing.T, networkName, s3Name, bucket string) {
 	t.Helper()
 	cmd := exec.Command("docker", "run", "--rm",
 		"--network", networkName,
-		"-e", fmt.Sprintf("MC_HOST_minio=http://minioadmin:minioadmin@%s:9000", minioName),
-		"minio/mc", "mb", "minio/"+bucket,
+		"-e", "AWS_ACCESS_KEY_ID="+s3TestAccessKey,
+		"-e", "AWS_SECRET_ACCESS_KEY="+s3TestSecretKey,
+		"-e", "AWS_DEFAULT_REGION=us-east-1",
+		awsCLIImage,
+		"--endpoint-url", fmt.Sprintf("http://%s:9000", s3Name),
+		"s3", "mb", "s3://"+bucket,
 	)
 	output, err := cmd.CombinedOutput()
-	if err != nil && !strings.Contains(string(output), "already exists") {
+	if err != nil && !strings.Contains(string(output), "BucketAlreadyOwnedByYou") && !strings.Contains(string(output), "BucketAlreadyExists") {
 		t.Fatalf("create bucket failed: %v output: %s", err, string(output))
 	}
 }
@@ -176,8 +180,8 @@ func createMinioBucket(t *testing.T, networkName, minioName, bucket string) {
 func writeS3Config(t *testing.T, dbPath, replicaURL, endpoint string) string {
 	t.Helper()
 	configPath := filepath.Join(filepath.Dir(dbPath), "replicate-s3-drop.yml")
-	config := fmt.Sprintf(`access-key-id: minioadmin
-secret-access-key: minioadmin
+	config := fmt.Sprintf(`access-key-id: %s
+secret-access-key: %s
 
 dbs:
   - path: %s
@@ -191,7 +195,7 @@ dbs:
         force-path-style: true
         skip-verify: true
         sync-interval: 1s
-`, filepath.ToSlash(dbPath), replicaURL, endpoint)
+`, s3TestAccessKey, s3TestSecretKey, filepath.ToSlash(dbPath), replicaURL, endpoint)
 
 	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -201,7 +205,7 @@ dbs:
 }
 
 func insertLargeRows(dbPath string, rows int, blobSize int) error {
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}
@@ -221,7 +225,7 @@ func insertLargeRows(dbPath string, rows int, blobSize int) error {
 }
 
 func verifyRestoredRowCount(dbPath string, expected int) error {
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}

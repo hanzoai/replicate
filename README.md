@@ -20,7 +20,7 @@ ghcr.io/hanzoai/replicate:latest
 
 - WAL streaming to S3 (continuous incremental replication)
 - End-to-end encryption via `luxfi/age` v1.4.0 (X25519, PQ upgrade path via X-Wing/ML-KEM-768)
-- Compatible with `hanzoai/s3` (MinIO)
+- Compatible with `hanzoai/s3` (Apache-2.0, SeaweedFS-derived) and any S3-compatible target
 - Init container restore + sidecar replication pattern for K8s
 
 ## Encryption

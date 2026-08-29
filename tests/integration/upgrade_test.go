@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 
 	"github.com/hanzoai/replicate"
 )
@@ -52,7 +52,7 @@ func TestUpgrade_V3ToV5(t *testing.T) {
 
 	// Create WAL-mode database with test table.
 	t.Log("Creating WAL-mode database with upgrade_test table")
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestUpgrade_V3ToV5(t *testing.T) {
 	// =========================================================================
 	t.Log("Phase 4: Validate restored database")
 
-	restoredDB, err := sql.Open("sqlite3", restoredPath)
+	restoredDB, err := sql.Open("sqlite", restoredPath)
 	if err != nil {
 		t.Fatalf("open restored database: %v", err)
 	}

@@ -20,7 +20,10 @@ import (
 	"testing"
 	"time"
 
-	sqlite3 "github.com/mattn/go-sqlite3"
+	// The engine, not the hanzoai/sqlite facade: isBusyError matches concrete
+	// SQLITE_BUSY/LOCKED codes, which the facade does not re-export.
+	// Package name is csqlite, so the alias keeps the call sites reading sqlite3.X.
+	sqlite3 "github.com/hanzoai/csqlite"
 	"github.com/psanford/sqlite3vfs"
 	"github.com/stretchr/testify/require"
 
@@ -56,7 +59,7 @@ func TestVFS_Simple(t *testing.T) {
 	}
 	waitForLTXFiles(t, client, 10*time.Second, db.MonitorInterval)
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test.db?vfs=replicate")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/test.db?vfs=replicate")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -94,7 +97,7 @@ func TestVFS_Updating(t *testing.T) {
 	waitForLTXFiles(t, client, 10*time.Second, db.MonitorInterval)
 
 	t.Log("opening vfs")
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test.db?vfs=replicate")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/test.db?vfs=replicate")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -162,7 +165,7 @@ func TestVFS_ActiveReadTransaction(t *testing.T) {
 	waitForLTXFiles(t, client, 10*time.Second, db.MonitorInterval)
 
 	t.Log("opening vfs replica")
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test-txn.db?vfs=replicate-txn")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/test-txn.db?vfs=replicate-txn")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -320,7 +323,7 @@ func TestVFS_PollsL1Files(t *testing.T) {
 
 	// Open database through VFS
 	t.Log("opening vfs")
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/test-l1.db?vfs=replicate-l1")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/test-l1.db?vfs=replicate-l1")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -358,7 +361,7 @@ func TestVFS_PollsL1Files(t *testing.T) {
 	sqldb1.Close()
 
 	t.Log("reopening vfs to see updates")
-	sqldb1, err = sql.Open("sqlite3", "file:/tmp/test-l1.db?vfs=replicate-l1")
+	sqldb1, err = sql.Open("sqlite", "file:/tmp/test-l1.db?vfs=replicate-l1")
 	if err != nil {
 		t.Fatalf("failed to reopen database: %v", err)
 	}
@@ -1045,7 +1048,7 @@ func TestVFS_ConcurrentIndexAccessRaces(t *testing.T) {
 	vfs.PollInterval = 15 * time.Millisecond
 	vfsName := registerTestVFS(t, vfs)
 	dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(filepath.Join(t.TempDir(), "fail.db")), vfsName)
-	replica, err := sql.Open("sqlite3", dsn)
+	replica, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open replica db: %v", err)
 	}
@@ -1260,7 +1263,7 @@ func TestVFS_WaitsForInitialSnapshot(t *testing.T) {
 
 		errCh := make(chan error, 1)
 		go func() {
-			sqldb, err := sql.Open("sqlite3", dsn)
+			sqldb, err := sql.Open("sqlite", dsn)
 			if err != nil {
 				errCh <- fmt.Errorf("open replica: %w", err)
 				return
@@ -1348,7 +1351,7 @@ func TestVFS_StorageFailureInjection(t *testing.T) {
 			vfsName := registerTestVFS(t, vfs)
 			replicaPath := filepath.Join(t.TempDir(), fmt.Sprintf("storage-failure-%s.db", tt.name))
 			dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(replicaPath), vfsName)
-			replica, err := sql.Open("sqlite3", dsn)
+			replica, err := sql.Open("sqlite", dsn)
 			if err != nil {
 				t.Fatalf("open replica db: %v", err)
 			}
@@ -1421,7 +1424,7 @@ func TestVFS_PartialLTXUpload(t *testing.T) {
 	vfsName := registerTestVFS(t, vfs)
 	replicaPath := filepath.Join(t.TempDir(), "partial.db")
 	dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(replicaPath), vfsName)
-	replica, err := sql.Open("sqlite3", dsn)
+	replica, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open replica db: %v", err)
 	}
@@ -1586,7 +1589,7 @@ func TestVFS_PageIndexOOM(t *testing.T) {
 	vfs.PollInterval = 20 * time.Millisecond
 	vfsName := registerTestVFS(t, vfs)
 	dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(filepath.Join(t.TempDir(), "oom.db")), vfsName)
-	failing, err := sql.Open("sqlite3", dsn)
+	failing, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open replica db: %v", err)
 	}
@@ -1639,7 +1642,7 @@ func TestVFS_PageIndexCorruptionRecovery(t *testing.T) {
 	dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(filepath.Join(t.TempDir(), "corrupt.db")), vfsName)
 
 	corruptClient.corruptNext.Store(true)
-	badConn, err := sql.Open("sqlite3", dsn)
+	badConn, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open corrupt replica: %v", err)
 	}
@@ -1853,7 +1856,7 @@ func TestVFS_PooledWriteNoFalseConflict(t *testing.T) {
 	vfsName := registerTestVFS(t, vfs)
 
 	dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(filepath.Join(t.TempDir(), "pooled-write.db")), vfsName)
-	sqldb, err := sql.Open("sqlite3", dsn)
+	sqldb, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open write db: %v", err)
 	}
@@ -1917,7 +1920,7 @@ func TestVFS_PooledWriteStress(t *testing.T) {
 	vfsName := registerTestVFS(t, vfs)
 
 	dsn := fmt.Sprintf("file:%s?vfs=%s&_busy_timeout=5000", filepath.ToSlash(filepath.Join(t.TempDir(), "stress-write.db")), vfsName)
-	sqldb, err := sql.Open("sqlite3", dsn)
+	sqldb, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open write db: %v", err)
 	}
@@ -2067,7 +2070,7 @@ func forceReplicaSync(tb testing.TB, db *replicate.DB) {
 func openVFSReplicaDB(tb testing.TB, vfsName string) *sql.DB {
 	tb.Helper()
 	dsn := fmt.Sprintf("file:%s?vfs=%s", filepath.ToSlash(filepath.Join(tb.TempDir(), vfsName+".db")), vfsName)
-	sqldb, err := sql.Open("sqlite3", dsn)
+	sqldb, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		tb.Fatalf("open replica db: %v", err)
 	}

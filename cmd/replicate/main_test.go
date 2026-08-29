@@ -211,7 +211,7 @@ func TestNewS3ReplicaFromConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("MinIO", func(t *testing.T) {
+	t.Run("SelfHosted", func(t *testing.T) {
 		r, err := main.NewReplicaFromConfig(&main.ReplicaConfig{URL: "s3://foo.localhost:9000/bar"}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -2644,7 +2644,7 @@ func TestNewS3ReplicaClientFromConfig(t *testing.T) {
 			{"Filebase", "https://s3.filebase.com"},
 			{"Scaleway", "https://s3.fr-par.scw.cloud"},
 			{"CloudflareR2", "https://accountid.r2.cloudflarestorage.com"},
-			{"MinIO", "http://localhost:9000"},
+			{"SelfHosted", "http://localhost:9000"},
 			{"Supabase", "https://myproject.supabase.co/storage/v1/s3"},
 		}
 

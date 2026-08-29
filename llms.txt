@@ -40,7 +40,7 @@ Disaster recovery tool for SQLite. Replicates WAL changes to S3, SFTP, WebDAV, N
 
 ## Storage Backends
 
-- `s3/replica_client.go` - S3 and S3-compatible (hanzoai/s3, MinIO protocol)
+- `s3/replica_client.go` - S3 and S3-compatible targets (hanzoai/s3, self-hosted, cloud providers)
 - `sftp/replica_client.go` - SFTP
 - `webdav/replica_client.go` - WebDAV
 - `file/replica_client.go` - Local filesystem

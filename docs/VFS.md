@@ -304,7 +304,7 @@ The VFS supports all Replicate storage backends:
 
 | Backend | URL Scheme | Notes |
 |---------|-----------|-------|
-| S3 | `s3://` | Supports S3-compatible services (hanzoai/s3, MinIO, DigitalOcean Spaces, etc.) |
+| S3 | `s3://` | Supports S3-compatible services (hanzoai/s3, DigitalOcean Spaces, Backblaze B2, etc.) |
 | Local filesystem | `file://` | Useful for testing and development |
 | SFTP | `sftp://` | SSH File Transfer Protocol |
 | NATS JetStream | `nats://` | Object store via NATS |

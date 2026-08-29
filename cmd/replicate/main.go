@@ -1435,7 +1435,7 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *s3
 	isBackblaze := replicate.IsBackblazeEndpoint(endpoint)
 	isFilebase := replicate.IsFilebaseEndpoint(endpoint)
 	isScaleway := replicate.IsScalewayEndpoint(endpoint)
-	isMinIO := replicate.IsMinIOEndpoint(endpoint)
+	isSelfHosted := replicate.IsSelfHostedS3Endpoint(endpoint)
 	isCloudflareR2 := replicate.IsCloudflareR2Endpoint(endpoint)
 	isSupabase := replicate.IsSupabaseEndpoint(endpoint)
 
@@ -1449,13 +1449,13 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *s3
 		signSetting.ApplyDefault(true)
 		requireSetting.ApplyDefault(false)
 	}
-	if isDigitalOcean || isBackblaze || isFilebase || isScaleway || isCloudflareR2 || isMinIO || isSupabase {
+	if isDigitalOcean || isBackblaze || isFilebase || isScaleway || isCloudflareR2 || isSelfHosted || isSupabase {
 		// All these providers require signed payloads (don't support UNSIGNED-PAYLOAD)
 		signSetting.ApplyDefault(true)
 	}
 	if !forcePathStyleSet {
-		// Filebase, Backblaze B2, MinIO, and Supabase require path-style URLs
-		if isFilebase || isBackblaze || isMinIO || isSupabase {
+		// Filebase, Backblaze B2, self-hosted S3, and Supabase require path-style URLs
+		if isFilebase || isBackblaze || isSelfHosted || isSupabase {
 			forcePathStyle = true
 		}
 	}

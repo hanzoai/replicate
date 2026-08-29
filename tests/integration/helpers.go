@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 
 	"github.com/hanzoai/replicate"
 )
@@ -108,7 +108,7 @@ func SetupTestDB(t *testing.T, name string) *TestDB {
 }
 
 func (db *TestDB) Create() error {
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -122,7 +122,7 @@ func (db *TestDB) Create() error {
 }
 
 func (db *TestDB) CreateWithPageSize(pageSize int) error {
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -393,7 +393,7 @@ func (db *TestDB) QuickValidate(restoredPath string) error {
 }
 
 func (db *TestDB) GetRowCount(table string) (int, error) {
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		return 0, fmt.Errorf("open database: %w", err)
 	}
@@ -578,7 +578,7 @@ dbs:
 func CreateTestTable(t *testing.T, dbPath string) error {
 	t.Helper()
 
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}
@@ -597,7 +597,7 @@ func CreateTestTable(t *testing.T, dbPath string) error {
 func InsertTestData(t *testing.T, dbPath string, count int) error {
 	t.Helper()
 
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}
@@ -626,7 +626,7 @@ func InsertTestData(t *testing.T, dbPath string, count int) error {
 
 // IntegrityCheck runs PRAGMA integrity_check on the database.
 func (db *TestDB) IntegrityCheck() error {
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		return err
 	}
