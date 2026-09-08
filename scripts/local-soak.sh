@@ -28,7 +28,7 @@ cd "$REPO_DIR"
 # Clean up old test artifacts so results are unambiguous.
 # Every error in the run is guaranteed to be from THIS run.
 log "Cleaning old test artifacts..."
-rm -rf /tmp/replicate-ltx-behavior-* /tmp/replicate-minio-soak-* /tmp/replicate-comprehensive-soak-*
+rm -rf /tmp/replicate-ltx-behavior-* /tmp/replicate-s3-soak-* /tmp/replicate-comprehensive-soak-*
 go clean -testcache
 log "Clean complete."
 log ""

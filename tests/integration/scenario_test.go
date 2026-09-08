@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 func TestFreshStart(t *testing.T) {
@@ -34,7 +34,7 @@ func TestFreshStart(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	t.Log("[2] Creating database while Replicate is running...")
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestFreshStart(t *testing.T) {
 	t.Logf("Replicate log snippet:\n%s", log[:min(len(log), 500)])
 
 	t.Log("[4] Adding data to test replication...")
-	sqlDB, err = sql.Open("sqlite3", db.Path)
+	sqlDB, err = sql.Open("sqlite", db.Path)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestDatabaseIntegrity(t *testing.T) {
 	}
 
 	t.Log("[1] Creating complex schema...")
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestDatabaseIntegrity(t *testing.T) {
 	t.Log("✓ Restore successful")
 
 	t.Log("[6] Checking integrity of restored database...")
-	restoredDB, err := sql.Open("sqlite3", restoredPath)
+	restoredDB, err := sql.Open("sqlite", restoredPath)
 	if err != nil {
 		t.Fatalf("Failed to open restored database: %v", err)
 	}

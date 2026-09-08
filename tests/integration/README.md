@@ -60,7 +60,7 @@ Long-running soak tests live alongside the other integration tests and share the
 | Test | Tags | Defaults | Purpose | Extra Requirements |
 | --- | --- | --- | --- | --- |
 | `TestComprehensiveSoak` | `integration,soak` | 2h duration, 50 MB DB, 500 writes/s | File-backed end-to-end stress | Replicate binaries in `./bin` |
-| `TestMinIOSoak` | `integration,soak,docker` | 2h duration, 5 MB DB (short=2 m), 100 writes/s | S3-compatible replication via MinIO | Docker daemon, `docker` CLI |
+| `TestSelfHostedS3Soak` | `integration,soak,docker` | 2h duration, 5 MB DB (short=2 m), 100 writes/s | S3-compatible replication via Hanzo S3 | Docker daemon, `docker` CLI |
 | `TestOvernightS3Soak` | `integration,soak,aws` | 8h duration, 50 MB DB | Real S3 replication & restore | AWS credentials, `aws` CLI |
 
 All soak tests support `go test -test.short` to scale the default duration down to roughly two minutes for smoke verification.
@@ -69,7 +69,7 @@ All soak tests support `go test -test.short` to scale the default duration down 
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `SOAK_AUTO_PURGE` | `yes` for non-interactive shells; prompts otherwise | Controls whether MinIO buckets are cleared before each run. Set to `no` to retain objects between runs. |
+| `SOAK_AUTO_PURGE` | `yes` for non-interactive shells; prompts otherwise | Controls whether S3 buckets are cleared before each run. Set to `no` to retain objects between runs. |
 | `SOAK_KEEP_TEMP` | unset | When set (any value), preserves the temporary directory and artifacts (database, config, logs) instead of removing them after the test completes. |
 | `SOAK_DEBUG` | `0` | Streams command stdout/stderr (database population, load generation, docker helpers) directly to the console. Without this the output is captured and only shown on failure. |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `AWS_REGION` | required for `aws` tag | Provide credentials and target bucket for the overnight S3 soak. Region defaults to `us-east-1` if unset. |
@@ -90,11 +90,11 @@ SOAK_KEEP_TEMP=1 SOAK_DEBUG=1 go test -v -tags="integration,soak" \
   -run=TestComprehensiveSoak -test.short -timeout=1h ./tests/integration
 ```
 
-MinIO soak (short mode, auto-purges bucket, preserves results):
+Self-hosted S3 soak (short mode, auto-purges bucket, preserves results):
 
 ```bash
 SOAK_AUTO_PURGE=yes SOAK_KEEP_TEMP=1 go test -v -tags="integration,soak,docker" \
-  -run=TestMinIOSoak -test.short -timeout=20m ./tests/integration
+  -run=TestSelfHostedS3Soak -test.short -timeout=20m ./tests/integration
 ```
 
 Overnight S3 soak (full duration):
@@ -112,7 +112,7 @@ go test -v -tags="integration,soak,aws" \
 ### Tips
 
 - Run with `-v` to view the 60-second progress updates and final status summary. Without `-v`, progress output is suppressed by Go’s test runner.
-- When prompted about purging a MinIO bucket, answering “yes” clears the bucket via `minio/mc` before the run; “no” allows you to inspect lingering objects from previous executions.
+- When prompted about purging an S3 bucket, answering “yes” clears the bucket via `amazon/aws-cli` before the run; “no” allows you to inspect lingering objects from previous executions.
 - `SOAK_KEEP_TEMP=1` is especially useful when investigating failures—the helper prints the preserved path so you can inspect databases, configs, and logs.
 - The monitoring infrastructure automatically prints additional status blocks when error counts change, making `SOAK_DEBUG=1` optional for most workflows.
 
@@ -294,7 +294,7 @@ Three distinct test locations serve different purposes:
 
 **`tests/integration/` (this directory)** - Go-based integration and soak tests:
 - Quick integration tests: `scenario_test.go`, `concurrent_test.go`, `boundary_test.go`
-- Soak tests (2-8 hours): `comprehensive_soak_test.go`, `minio_soak_test.go`, `overnight_s3_soak_test.go`
+- Soak tests (2-8 hours): `comprehensive_soak_test.go`, `selfhosted_soak_test.go`, `overnight_s3_soak_test.go`
 - All tests use proper Go testing infrastructure with build tags
 
 **`scripts/` (top-level)** - Utility scripts only (soak tests migrated to Go):
@@ -313,7 +313,7 @@ Three distinct test locations serve different purposes:
 - `test-quick-validation.sh` → `quick_test.go::TestQuickValidation` (CI: ✅)
 - `test-overnight.sh` → `overnight_test.go::TestOvernightFile` (CI: ❌ too long)
 - `test-comprehensive.sh` → `comprehensive_soak_test.go::TestComprehensiveSoak` (CI: ❌ soak test)
-- `test-minio-s3.sh` → `minio_soak_test.go::TestMinIOSoak` (CI: ❌ soak test, requires Docker)
+- `test-selfhosted-s3.sh` → `selfhosted_soak_test.go::TestSelfHostedS3Soak` (CI: ❌ soak test, requires Docker)
 - `test-overnight-s3.sh` → `overnight_s3_soak_test.go::TestOvernightS3Soak` (CI: ❌ soak test, 8 hours)
 
 **Migrated from `cmd/replicate-test/scripts/` (9 scripts):**
@@ -377,10 +377,10 @@ Soak tests validate:
 go test -v -tags="integration,soak" -timeout=3h -run=TestComprehensiveSoak ./tests/integration/
 ```
 
-**MinIO S3 test (2 hours, requires Docker):**
+**Self-hosted S3 test (2 hours, requires Docker):**
 ```bash
 # Ensure Docker is running
-go test -v -tags="integration,soak,docker" -timeout=3h -run=TestMinIOSoak ./tests/integration/
+go test -v -tags="integration,soak,docker" -timeout=3h -run=TestSelfHostedS3Soak ./tests/integration/
 ```
 
 **Overnight S3 test (8 hours, requires AWS):**
@@ -413,7 +413,7 @@ Soak tests use multiple build tags to control execution:
 
 - `integration` - Required for all integration tests
 - `soak` - Marks long-running stability tests (2-8 hours)
-- `docker` - Requires Docker (MinIO test)
+- `docker` - Requires Docker (self-hosted S3 test)
 - `aws` - Requires AWS credentials (S3 tests)
 
 ### Monitoring Soak Tests
@@ -438,7 +438,7 @@ Metrics reported during execution:
 | Test | Duration | Requirements | What It Tests |
 |------|----------|--------------|---------------|
 | TestComprehensiveSoak | 2h | None | File-based replication with aggressive compaction |
-| TestMinIOSoak | 2h | Docker | S3-compatible storage via MinIO container |
+| TestSelfHostedS3Soak | 2h | Docker | S3-compatible storage via Hanzo S3 container |
 | TestOvernightS3Soak | 8h | AWS credentials | Real S3 replication, overnight stability |
 
 ## Benefits Over Bash

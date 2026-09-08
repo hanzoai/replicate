@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 type ValidateCommand struct {
@@ -158,7 +158,7 @@ func (c *ValidateCommand) performQuickCheck(ctx context.Context) ValidationResul
 		Details:   make(map[string]interface{}),
 	}
 
-	db, err := sql.Open("sqlite3", c.RestoredDB)
+	db, err := sql.Open("sqlite", c.RestoredDB)
 	if err != nil {
 		result.Passed = false
 		result.ErrorMessage = fmt.Sprintf("failed to open database: %v", err)
@@ -198,7 +198,7 @@ func (c *ValidateCommand) performIntegrityCheck(ctx context.Context) ValidationR
 		Details:   make(map[string]interface{}),
 	}
 
-	db, err := sql.Open("sqlite3", c.RestoredDB)
+	db, err := sql.Open("sqlite", c.RestoredDB)
 	if err != nil {
 		result.Passed = false
 		result.ErrorMessage = fmt.Sprintf("failed to open database: %v", err)
@@ -296,7 +296,7 @@ func (c *ValidateCommand) performDataValidation(ctx context.Context) ValidationR
 		Details:   make(map[string]interface{}),
 	}
 
-	sourceDB, err := sql.Open("sqlite3", c.SourceDB)
+	sourceDB, err := sql.Open("sqlite", c.SourceDB)
 	if err != nil {
 		result.Passed = false
 		result.ErrorMessage = fmt.Sprintf("failed to open source database: %v", err)
@@ -304,7 +304,7 @@ func (c *ValidateCommand) performDataValidation(ctx context.Context) ValidationR
 	}
 	defer sourceDB.Close()
 
-	restoredDB, err := sql.Open("sqlite3", c.RestoredDB)
+	restoredDB, err := sql.Open("sqlite", c.RestoredDB)
 	if err != nil {
 		result.Passed = false
 		result.ErrorMessage = fmt.Sprintf("failed to open restored database: %v", err)

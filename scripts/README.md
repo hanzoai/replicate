@@ -86,7 +86,7 @@ ls /tmp/replicate-overnight-* -dt | head -1
 | 30 minutes | Short integration | Go integration tests | Pattern detection |
 | 2-8 hours | Soak testing | Go soak tests (local only) | Full validation |
 
-> **Note:** All soak tests are now Go-based in `tests/integration/`. See [tests/integration/README.md](../tests/integration/README.md) for details on running comprehensive, MinIO, and overnight S3 soak tests.
+> **Note:** All soak tests are now Go-based in `tests/integration/`. See [tests/integration/README.md](../tests/integration/README.md) for details on running comprehensive, self-hosted S3, and overnight S3 soak tests.
 
 ## Monitoring and Debugging
 
@@ -201,7 +201,7 @@ These utility scripts complement the Go integration test suite:
 **Testing Workflow:**
 1. Run quick integration tests during development
 2. Run full integration test suite before major changes
-3. Run soak tests (2-8h) locally before releases: `TestComprehensiveSoak`, `TestMinIOSoak`, `TestOvernightS3Soak`
+3. Run soak tests (2-8h) locally before releases: `TestComprehensiveSoak`, `TestSelfHostedS3Soak`, `TestOvernightS3Soak`
 4. Analyze results with `analyze-test-results.sh`
 
 ## Related Documentation

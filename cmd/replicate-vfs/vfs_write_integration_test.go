@@ -60,7 +60,7 @@ func TestVFS_WriteAndSync_FileBackend(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-write-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb1, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb1, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb1.Close()
 
@@ -82,7 +82,7 @@ func TestVFS_WriteAndSync_FileBackend(t *testing.T) {
 	vfsName2 := fmt.Sprintf("replicate-write2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
-	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
+	sqldb2, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
 	require.NoError(t, err)
 	defer sqldb2.Close()
 
@@ -105,7 +105,7 @@ func TestVFS_ReadYourWrites(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-ryw-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -139,7 +139,7 @@ func TestVFS_MultipleTransactions(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-multi-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -170,7 +170,7 @@ func TestVFS_LargeTransaction(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-large-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -194,7 +194,7 @@ func TestVFS_LargeTransaction(t *testing.T) {
 	vfsName2 := fmt.Sprintf("replicate-large2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
-	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
+	sqldb2, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
 	require.NoError(t, err)
 	defer sqldb2.Close()
 
@@ -222,7 +222,7 @@ func TestVFS_PeriodicSync(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-periodic-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -249,7 +249,7 @@ func TestVFS_SyncDuringTransaction(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-txsync-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -294,7 +294,7 @@ func TestVFS_ManualSyncOnly(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-manual-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 
 	initialCount := countLTXFiles(t, client)
@@ -335,7 +335,7 @@ func TestVFS_WriteBufferDiscardedOnOpen(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-discard1-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 
 	_, err = sqldb.Exec("INSERT INTO users (id, name) VALUES (2, 'Bob')")
@@ -354,7 +354,7 @@ func TestVFS_WriteBufferDiscardedOnOpen(t *testing.T) {
 	vfsName2 := fmt.Sprintf("replicate-discard2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
-	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
+	sqldb2, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
 	require.NoError(t, err)
 	defer sqldb2.Close()
 
@@ -378,7 +378,7 @@ func TestVFS_WriteBufferDuplicatePages(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-dup1-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -404,7 +404,7 @@ func TestVFS_WriteBufferDuplicatePages(t *testing.T) {
 	vfsName2 := fmt.Sprintf("replicate-dup2-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
-	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
+	sqldb2, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
 	require.NoError(t, err)
 	defer sqldb2.Close()
 
@@ -431,7 +431,7 @@ func TestVFS_ExistingBufferDiscarded(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-existing-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -459,7 +459,7 @@ func TestVFS_WriteBufferCorrupted(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-corrupt-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -486,7 +486,7 @@ func TestVFS_ConflictDetection(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-conflict-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -517,7 +517,7 @@ func TestVFS_NoConflictWhenRemoteUnchanged(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-noconflict-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -551,7 +551,7 @@ func TestVFS_ConcurrentReaders(t *testing.T) {
 	writerVFSName := fmt.Sprintf("replicate-writer-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(writerVFSName, writerVFS))
 
-	writerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", writerVFSName))
+	writerDB, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", writerVFSName))
 	require.NoError(t, err)
 	defer writerDB.Close()
 
@@ -560,7 +560,7 @@ func TestVFS_ConcurrentReaders(t *testing.T) {
 	readerVFSName := fmt.Sprintf("replicate-reader-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(readerVFSName, readerVFS))
 
-	readerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", readerVFSName))
+	readerDB, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", readerVFSName))
 	require.NoError(t, err)
 	defer readerDB.Close()
 
@@ -592,7 +592,7 @@ func TestVFS_ReadWhileWriting(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-readwrite-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -649,7 +649,7 @@ func TestVFS_Truncate(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-truncate-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -689,7 +689,7 @@ func TestVFS_EmptyTransaction(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-empty-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -719,7 +719,7 @@ func TestVFS_SchemaChanges(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-schema-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -765,7 +765,7 @@ func TestVFS_BlobData(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-blob-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -806,7 +806,7 @@ func TestVFS_WriteAndRestore(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-restore1-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 
 	for i := 2; i <= 10; i++ {
@@ -821,7 +821,7 @@ func TestVFS_WriteAndRestore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify restored database
-	restoredDB, err := sql.Open("sqlite3", restoredPath)
+	restoredDB, err := sql.Open("sqlite", restoredPath)
 	require.NoError(t, err)
 	defer restoredDB.Close()
 
@@ -843,7 +843,7 @@ func TestVFS_WriteReadVFSOnly(t *testing.T) {
 	writerVFSName := fmt.Sprintf("replicate-vfsonly-w-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(writerVFSName, writerVFS))
 
-	writerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", writerVFSName))
+	writerDB, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", writerVFSName))
 	require.NoError(t, err)
 
 	_, err = writerDB.Exec("INSERT INTO users (id, name) VALUES (2, 'Bob')")
@@ -855,7 +855,7 @@ func TestVFS_WriteReadVFSOnly(t *testing.T) {
 	readerVFSName := fmt.Sprintf("replicate-vfsonly-r-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(readerVFSName, readerVFS))
 
-	readerDB, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", readerVFSName))
+	readerDB, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", readerVFSName))
 	require.NoError(t, err)
 	defer readerDB.Close()
 
@@ -876,7 +876,7 @@ func TestVFS_MixedWorkload(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-mixed-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -918,7 +918,7 @@ func TestVFS_SyncNetworkError(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-neterr-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -961,7 +961,7 @@ func TestVFS_InvalidPageSize(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-pagesize-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -982,7 +982,7 @@ func TestVFS_RollbackRestoresOriginalState(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-rollback-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -1043,7 +1043,7 @@ func TestVFS_RollbackAfterUpdate(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-rollback-update-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -1094,7 +1094,7 @@ func TestVFS_RollbackAfterDelete(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-rollback-delete-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -1151,7 +1151,7 @@ func TestVFS_CommitAfterRollbackWorks(t *testing.T) {
 	vfsName := fmt.Sprintf("replicate-commit-after-rollback-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName, vfs))
 
-	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
+	sqldb, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName))
 	require.NoError(t, err)
 	defer sqldb.Close()
 
@@ -1194,7 +1194,7 @@ func TestVFS_CommitAfterRollbackWorks(t *testing.T) {
 	vfsName2 := fmt.Sprintf("replicate-verify-%d", time.Now().UnixNano())
 	require.NoError(t, sqlite3vfs.RegisterVFS(vfsName2, vfs2))
 
-	sqldb2, err := sql.Open("sqlite3", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
+	sqldb2, err := sql.Open("sqlite", fmt.Sprintf("file:test.db?vfs=%s", vfsName2))
 	require.NoError(t, err)
 	defer sqldb2.Close()
 

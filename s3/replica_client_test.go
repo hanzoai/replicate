@@ -234,7 +234,7 @@ func TestReplicaClient_UnsignedPayload_NoChunkedEncoding(t *testing.T) {
 
 // TestReplicaClient_SignedPayload_CustomEndpoint_NoChunkedEncoding verifies that
 // aws-chunked encoding is disabled for custom endpoints even when SignPayload=true.
-// This is necessary for S3-compatible providers (Filebase, MinIO, Backblaze B2, etc.)
+// This is necessary for S3-compatible providers (Filebase, Hanzo S3, Backblaze B2, etc.)
 // that don't support aws-chunked encoding at all. See issue #895.
 func TestReplicaClient_SignedPayload_CustomEndpoint_NoChunkedEncoding(t *testing.T) {
 	data := mustLTX(t)
@@ -817,7 +817,7 @@ func TestReplicaClient_DefaultRegionUsage(t *testing.T) {
 	}
 
 	// Test ParseHost uses DefaultRegion
-	t.Run("ParseHost_MinIO", func(t *testing.T) {
+	t.Run("ParseHost_SelfHosted", func(t *testing.T) {
 		bucket, region, endpoint, forcePathStyle := ParseHost("mybucket.localhost:9000")
 		if region != DefaultRegion {
 			t.Errorf("expected region to be %s, got %s", DefaultRegion, region)
@@ -829,7 +829,7 @@ func TestReplicaClient_DefaultRegionUsage(t *testing.T) {
 			t.Errorf("expected endpoint to contain 'localhost:9000', got %s", endpoint)
 		}
 		if !forcePathStyle {
-			t.Error("expected forcePathStyle to be true for MinIO")
+			t.Error("expected forcePathStyle to be true for self-hosted S3")
 		}
 	})
 }
@@ -1118,7 +1118,7 @@ func TestParseHost(t *testing.T) {
 			wantForcePathStyle: true,
 		},
 		{
-			name:               "MinIO with port",
+			name:               "Self-hosted with port",
 			host:               "mybucket.localhost:9000",
 			wantBucket:         "mybucket",
 			wantRegion:         "us-east-1",
@@ -1809,7 +1809,7 @@ func TestReplicaClient_R2ConcurrencyDefault(t *testing.T) {
 			wantConcurrency: 0,
 		},
 		{
-			name:            "MinIO_NoConcurrencyOverride",
+			name:            "SelfHosted_NoConcurrencyOverride",
 			url:             "s3://mybucket/path?endpoint=http://localhost:9000",
 			wantConcurrency: 0,
 		},
@@ -1865,7 +1865,7 @@ func TestReplicaClient_ProviderEndpointDetection(t *testing.T) {
 			endpoint: "",
 		},
 		{
-			name:     "MinIO",
+			name:     "SelfHosted",
 			endpoint: "http://localhost:9000",
 		},
 	}
@@ -1913,7 +1913,7 @@ func TestReplicaClient_CustomEndpoint_DisablesChecksumFeatures(t *testing.T) {
 			expectCustomConfig: true,
 		},
 		{
-			name:               "MinIO_DisablesChecksums",
+			name:               "SelfHosted_DisablesChecksums",
 			endpoint:           "http://localhost:9000",
 			expectCustomConfig: true,
 		},

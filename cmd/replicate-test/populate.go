@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 type PopulateCommand struct {
@@ -71,7 +71,7 @@ func (c *PopulateCommand) populateDatabase(ctx context.Context, targetBytes int6
 		slog.Warn("Could not remove existing database", "error", err)
 	}
 
-	db, err := sql.Open("sqlite3", c.DB)
+	db, err := sql.Open("sqlite", c.DB)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
