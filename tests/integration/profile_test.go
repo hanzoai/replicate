@@ -17,8 +17,6 @@ import (
 
 	"github.com/hanzoai/replicate"
 	"github.com/hanzoai/replicate/file"
-
-	_ "modernc.org/sqlite"
 )
 
 // TestIdleCPUProfile starts N databases with file-based replicas and no writes,

@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 type ShrinkCommand struct {
@@ -66,7 +66,7 @@ func (c *ShrinkCommand) shrinkDatabase(ctx context.Context) error {
 		"size_mb", initialSize/1024/1024,
 	)
 
-	db, err := sql.Open("sqlite3", c.DB+"?_journal_mode=WAL")
+	db, err := sql.Open("sqlite", c.DB+"?_journal_mode=WAL")
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

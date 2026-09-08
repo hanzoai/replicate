@@ -14,7 +14,7 @@ problems for a post-quantum stack:
 
 2. **Latency tax for in-cluster S2S.** The most common Base-backed
    topology runs the replication target as a pod in the same cluster
-   (hanzos3/s3 server, or a MinIO sidecar). Plaintext HTTP/1.1 +
+   (a hanzoai/s3 server, or another S3 sidecar). Plaintext HTTP/1.1 +
    AWS-v4 signing per part adds ~3-5ms per request on hot loops.
 
 The PQ-ZAP path solves both:
@@ -75,7 +75,7 @@ unchanged. Migrate one tier at a time (dev → testnet → mainnet).
       ciphertext alongside the symmetric key, and verify on the
       server side before the bucket store.
 - [ ] **Signing**: AWS SigV4 stays for compatibility with
-      S3-compatible providers (MinIO, Exoscale, R2). For the
+      S3-compatible providers (self-hosted, Exoscale, R2). For the
       hanzos3-native path, replace SigV4 with ML-DSA peer-signed
       requests — server skips signature check when the ZAP TLS peer
       cert chains to the cluster CA.

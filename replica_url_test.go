@@ -796,25 +796,25 @@ func TestIsHetznerEndpoint(t *testing.T) {
 	}
 }
 
-func TestIsMinIOEndpoint(t *testing.T) {
+func TestIsSelfHostedS3Endpoint(t *testing.T) {
 	tests := []struct {
 		endpoint string
 		expected bool
 	}{
 		{"http://localhost:9000", true},
 		{"http://192.168.1.100:9000", true},
-		{"minio.local:9000", true},
+		{"s3.local:9000", true},
 		{"https://s3.amazonaws.com", false},
 		{"https://s3.filebase.com", false},
 		{"https://sfo3.digitaloceanspaces.com", false},
-		{"s3.filebase.com", false}, // No port, not MinIO
+		{"s3.filebase.com", false}, // No port, not self-hosted
 		{"", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
-			got := replicate.IsMinIOEndpoint(tt.endpoint)
+			got := replicate.IsSelfHostedS3Endpoint(tt.endpoint)
 			if got != tt.expected {
-				t.Errorf("IsMinIOEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
+				t.Errorf("IsSelfHostedS3Endpoint(%q) = %v, want %v", tt.endpoint, got, tt.expected)
 			}
 		})
 	}
@@ -846,9 +846,9 @@ func TestIsLocalEndpoint(t *testing.T) {
 		{"172.31.255.255", true},
 
 		// .local and .localhost TLDs
-		{"minio.local", true},
-		{"minio.local:9000", true},
-		{"http://minio.local:9000", true},
+		{"s3.local", true},
+		{"s3.local:9000", true},
+		{"http://s3.local:9000", true},
 		{"dev.localhost", true},
 		{"test.localhost:8080", true},
 
@@ -929,7 +929,7 @@ func TestS3ProviderDefaults(t *testing.T) {
 			wantRequireMD5:     false,
 		},
 		{
-			name:               "MinIO_SignPayloadAndPathStyle",
+			name:               "SelfHosted_SignPayloadAndPathStyle",
 			url:                "s3://mybucket/path?endpoint=http://localhost:9000",
 			wantSignPayload:    true,
 			wantForcePathStyle: true,
@@ -992,7 +992,7 @@ func TestEnsureEndpointScheme(t *testing.T) {
 		{"127.0.0.1:9000", "http://127.0.0.1:9000", true},
 		{"192.168.1.100:9000", "http://192.168.1.100:9000", true},
 		{"10.0.0.1:9000", "http://10.0.0.1:9000", true},
-		{"minio.local:9000", "http://minio.local:9000", true},
+		{"s3.local:9000", "http://s3.local:9000", true},
 
 		// Cloud endpoints get https:// (THIS IS THE KEY FIX)
 		{"abcdef.r2.cloudflarestorage.com", "https://abcdef.r2.cloudflarestorage.com", true},

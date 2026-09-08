@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 func TestRapidCheckpoints(t *testing.T) {
@@ -38,7 +38,7 @@ func TestRapidCheckpoints(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	t.Log("[2] Generating rapid writes with frequent checkpoints...")
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestWALGrowth(t *testing.T) {
 	}
 
 	t.Log("[1] Creating test table...")
-	sqlDB, err := sql.Open("sqlite3", db.Path)
+	sqlDB, err := sql.Open("sqlite", db.Path)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestBusyTimeout(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	t.Log("[3] Simulating concurrent access with long transactions...")
-	sqlDB, err := sql.Open("sqlite3", db.Path+"?_busy_timeout=5000")
+	sqlDB, err := sql.Open("sqlite", db.Path+"?_busy_timeout=5000")
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}

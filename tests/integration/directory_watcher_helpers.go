@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 // DirWatchTestDB extends TestDB with directory-specific functionality
@@ -91,7 +91,7 @@ func CreateDatabaseInDir(t *testing.T, dirPath, subDir, name string) string {
 	}
 
 	dbPath := filepath.Join(dbDir, name)
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("open database %s: %v", dbPath, err)
 	}
@@ -113,7 +113,7 @@ func CreateDatabaseInDir(t *testing.T, dirPath, subDir, name string) string {
 func CreateDatabaseWithData(t *testing.T, dbPath string, rowCount int) error {
 	t.Helper()
 
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -270,7 +270,7 @@ func CountDatabasesInReplica(replicaPath string) (int, error) {
 func StartContinuousWrites(ctx context.Context, t *testing.T, dbPath string, writesPerSec int) (*sync.WaitGroup, context.CancelFunc, error) {
 	t.Helper()
 
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
@@ -338,7 +338,7 @@ func CreateMultipleDatabasesConcurrently(t *testing.T, dirPath string, count int
 
 // GetRowCount returns the number of rows in a test table
 func GetRowCount(dbPath, tableName string) (int, error) {
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return 0, fmt.Errorf("open database: %w", err)
 	}

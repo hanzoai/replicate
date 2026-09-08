@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 	"github.com/psanford/sqlite3vfs"
 	"github.com/stretchr/testify/require"
 
@@ -67,7 +67,7 @@ func TestVFS_TimeTravelFunctions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/time-travel.db?vfs=replicate-time")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/time-travel.db?vfs=replicate-time")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestVFS_PragmaReplicateTxid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/txid-test.db?vfs=replicate-txid")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/txid-test.db?vfs=replicate-txid")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestVFS_PragmaReplicateLag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/lag-test.db?vfs=replicate-lag")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/lag-test.db?vfs=replicate-lag")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestVFS_PragmaRelativeTime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sqldb1, err := sql.Open("sqlite3", "file:/tmp/relative-test.db?vfs=replicate-relative")
+	sqldb1, err := sql.Open("sqlite", "file:/tmp/relative-test.db?vfs=replicate-relative")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}

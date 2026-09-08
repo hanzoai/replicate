@@ -22,15 +22,15 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 )
 
 // TestShutdownSyncRetry_429Errors tests that Replicate retries syncing LTX files
 // during shutdown when receiving 429 (Too Many Requests) errors.
 //
 // This test:
-// 1. Starts a MinIO container
-// 2. Starts a rate-limiting proxy in front of MinIO that returns 429 for first N PUT requests
+// 1. Starts a self-hosted S3 container
+// 2. Starts a rate-limiting proxy in front of it that returns 429 for first N PUT requests
 // 3. Starts Replicate replicating to the proxy endpoint
 // 4. Writes data and syncs
 // 5. Sends SIGTERM to trigger graceful shutdown
@@ -48,31 +48,25 @@ func TestShutdownSyncRetry_429Errors(t *testing.T) {
 	t.Log("================================================")
 	t.Log("")
 
-	// Start MinIO container
-	t.Log("Starting MinIO container...")
-	containerName, minioEndpoint := StartMinioTestContainer(t)
-	defer StopMinioTestContainer(t, containerName)
-	t.Logf("✓ MinIO running at: %s", minioEndpoint)
+	// Start S3 container
+	t.Log("Starting S3 container...")
+	containerName, s3Endpoint := StartS3TestContainer(t)
+	defer StopS3TestContainer(t, containerName)
+	t.Logf("✓ Hanzo S3 running at: %s", s3Endpoint)
 
-	// Create MinIO bucket by creating directory in /data (MinIO stores buckets as directories)
 	bucket := "replicate-test"
 	t.Logf("Creating bucket '%s'...", bucket)
 
-	// Wait for MinIO to be ready
-	time.Sleep(2 * time.Second)
-
-	// Create bucket directory directly - MinIO uses /data as the storage root
-	createBucketCmd := exec.Command("docker", "exec", containerName,
-		"mkdir", "-p", "/data/"+bucket)
-	if out, err := createBucketCmd.CombinedOutput(); err != nil {
-		t.Fatalf("Failed to create bucket directory: %v, output: %s", err, string(out))
+	createBucketCmd := awsCLI(containerName, "s3", "mb", "s3://"+bucket)
+	if out, err := createBucketCmd.CombinedOutput(); err != nil && !strings.Contains(string(out), "BucketAlreadyOwnedByYou") {
+		t.Fatalf("Failed to create bucket: %v, output: %s", err, string(out))
 	}
 	t.Log("✓ Bucket created")
 	t.Log("")
 
 	// Start rate-limiting proxy
 	t.Log("Starting rate-limiting proxy...")
-	proxy := newRateLimitingProxy(t, minioEndpoint, 3) // Return 429 for first 3 PUT requests
+	proxy := newRateLimitingProxy(t, s3Endpoint, 3) // Return 429 for first 3 PUT requests
 	proxyServer := &http.Server{
 		Addr:    "127.0.0.1:0",
 		Handler: proxy,
@@ -103,7 +97,7 @@ func TestShutdownSyncRetry_429Errors(t *testing.T) {
 
 	// Create database with some data
 	t.Log("Creating test database...")
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -134,13 +128,13 @@ dbs:
       bucket: %s
       path: %s
       endpoint: %s
-      access-key-id: minioadmin
-      secret-access-key: minioadmin
+      access-key-id: %s
+      secret-access-key: %s
       region: us-east-1
       force-path-style: true
       skip-verify: true
       sync-interval: 1s
-`, dbPath, bucket, s3Path, proxyEndpoint)
+`, dbPath, bucket, s3Path, proxyEndpoint, s3TestAccessKey, s3TestSecretKey)
 
 	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
 		t.Fatalf("Failed to write config: %v", err)
@@ -168,7 +162,7 @@ dbs:
 
 	// Write more data to ensure we have pending LTX files
 	t.Log("Writing additional data...")
-	sqlDB, err = sql.Open("sqlite3", dbPath)
+	sqlDB, err = sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("Failed to reopen database: %v", err)
 	}

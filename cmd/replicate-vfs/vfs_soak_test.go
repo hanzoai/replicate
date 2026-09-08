@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/hanzoai/sqlite"
 
 	"github.com/hanzoai/replicate/file"
 	"github.com/hanzoai/replicate/internal/testingutil"

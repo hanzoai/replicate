@@ -14,29 +14,31 @@ services:
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
+  s3:
+    image: ghcr.io/hanzoai/s3:v1.0.14
     environment:
-      MINIO_ROOT_USER: supa-storage
-      MINIO_ROOT_PASSWORD: secret1234
+      AWS_ACCESS_KEY_ID: hanzo
+      AWS_SECRET_ACCESS_KEY: hanzos3secret
     volumes:
-      - minio_data:/data
+      - s3_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/healthz"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  minio-createbucket:
-    image: minio/mc
+  s3-createbucket:
+    image: amazon/aws-cli
     depends_on:
-      minio:
+      s3:
         condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: hanzo
+      AWS_SECRET_ACCESS_KEY: hanzos3secret
+      AWS_DEFAULT_REGION: us-east-1
     entrypoint: >
       /bin/sh -c "
-      mc alias set supabase http://minio:9000 supa-storage secret1234;
-      mc mb --ignore-existing supabase/supa-storage-bucket;
+      aws --endpoint-url http://s3:9000 s3 mb s3://supa-storage-bucket || true;
       exit 0;
       "
 
@@ -45,7 +47,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      minio-createbucket:
+      s3-createbucket:
         condition: service_completed_successfully
     ports:
       - "5555:5000"
@@ -54,11 +56,11 @@ services:
       DB_INSTALL_ROLES: "true"
       STORAGE_BACKEND: s3
       STORAGE_S3_BUCKET: supa-storage-bucket
-      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ENDPOINT: http://s3:9000
       STORAGE_S3_FORCE_PATH_STYLE: "true"
       STORAGE_S3_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: supa-storage
-      AWS_SECRET_ACCESS_KEY: secret1234
+      AWS_ACCESS_KEY_ID: hanzo
+      AWS_SECRET_ACCESS_KEY: hanzos3secret
       AUTH_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
       AUTH_JWT_ALGORITHM: HS256
       S3_PROTOCOL_ACCESS_KEY_ID: supabase-s3-access-key
@@ -78,4 +80,4 @@ services:
 
 volumes:
   pg_data:
-  minio_data:
+  s3_data:
