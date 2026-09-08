@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 jobs:
   cicd:
-    uses: hanzoai/ci/.hanzo/workflows/build.yml@v1
+    uses: hanzoai/ci/.github/workflows/build.yml@v1
     with:
       # Not on a tag: a tag is cut from a commit this gate already passed on
       # main. STRING compared against 'false' — git.hanzo.ai resolves every
