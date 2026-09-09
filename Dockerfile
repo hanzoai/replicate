@@ -1,4 +1,4 @@
-FROM golang:1.26.5 AS builder
+FROM golang:1.26.8 AS builder
 ENV GOTOOLCHAIN=auto
 
 # Install build dependencies for VFS extension
