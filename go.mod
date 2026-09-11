@@ -54,7 +54,9 @@ require (
 require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/hanzoai/csqlite v0.1.2 // indirect
+	github.com/hanzoai/go-sdk/v8 v8.5.158 // indirect
 	github.com/hanzoai/sqlcipher v0.1.1 // indirect
+	gopkg.in/validator.v2 v2.0.1 // indirect
 )
 
 require (

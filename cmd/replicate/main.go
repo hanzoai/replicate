@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/hanzoai/go-sdk/v8/secret"
 	"github.com/hanzoai/ltx"
 	_ "github.com/hanzoai/sqlite"
 	"github.com/luxfi/age"
@@ -237,9 +238,20 @@ The commands are:
 }
 
 // Config represents a configuration file for the replicate daemon.
+// SecretConfig names a store and the keys read from it. A key is a bare name:
+// the same name the configuration below refers to as ${name}.
+type SecretConfig struct {
+	Path string   `yaml:"path"`
+	Keys []string `yaml:"keys"`
+}
+
 type Config struct {
 	// Global replica settings that serve as defaults for all replicas
 	ReplicaSettings `yaml:",inline"`
+
+	// Secrets names the stores this configuration's ${...} references are read
+	// from, ahead of the environment. See ParseConfig.
+	Secrets []SecretConfig `yaml:"secrets"`
 
 	// Bind address for serving metrics.
 	Addr string `yaml:"addr"`
@@ -537,9 +549,38 @@ func ParseConfig(r io.Reader, expandEnv bool) (_ Config, err error) {
 		return config, err
 	}
 
-	// Expand environment variables, if enabled.
+	// Resolve the names this configuration refers to, if enabled.
+	//
+	// A `secrets:` block names stores the process reads with its own identity —
+	// the projected ServiceAccount token IAM exchanges for a bearer KMS
+	// answers. Those keys resolve first, so a credential arrives from the store
+	// that keeps it rather than from a variable every process on the pod, and
+	// everything that can read a Secret in the namespace, can already see.
+	// The environment still answers everything else, and answers the keys too
+	// on a laptop, where HANZO_DEV=1 and there is no token to project.
 	if expandEnv {
+		var head struct {
+			Secrets []SecretConfig `yaml:"secrets"`
+		}
+		if err := yaml.Unmarshal(buf, &head); err != nil {
+			return config, err
+		}
+
+		vals := make(map[string]string)
+		for _, store := range head.Secrets {
+			got, err := secret.Boot(context.Background(), store.Path, store.Keys...)
+			if err != nil {
+				return config, err
+			}
+			for k, v := range got {
+				vals[k] = v
+			}
+		}
+
 		buf = []byte(os.Expand(string(buf), func(key string) string {
+			if v, ok := vals[key]; ok {
+				return v
+			}
 			if key == "PID" {
 				return strconv.Itoa(os.Getpid())
 			}
@@ -1522,8 +1563,6 @@ func NewS3ReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *s3
 	return client, nil
 }
 
-
-
 // newSFTPReplicaClientFromConfig returns a new instance of sftp.ReplicaClient built from config.
 func newSFTPReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *sftp.ReplicaClient, err error) {
 	// Ensure URL & constituent parts are not both specified.
@@ -1707,7 +1746,6 @@ func newNATSReplicaClientFromConfig(c *ReplicaConfig, _ *replicate.Replica) (_ *
 
 	return client, nil
 }
-
 
 // applyReplicateEnv copies "REPLICATE" prefixed environment variables to
 // their AWS counterparts as the "AWS" prefix can be confusing when using a
