@@ -13,8 +13,13 @@ on:
   workflow_dispatch:
 jobs:
   cicd:
-    uses: hanzoai/ci/.github/workflows/build.yml@v1
+    uses: hanzoai/ci/.github/workflows/build.yml@v2
     with:
+      # The image is built in-cluster, not on this runner. A runner is a
+      # sandboxed pod with no Docker daemon, so buildx has nothing to connect
+      # to; `delegate` POSTs the build to api.hanzo.ai/v1/build, which launches
+      # a BuildKit Job and pushes. The gate still runs here.
+      mode: delegate
       # Not on a tag: a tag is cut from a commit this gate already passed on
       # main. STRING compared against 'false' — git.hanzo.ai resolves every
       # boolean workflow_call input to false, including an explicit true.
