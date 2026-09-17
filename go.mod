@@ -1,6 +1,6 @@
 module github.com/hanzoai/replicate
 
-go 1.26.8
+go 1.27.1
 
 require (
 	github.com/MadAppGang/httplog v1.3.0
