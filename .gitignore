@@ -28,3 +28,7 @@ packages/python/dist/
 packages/python/build/
 packages/python/*.egg-info/
 /replicate
+
+# Local symlinks to LLM.md
+AGENTS.md
+GEMINI.md
