@@ -14,6 +14,10 @@ on:
 jobs:
   cicd:
     uses: hanzoai/ci/.github/workflows/build.yml@v2
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
     with:
       # The image is built in-cluster, not on this runner. A runner is a
       # sandboxed pod with no Docker daemon, so buildx has nothing to connect
