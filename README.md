@@ -3,6 +3,8 @@
 Hanzo Replicate
 ==========
 
+[![Open in Hanzo](https://hanzo.app/badges/open-in-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/replicate&ref=main&action=open) [![Edit with Hanzo](https://hanzo.app/badges/edit-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/replicate&ref=main&action=edit) [![Deploy with Hanzo](https://hanzo.app/badges/deploy-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/replicate&ref=main&action=deploy)
+
 Hanzo Replicate is a standalone disaster recovery tool for SQLite. It runs as a
 background process and safely replicates changes incrementally to another file
 or S3. Replicate only communicates with SQLite through the SQLite API so it
